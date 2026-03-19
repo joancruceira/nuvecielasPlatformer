@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#1a4a2e"/>
+  <title>Nuvecielas — Bosque Mágico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div id="screenMenu" class="screen active">
+    <div class="menu-bg">
+      <div class="forest-layer layer1"></div>
+      <div class="forest-layer layer2"></div>
+      <div class="forest-layer layer3"></div>
+    </div>
+    <div class="menu-content">
+      <div class="logo-wrap">
+        <h1 class="logo-title">Nuvecielas</h1>
+        <p class="logo-sub">Bosque Mágico</p>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn-main" id="btnPlay">▶ Jugar</button>
+        <button class="btn-secondary" id="btnHow">? Cómo jugar</button>
+      </div>
+      <p class="menu-hint">Seleccioná tu Nuveciela para comenzar</p>
+    </div>
+  </div>
+
+  <div id="screenChar" class="screen">
+    <div class="menu-bg">
+      <div class="forest-layer layer1"></div>
+      <div class="forest-layer layer2"></div>
+    </div>
+    <div class="char-content">
+      <h2 class="char-title">Elegí tu Nuveciela</h2>
+      <div class="char-grid" id="charGrid"></div>
+      <div class="char-actions">
+        <button class="btn-secondary" id="btnCharBack">← Volver</button>
+        <button class="btn-main" id="btnCharStart" disabled>¡Empezar!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screenHow" class="screen">
+    <div class="how-content">
+      <h2 class="char-title">Cómo jugar</h2>
+      <div class="how-grid">
+        <div class="how-item"><span class="how-key">◀ ▶</span><span>Moverse</span></div>
+        <div class="how-item"><span class="how-key">▲</span><span>Saltar</span></div>
+        <div class="how-item"><span class="how-key">▲ ▲</span><span>Doble salto</span></div>
+        <div class="how-item"><span class="how-key">▼ + ▶</span><span>Deslizarse</span></div>
+        <div class="how-item"><span class="how-key">Pisar</span><span>Mata enemigos</span></div>
+        <div class="how-item"><span class="how-key">⭐</span><span>Colectá estrellas</span></div>
+      </div>
+      <div class="how-chars">
+        <h3>Habilidades especiales</h3>
+        <div class="how-ability"><strong>Nuveciela</strong> — Doble salto con más altura</div>
+        <div class="how-ability"><strong>Ciela</strong> — Deslizarse muy rápido</div>
+        <div class="how-ability"><strong>Lunaria</strong> — Mantener ▲ para flotar</div>
+        <div class="how-ability"><strong>Nuve</strong> — ▼ en el aire: golpe de tierra</div>
+      </div>
+      <button class="btn-main" id="btnHowBack">← Entendido</button>
+    </div>
+  </div>
+
+  <div id="screenGame" class="screen">
+    <div class="hud" id="hud">
+      <div class="hud-left">
+        <div class="hud-lives" id="hudLives">♥♥♥</div>
+        <div class="hud-char" id="hudChar">Nuveciela</div>
+      </div>
+      <div class="hud-center">
+        <div class="hud-level" id="hudLevel">Nivel 1 — Pradera Encantada</div>
+      </div>
+      <div class="hud-right">
+        <div class="hud-stars">⭐ <span id="hudStars">0</span></div>
+      </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="mobile-controls" id="mobileControls">
+      <div class="mc-left">
+        <button class="mc-btn mc-dpad-left"  id="mcLeft">◀</button>
+        <button class="mc-btn mc-dpad-right" id="mcRight">▶</button>
+      </div>
+      <div class="mc-right">
+        <button class="mc-btn mc-down" id="mcDown">▼</button>
+        <button class="mc-btn mc-jump" id="mcJump">▲</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screenOverlay" class="screen overlay-screen" hidden>
+    <div class="overlay-card" id="overlayCard">
+      <div class="overlay-emoji" id="overlayEmoji">⏸</div>
+      <h2 class="overlay-title" id="overlayTitle">Pausa</h2>
+      <p class="overlay-sub" id="overlaySub"></p>
+      <div class="overlay-actions" id="overlayActions"></div>
+    </div>
+  </div>
+
+  <script src="js/levels.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
