@@ -31,7 +31,9 @@ const Engine = (() => {
     jumpPressed: false, jumpHeld: false,
     down: false,
   };
-  const _keys = {};
+  const _keys    = {};
+  const _dirTap  = { dir: '', time: 0 };
+  const DIR_TAP_MS = 320;
 
   // ──────────────────────────────────────────
   //  INIT
@@ -438,6 +440,20 @@ const Engine = (() => {
   }
   function isPaused() { return paused; }
 
+  // ── Doble tap de dirección → bola de fuego ──
+  function handleDirTap(dir) {
+    if (Player.getState().charId !== 'nuveciela') return;
+    const now = performance.now();
+    if (_dirTap.dir === dir && now - _dirTap.time < DIR_TAP_MS) {
+      Player.tryFireball();
+      _dirTap.dir  = '';
+      _dirTap.time = 0;
+    } else {
+      _dirTap.dir  = dir;
+      _dirTap.time = now;
+    }
+  }
+
   // ──────────────────────────────────────────
   //  INPUTS TECLADO
   // ──────────────────────────────────────────
@@ -485,18 +501,6 @@ const Engine = (() => {
   // ──────────────────────────────────────────
   //  INPUTS MÓVIL
   // ──────────────────────────────────────────
-  function handleDirTap(dir) {
-    if (Player.getState().charId !== 'nuveciela') return;
-    const now = performance.now();
-    if (_dirTap.dir === dir && now - _dirTap.time < DIR_TAP_MS) {
-      Player.tryFireball();
-      _dirTap.dir  = '';
-      _dirTap.time = 0;
-    } else {
-      _dirTap.dir  = dir;
-      _dirTap.time = now;
-    }
-  }
 
   function setupMobileControls() {
     function bindBtn(id, onDown, onUp) {
