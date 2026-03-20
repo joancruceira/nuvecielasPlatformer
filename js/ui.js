@@ -14,7 +14,7 @@ const UI = (() => {
 
   const CHAR_IDS = ['nuveciela', 'ciela', 'lunaria', 'nuve'];
   const CHARS = {
-    nuveciela: { emoji: '🌈', ability: 'Doble salto alto' },
+    nuveciela: { emoji: '🌈', ability: '← ← Bola de fuego' },
     ciela:     { emoji: '💧', ability: 'Deslizamiento veloz' },
     lunaria:   { emoji: '✨', ability: 'Flotación mágica' },
     nuve:      { emoji: '🔥', ability: 'Golpe de tierra' },
@@ -205,7 +205,7 @@ const UI = (() => {
 
     if (elHudLives) {
       const lives = Math.max(0, ps.lives);
-      const empty = Math.max(0, 5 - lives);
+      const empty = Math.max(0, 3 - lives);
       elHudLives.textContent = '♥'.repeat(lives) + '♡'.repeat(empty);
     }
     if (elHudStars)  elHudStars.textContent  = ps.stars;
