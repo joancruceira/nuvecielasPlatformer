@@ -226,13 +226,12 @@ const Enemies = (() => {
     e.x += e.vx * dt;
     e.y += e.vy * dt;
 
-    // colisión suelo
+    // colisión suelo — chequea el tile central bajo el boss
     const rows = map.length;
     const cols = map[0].length;
     const rFloor = Math.floor((e.y + e.h) / TILE_SIZE_E);
     const cMid   = Math.floor((e.x + e.w / 2) / TILE_SIZE_E);
 
-    // BUG FIX: Verificar límites antes de acceder al mapa del boss
     if (rFloor >= 0 && rFloor < rows && cMid >= 0 && cMid < cols) {
       const t = map[rFloor][cMid];
       if (t === TILE.GROUND || t === TILE.BLOCK) {
@@ -248,7 +247,15 @@ const Enemies = (() => {
       }
     }
 
-    // paredes
+    // Si el boss cae fuera del mapa → cuenta como derrota
+    if (e.y > rows * TILE_SIZE_E + 80) {
+      e.alive = false;
+      Renderer.spawnText(e.x + e.w / 2, rows * TILE_SIZE_E - 40, '¡AL FOSO! 😱', '#f9c846');
+      Renderer.flash('#f9c846', 0.75);
+      onDefeated && onDefeated();
+    }
+
+    // paredes laterales del mapa
     if (e.x < 0) { e.x = 0; e.facing = 1; }
     if (e.x + e.w > cols * TILE_SIZE_E) { e.x = cols * TILE_SIZE_E - e.w; e.facing = -1; }
     e.facing = e.vx >= 0 ? 1 : -1;
@@ -275,8 +282,10 @@ const Enemies = (() => {
     if (!overlapX || !overlapY) return;
 
     // pisada: jugador cae desde arriba
-    const stomping = ps.vy > 0 && pBot < eTop + 22 && !ps.grounded;
-    if (stomping && e.type !== 'boss') {
+    // BUG FIX: el boss también recibe daño al ser pisado (umbral más generoso: +32 por su tamaño)
+    const stompThreshold = e.type === 'boss' ? 32 : 22;
+    const stomping = ps.vy > 0 && pBot < eTop + stompThreshold && !ps.grounded;
+    if (stomping) {
       hitEnemy(e);
       onPlayerHit && onPlayerHit('stomp', e);
     } else {
