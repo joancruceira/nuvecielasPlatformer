@@ -282,14 +282,15 @@ const Enemies = (() => {
     if (!overlapX || !overlapY) return;
 
     // pisada: jugador cae desde arriba
-    // BUG FIX: el boss también recibe daño al ser pisado (umbral más generoso: +32 por su tamaño)
-    const stompThreshold = e.type === 'boss' ? 32 : 22;
-    const stomping = ps.vy > 0 && pBot < eTop + stompThreshold && !ps.grounded;
+    // Usar wasGrounded en lugar de grounded: en el mismo frame que se aterriza,
+    // grounded ya es true pero la colisión todavía no fue procesada → falso negativo.
+    // La ventana vertical es generosa (40px para boss, 28px para normales).
+    const stompThreshold = e.type === 'boss' ? 40 : 28;
+    const stomping = ps.vy >= 0 && pBot < eTop + stompThreshold && !ps.wasGrounded;
     if (stomping) {
       hitEnemy(e);
       onPlayerHit && onPlayerHit('stomp', e);
     } else {
-      // BUG FIX: No dañar al jugador si ya está invencible
       if (!ps.invincible) {
         onPlayerHit && onPlayerHit('damage', e);
       }
