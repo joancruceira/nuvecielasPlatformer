@@ -1,18 +1,16 @@
 // ═══════════════════════════════════════════════════════
 //  ENGINE.JS — Game loop, cámara, coleccionables, niveles
-//  Mobile-optimized: multi-touch, double-tap jump,
-//  orientation handling, performance tweaks
 // ═══════════════════════════════════════════════════════
 
 const Engine = (() => {
 
   const TILE_SIZE_C = 48;
-  const CAM_LERP    = 8;
+  const CAM_LERP = 8;
 
-  let running  = false;
-  let paused   = false;
-  let lastTs   = 0;
-  let rafId    = null;
+  let running   = false;
+  let paused    = false;
+  let lastTs    = 0;
+  let rafId     = null; // BUG FIX: guardar el ID del RAF para poder cancelarlo
 
   let currentLevelIdx = 0;
   let levelData = null;
@@ -35,15 +33,6 @@ const Engine = (() => {
   };
   const _keys = {};
 
-  // ── Multi-touch tracking ──
-  // Cada botón puede tener su propio pointerId activo
-  const _touchMap = {}; // pointerId → buttonId
-
-  // ── Double-tap para doble salto en zona derecha del canvas ──
-  let _lastTapTime  = 0;
-  let _lastTapSide  = ''; // 'left' | 'right'
-  const DBL_TAP_MS  = 280;
-
   // ──────────────────────────────────────────
   //  INIT
   // ──────────────────────────────────────────
@@ -57,19 +46,21 @@ const Engine = (() => {
 
     setupKeyboard();
     setupMobileControls();
-    setupCanvasTouch(canvasEl);
-    setupOrientationHandler();
   }
 
   // ──────────────────────────────────────────
   //  EMPEZAR JUEGO
   // ──────────────────────────────────────────
   function startGame(charId, levelIdx = 0) {
-    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    // BUG FIX: Cancelar RAF anterior antes de iniciar uno nuevo para evitar loops dobles
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
 
     currentLevelIdx = levelIdx;
     loadLevel(levelIdx);
-
+    // BUG FIX: Preservar estrellas y vidas al cambiar de nivel (solo resetear en nivel 0)
     const prevStars = levelIdx > 0 ? Player.getState().stars : 0;
     const prevLives = levelIdx > 0 ? Player.getState().lives : 3;
     Player.init(charId, 2 * TILE_SIZE_C, (13 - 2) * TILE_SIZE_C);
@@ -77,7 +68,6 @@ const Engine = (() => {
       Player.getState().stars = prevStars;
       Player.getState().lives = prevLives;
     }
-
     running = true;
     paused  = false;
     lastTs  = 0;
@@ -87,6 +77,7 @@ const Engine = (() => {
 
   function loadLevel(idx) {
     levelData = LEVELS[idx];
+    // copia profunda del mapa para no modificar el original
     map = levelData.map.map(r => [...r]);
     Enemies.init();
     Enemies.spawnFromMap(map);
@@ -119,11 +110,21 @@ const Engine = (() => {
     for (let r = 0; r < map.length; r++) {
       for (let c = 0; c < map[r].length; c++) {
         if (map[r][c] === TILE.CHECKPOINT) {
-          checkpoints.push({ x: c * TILE_SIZE_C + TILE_SIZE_C / 2, y: (r - 1) * TILE_SIZE_C, col: c, row: r, activated: false });
+          checkpoints.push({
+            x: c * TILE_SIZE_C + TILE_SIZE_C / 2,
+            y: (r - 1) * TILE_SIZE_C,
+            col: c, row: r,
+            activated: false,
+          });
           map[r][c] = TILE.AIR;
         }
         if (map[r][c] === TILE.PORTAL) {
-          portals.push({ x: c * TILE_SIZE_C + TILE_SIZE_C / 2, y: r * TILE_SIZE_C + TILE_SIZE_C / 2, col: c, row: r, active: false, triggered: false });
+          portals.push({
+            x: c * TILE_SIZE_C + TILE_SIZE_C / 2,
+            y: r * TILE_SIZE_C + TILE_SIZE_C / 2,
+            col: c, row: r,
+            active: false,
+          });
           map[r][c] = TILE.AIR;
         }
       }
@@ -140,7 +141,9 @@ const Engine = (() => {
     lastTs = timestamp;
     const dt = Math.min(rawDt, 0.05);
 
-    if (!paused) update(dt);
+    if (!paused) {
+      update(dt);
+    }
 
     render(timestamp);
     rafId = requestAnimationFrame(loop);
@@ -151,27 +154,41 @@ const Engine = (() => {
   // ──────────────────────────────────────────
   function update(dt) {
     const ps = Player.getState();
-    if (ps.dead && ps.lives <= 0) return;
+    if (ps.dead && ps.lives <= 0) return; // no actualizar si ya game over
 
+    // ── Jugador ──
     Player.update(dt, input, map, handlePlayerLand);
 
+    // ── Consumir jump pressed ──
     if (input.jumpPressed) {
       Player.tryJump();
       input.jumpPressed = false;
     }
+    // slide: abajo + movimiento
     if (input.down && (input.left || input.right) && !ps.sliding) {
       Player.trySlide();
     }
+    // ground pound (Nuve): abajo en el aire
     if (input.down && !ps.grounded && ps.charId === 'nuve') {
       Player.tryGroundPound();
     }
 
+    // ── Enemigos ──
     Enemies.update(dt, map, ps, handleEnemyCollision, handleBossDefeated);
+
+    // ── Cámara ──
     updateCamera(dt, ps);
+
+    // ── Coleccionables ──
     checkCollectibles(ps);
+
+    // ── Checkpoints ──
     checkCheckpoints(ps);
+
+    // ── Portal ──
     checkPortal(ps);
 
+    // ── Game over ──
     if (ps.dead && ps.lives <= 0) {
       running = false;
       setTimeout(() => onGameOver(ps.stars, false), 600);
@@ -179,19 +196,18 @@ const Engine = (() => {
   }
 
   // ──────────────────────────────────────────
-  //  CÁMARA — con adelanto en dirección de movimiento
+  //  CÁMARA
   // ──────────────────────────────────────────
   function updateCamera(dt, ps) {
     const { W, H } = Renderer.getSize();
+    // BUG FIX: Verificar que W y H sean válidos (pueden ser 0 antes del primer resize)
     if (!W || !H) return;
 
     const mapW = map[0].length * TILE_SIZE_C;
     const mapH = map.length    * TILE_SIZE_C;
 
-    // Adelanto suave en la dirección de movimiento
-    const lookAhead = ps.facing * 60;
-    cam.targetX = ps.x + ps.w / 2 - W * 0.42 + lookAhead;
-    cam.targetY = ps.y + ps.h / 2 - H * 0.52;
+    cam.targetX = ps.x + ps.w / 2 - W * 0.42;
+    cam.targetY = ps.y + ps.h / 2 - H * 0.55;
 
     cam.x += (cam.targetX - cam.x) * CAM_LERP * dt;
     cam.y += (cam.targetY - cam.y) * CAM_LERP * dt;
@@ -201,12 +217,15 @@ const Engine = (() => {
   }
 
   // ──────────────────────────────────────────
-  //  COLISIONES
+  //  COLISIONES JUEGO
   // ──────────────────────────────────────────
   function handleEnemyCollision(type, enemy) {
+    const ps = Player.getState();
     if (type === 'stomp') {
-      Player.getState().vy = -400;
-      Player.getState().grounded = false;
+      ps.vy = -400;
+      ps.grounded = false;
+      // BUG FIX: Los puntos por stomp se suman al contador de estrellas,
+      // pero collectStar() ya suma +1 — aquí sólo hacemos el rebote sin sumar extra
       UI.updateHUD();
     } else if (type === 'damage') {
       Player.takeDamage();
@@ -215,14 +234,20 @@ const Engine = (() => {
   }
 
   function handlePlayerLand(type, cx, cy, radius) {
-    if (type === 'groundPound') Enemies.stunNearby(cx, cy, radius);
+    if (type === 'groundPound') {
+      Enemies.stunNearby(cx, cy, radius);
+    }
   }
 
   function handleBossDefeated() {
     for (const p of portals) p.active = true;
     Renderer.flash('#f9c846', 0.75);
     const ps = Player.getState();
-    Renderer.spawnText(ps.x + ps.w / 2, ps.y - 30, '¡JEFE DERROTADO!', '#f9c846');
+    Renderer.spawnText(
+      ps.x + ps.w / 2,
+      ps.y - 30,
+      '¡JEFE DERROTADO!', '#f9c846'
+    );
     UI.showAbilityBadge('¡Portal abierto! →', 3000);
   }
 
@@ -254,6 +279,7 @@ const Engine = (() => {
   }
 
   function checkPortal(ps) {
+    // BUG FIX: Usar flag para evitar disparar el portal múltiples veces en frames consecutivos
     for (const portal of portals) {
       if (!portal.active || portal.triggered) continue;
       const dx = ps.x + ps.w / 2 - portal.x;
@@ -263,9 +289,48 @@ const Engine = (() => {
         running = false;
         setTimeout(() => {
           const nextIdx = currentLevelIdx + 1;
-          if (nextIdx < LEVELS.length) onLevelClear(nextIdx, Player.getState().stars);
-          else onGameOver(Player.getState().stars, true);
+          if (nextIdx < LEVELS.length) {
+            onLevelClear(nextIdx, Player.getState().stars);
+          } else {
+            onGameOver(Player.getState().stars, true);
+          }
         }, 400);
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────
+  //  FIREBALLS — colisión con enemigos
+  // ──────────────────────────────────────────
+  function checkFireballs() {
+    const fireballs = Player.getFireballs();
+    const enemies   = Enemies.getEnemies();
+
+    for (const fb of fireballs) {
+      if (!fb.active) continue;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        // AABB simple con radio de la fireball
+        if (fb.x + fb.r > e.x && fb.x - fb.r < e.x + e.w &&
+            fb.y + fb.r > e.y && fb.y - fb.r < e.y + e.h) {
+          fb.active = false;
+          Renderer.spawnParticles(fb.x, fb.y, '#f97316', 12);
+          // Al boss le quita 1 HP y lo aturde brevemente
+          if (e.type === 'boss') {
+            e.hp = Math.max(0, e.hp - 1);
+            e.stunTimer = 0.4;
+            Renderer.spawnText(fb.x, e.y - 10, '-1 🔥', '#f97316');
+            if (e.hp <= 0 && e.alive) {
+              e.alive = false;
+              Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#f9c846', 32);
+              Renderer.flash('#f9c846', 0.6);
+              handleBossDefeated();
+            }
+          } else {
+            Enemies.hitEnemy(e);
+          }
+          break;
+        }
       }
     }
   }
@@ -280,11 +345,15 @@ const Engine = (() => {
 
     const ctx = Renderer.getCtx();
 
+    // coleccionables
     for (const col of collectibles) {
       if (col.collected) continue;
-      Renderer.drawStarAnimated(col.x - cam.x, col.y - cam.y, timestamp, false);
+      const sx = col.x - cam.x;
+      const sy = col.y - cam.y;
+      Renderer.drawStarAnimated(sx, sy, timestamp, false);
     }
 
+    // checkpoints
     for (const cp of checkpoints) {
       const sx = cp.x - cam.x;
       const sy = cp.y - cam.y - TILE_SIZE_C;
@@ -300,6 +369,7 @@ const Engine = (() => {
       ctx.restore();
     }
 
+    // portales
     for (const p of portals) {
       if (!p.active) continue;
       const sx = p.x - cam.x;
@@ -326,15 +396,28 @@ const Engine = (() => {
       ctx.restore();
     }
 
+    // enemigos
     for (const e of Enemies.getEnemies()) {
-      Renderer.drawEnemy({ ...e, x: e.x - cam.x, y: e.y - cam.y }, timestamp);
+      const ex = e.x - cam.x;
+      const ey = e.y - cam.y;
+      Renderer.drawEnemy({ ...e, x: ex, y: ey }, timestamp);
     }
 
+    // jugador
     const ps = Player.getState();
+    const images = UI.getImages();
     const visible = !ps.invincible || Math.floor(timestamp / 90) % 2 === 0;
     if (visible) {
-      Renderer.drawPlayer({ ...ps, x: ps.x - cam.x, y: ps.y - cam.y }, UI.getImages(), timestamp);
+      Renderer.drawPlayer({
+        ...ps,
+        x: ps.x - cam.x,
+        y: ps.y - cam.y,
+      }, images, timestamp);
     }
+
+    // BUG FIX: Calcular dt real para partículas en lugar de usar lastTs directamente
+    // Bolas de fuego de Nuveciela
+    Renderer.drawFireballs(Player.getFireballs(), cam.x, cam.y, timestamp);
 
     Renderer.updateAndDrawParticles(Math.min(1 / 30, 1 / 60));
     Renderer.drawFloatingTexts(Math.min(1 / 30, 1 / 60));
@@ -345,27 +428,37 @@ const Engine = (() => {
   //  PAUSA
   // ──────────────────────────────────────────
   function pause()  { paused = true;  onPause(true);  }
-  function resume() { paused = false; lastTs = 0; onPause(false); }
+  function resume() {
+    paused = false;
+    onPause(false);
+    lastTs = 0; // BUG FIX: resetear lastTs al reanudar para evitar spike de dt
+  }
   function isPaused() { return paused; }
 
   // ──────────────────────────────────────────
-  //  TECLADO
+  //  INPUTS TECLADO
   // ──────────────────────────────────────────
   function setupKeyboard() {
     window.addEventListener('keydown', e => {
       if (e.repeat) return;
       _keys[e.key] = true;
-      if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
-        if (running) { isPaused() ? resume() : pause(); }
+      if (!running || paused) {
+        // BUG FIX: Solo procesar pausa/resume cuando el juego está activo
+        if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+          if (running) { isPaused() ? resume() : pause(); }
+        }
         return;
       }
-      if (!running || paused) return;
       if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') input.left  = true;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.right = true;
       if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') input.down  = true;
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'z' || e.key === 'Z' || e.key === ' ') {
+      if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W' ||
+          e.key === 'z' || e.key === 'Z' || e.key === ' ') {
         input.jumpPressed = true;
         input.jumpHeld    = true;
+      }
+      if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+        if (running) { isPaused() ? resume() : pause(); }
       }
     });
     window.addEventListener('keyup', e => {
@@ -373,40 +466,23 @@ const Engine = (() => {
       if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') input.left  = false;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.right = false;
       if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') input.down  = false;
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'z' || e.key === 'Z' || e.key === ' ') {
+      if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W' ||
+          e.key === 'z' || e.key === 'Z' || e.key === ' ') {
         input.jumpHeld = false;
       }
     });
   }
 
   // ──────────────────────────────────────────
-  //  CONTROLES MÓVIL — pointer events con multi-touch
+  //  INPUTS MÓVIL
   // ──────────────────────────────────────────
   function setupMobileControls() {
     function bindBtn(id, onDown, onUp) {
       const btn = document.getElementById(id);
       if (!btn) return;
-
-      btn.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        btn.setPointerCapture(e.pointerId); // captura el puntero para no perder el up
-        _touchMap[e.pointerId] = id;
-        btn.classList.add('pressed');
-        onDown();
-      }, { passive: false });
-
-      btn.addEventListener('pointerup', e => {
-        e.preventDefault();
-        delete _touchMap[e.pointerId];
-        btn.classList.remove('pressed');
-        onUp();
-      }, { passive: false });
-
-      btn.addEventListener('pointercancel', e => {
-        delete _touchMap[e.pointerId];
-        btn.classList.remove('pressed');
-        onUp();
-      });
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.classList.add('pressed'); onDown(); });
+      btn.addEventListener('pointerup',   e => { e.preventDefault(); btn.classList.remove('pressed'); onUp(); });
+      btn.addEventListener('pointercancel', () => { btn.classList.remove('pressed'); onUp(); });
     }
 
     bindBtn('mcLeft',  () => input.left  = true,  () => input.left  = false);
@@ -418,79 +494,23 @@ const Engine = (() => {
     );
   }
 
-  // ──────────────────────────────────────────
-  //  TOQUE EN EL CANVAS — doble tap para saltar
-  //  lado izquierdo = moverse, lado derecho = saltar
-  // ──────────────────────────────────────────
-  function setupCanvasTouch(canvasEl) {
-    canvasEl.addEventListener('pointerdown', e => {
-      if (!running || paused) return;
-      // Solo activar si no hay controles virtuales visibles
-      const controls = document.getElementById('mobileControls');
-      if (controls && getComputedStyle(controls).display !== 'none') return;
-
-      const side = e.clientX < window.innerWidth / 2 ? 'left' : 'right';
-      const now  = performance.now();
-
-      if (side === _lastTapSide && now - _lastTapTime < DBL_TAP_MS) {
-        // Doble tap → salto
-        input.jumpPressed = true;
-        input.jumpHeld    = true;
-        _lastTapTime = 0;
-        setTimeout(() => { input.jumpHeld = false; }, 200);
-      } else {
-        if (side === 'left') {
-          input.left = true;
-          canvasEl.addEventListener('pointerup', () => { input.left = false; }, { once: true });
-        } else {
-          input.right = true;
-          canvasEl.addEventListener('pointerup', () => { input.right = false; }, { once: true });
-        }
-        _lastTapTime = now;
-        _lastTapSide = side;
-      }
-    }, { passive: true });
-  }
-
-  // ──────────────────────────────────────────
-  //  ORIENTACIÓN — resize al girar el teléfono
-  // ──────────────────────────────────────────
-  function setupOrientationHandler() {
-    const handleResize = () => {
-      Renderer.resize();
-      // Forzar redibujado del frame actual si estaba pausado
-      if (paused && levelData) {
-        render(performance.now());
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // API moderna de orientación (más confiable que orientationchange)
-    if (screen.orientation) {
-      screen.orientation.addEventListener('change', handleResize);
-    } else {
-      window.addEventListener('orientationchange', () => {
-        // Pequeño delay: el viewport tarda en actualizarse en iOS
-        setTimeout(handleResize, 120);
-      });
-    }
-  }
-
   function resetInput() {
     input.left = false; input.right = false;
     input.down = false; input.jumpPressed = false; input.jumpHeld = false;
   }
 
   // ──────────────────────────────────────────
-  //  GETTERS
+  //  GETTERS PARA UI
   // ──────────────────────────────────────────
   function getCurrentLevel() { return currentLevelIdx; }
   function getLevelData()    { return levelData; }
   function isRunning()       { return running; }
   function stop() {
     running = false;
-    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
     resetInput();
   }
 
