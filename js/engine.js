@@ -452,8 +452,14 @@ const Engine = (() => {
         }
         return;
       }
-      if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') input.left  = true;
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.right = true;
+      if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') {
+        input.left = true;
+        handleDirTap('left');
+      }
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        input.right = true;
+        handleDirTap('right');
+      }
       if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') input.down  = true;
       if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W' ||
           e.key === 'z' || e.key === 'Z' || e.key === ' ') {
@@ -479,6 +485,19 @@ const Engine = (() => {
   // ──────────────────────────────────────────
   //  INPUTS MÓVIL
   // ──────────────────────────────────────────
+  function handleDirTap(dir) {
+    if (Player.getState().charId !== 'nuveciela') return;
+    const now = performance.now();
+    if (_dirTap.dir === dir && now - _dirTap.time < DIR_TAP_MS) {
+      Player.tryFireball();
+      _dirTap.dir  = '';
+      _dirTap.time = 0;
+    } else {
+      _dirTap.dir  = dir;
+      _dirTap.time = now;
+    }
+  }
+
   function setupMobileControls() {
     function bindBtn(id, onDown, onUp) {
       const btn = document.getElementById(id);
