@@ -205,7 +205,7 @@ const UI = (() => {
 
     if (elHudLives) {
       const lives = Math.max(0, ps.lives);
-      const empty = Math.max(0, 3 - lives);
+      const empty = Math.max(0, 5 - lives);
       elHudLives.textContent = '♥'.repeat(lives) + '♡'.repeat(empty);
     }
     if (elHudStars)  elHudStars.textContent  = ps.stars;
