@@ -581,6 +581,44 @@ const Renderer = (() => {
     }
   }
 
+  // ── Bolas de fuego ──
+  function drawFireballs(fireballs, camX, camY, ts) {
+    if (!fireballs || fireballs.length === 0) return;
+    for (const fb of fireballs) {
+      if (!fb.active) continue;
+      const sx = fb.x - camX;
+      const sy = fb.y - camY;
+      const pulse = 0.7 + Math.sin(ts / 60) * 0.3;
+
+      ctx.save();
+      // Halo exterior
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, fb.r * 2.5);
+      glow.addColorStop(0,   `rgba(255,200,50,${0.55 * pulse})`);
+      glow.addColorStop(0.5, `rgba(249,115,22,${0.35 * pulse})`);
+      glow.addColorStop(1,   'rgba(249,115,22,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sx, sy, fb.r * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Núcleo
+      ctx.fillStyle = '#fff7ed';
+      ctx.beginPath();
+      ctx.arc(sx, sy, fb.r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      // Capa media naranja
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(sx, sy, fb.r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      // Núcleo blanco
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(sx, sy, fb.r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   function clear() {
     if (W > 0 && H > 0) ctx.clearRect(0, 0, W, H);
   }
@@ -593,6 +631,7 @@ const Renderer = (() => {
     spawnText, drawFloatingTexts,
     drawFlash, flash,
     drawStarAnimated,
+    drawFireballs,
     clear,
     getCtx: () => ctx,
   };
