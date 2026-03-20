@@ -188,6 +188,9 @@ const Engine = (() => {
     // ── Portal ──
     checkPortal(ps);
 
+    // ── Bolas de fuego ──
+    checkFireballs();
+
     // ── Game over ──
     if (ps.dead && ps.lives <= 0) {
       running = false;
