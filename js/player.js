@@ -119,9 +119,10 @@ const Player = (() => {
     state.dead = false;
     state.fireballs = [];
     state.fireballCooldown = 0;
-    state._prevLeft = false;
+    state._prevLeft   = false;
+    state._prevRight  = false;
+    state._lastTapDir = '';
     state._leftTapTime = 0;
-    state._leftTapCount = 0;
   }
 
   function respawn() {
@@ -226,23 +227,37 @@ const Player = (() => {
     // Cooldown de bola de fuego
     if (state.fireballCooldown > 0) state.fireballCooldown -= dt;
 
-    // Detección de doble ← para lanzar bola de fuego (solo Nuveciela)
+    // Detección de doble ← o doble → para lanzar bola de fuego (solo Nuveciela)
     if (state.charId === 'nuveciela') {
-      const leftNow = input.left;
+      const leftNow  = input.left;
+      const rightNow = input.right;
+
       if (leftNow && !state._prevLeft) {
         const now = performance.now();
-        if (now - state._leftTapTime < 320) {
-          state._leftTapCount++;
-          if (state._leftTapCount >= 2) {
-            tryFireball();
-            state._leftTapCount = 0;
-          }
+        if (state._lastTapDir === 'left' && now - state._leftTapTime < 320) {
+          tryFireball();
+          state._lastTapDir  = '';
+          state._leftTapTime = 0;
         } else {
-          state._leftTapCount = 1;
+          state._lastTapDir  = 'left';
+          state._leftTapTime = now;
         }
-        state._leftTapTime = now;
       }
-      state._prevLeft = leftNow;
+
+      if (rightNow && !state._prevRight) {
+        const now = performance.now();
+        if (state._lastTapDir === 'right' && now - state._leftTapTime < 320) {
+          tryFireball();
+          state._lastTapDir  = '';
+          state._leftTapTime = 0;
+        } else {
+          state._lastTapDir  = 'right';
+          state._leftTapTime = now;
+        }
+      }
+
+      state._prevLeft  = leftNow;
+      state._prevRight = rightNow;
     }
 
     // Actualizar bolas de fuego
