@@ -8,8 +8,9 @@ const Player = (() => {
   const CHARACTERS = {
     nuveciela: {
       label:   'Nuveciela',
-      ability: 'Doble salto alto',
-      desc:    'Su doble salto la lleva muy alto.',
+      ability: 'Doble salto + Bola de fuego',
+      desc:    'Doble salto alto. ← ← lanza bola de fuego.',
+      fireballCooldown: 0.55,
       color:   '#a78bfa',
       img:     'img/nuveciela.png',
       speed:       280,
@@ -78,7 +79,7 @@ const Player = (() => {
     facingY: 0,
     facing: 1,
     charId: 'nuveciela',
-    lives: 5,
+    lives: 3,
     stars: 0,
     checkpointX: 0,
     checkpointY: 0,
@@ -107,7 +108,7 @@ const Player = (() => {
     state.floating = false;
     state.floatTimer = 0;
     state.facing = 1;
-    state.lives = 5;
+    state.lives = 3;
     state.stars = 0;
     state.checkpointX = spawnX;
     state.checkpointY = spawnY;
@@ -116,6 +117,11 @@ const Player = (() => {
     state.groundPounding = false;
     state.wasGrounded = false;
     state.dead = false;
+    state.fireballs = [];
+    state.fireballCooldown = 0;
+    state._prevLeft = false;
+    state._leftTapTime = 0;
+    state._leftTapCount = 0;
   }
 
   function respawn() {
@@ -132,6 +138,8 @@ const Player = (() => {
     state.invTimer = 2.0;
     state.groundPounding = false;
     state.dead = false;
+    state.fireballs = [];
+    state.fireballCooldown = 0;
   }
 
   // ── Update principal ──
@@ -214,6 +222,31 @@ const Player = (() => {
       }
       state.groundPounding = false;
     }
+
+    // Cooldown de bola de fuego
+    if (state.fireballCooldown > 0) state.fireballCooldown -= dt;
+
+    // Detección de doble ← para lanzar bola de fuego (solo Nuveciela)
+    if (state.charId === 'nuveciela') {
+      const leftNow = input.left;
+      if (leftNow && !state._prevLeft) {
+        const now = performance.now();
+        if (now - state._leftTapTime < 320) {
+          state._leftTapCount++;
+          if (state._leftTapCount >= 2) {
+            tryFireball();
+            state._leftTapCount = 0;
+          }
+        } else {
+          state._leftTapCount = 1;
+        }
+        state._leftTapTime = now;
+      }
+      state._prevLeft = leftNow;
+    }
+
+    // Actualizar bolas de fuego
+    updateFireballs(dt, map);
 
     // límite izquierdo
     if (state.x < 0) { state.x = 0; state.vx = 0; }
@@ -396,6 +429,68 @@ const Player = (() => {
     Renderer.spawnText(x, y - 20, '✅ Checkpoint', '#4ade80');
   }
 
+  // ── Bolas de fuego (Nuveciela) ──
+  function tryFireball() {
+    if (state.charId !== 'nuveciela') return;
+    if (state.fireballCooldown > 0) return;
+    const ch = getChar();
+    const dir = state.facing; // 1=derecha, -1=izquierda
+    state.fireballs.push({
+      x:  state.x + (dir > 0 ? state.w : 0),
+      y:  state.y + state.h * 0.35,
+      vx: dir * 480,
+      vy: 0,
+      r:  10,
+      life: 2.2,
+      active: true,
+    });
+    state.fireballCooldown = ch.fireballCooldown || 0.55;
+    // Partículas al disparar
+    Renderer.spawnParticles(
+      state.x + state.w / 2,
+      state.y + state.h * 0.35,
+      '#f97316', 8
+    );
+  }
+
+  function updateFireballs(dt, map) {
+    if (!map) return;
+    const rows = map.length;
+    const cols = map[0].length;
+    const TILE_SIZE_F = 48;
+
+    for (let i = state.fireballs.length - 1; i >= 0; i--) {
+      const fb = state.fireballs[i];
+      if (!fb.active) { state.fireballs.splice(i, 1); continue; }
+
+      fb.life -= dt;
+      if (fb.life <= 0) { fb.active = false; continue; }
+
+      // Gravedad leve para arco natural
+      fb.vy += 280 * dt;
+      fb.x  += fb.vx * dt;
+      fb.y  += fb.vy * dt;
+
+      // Colisión con tiles sólidos
+      const c = Math.floor(fb.x / TILE_SIZE_F);
+      const r = Math.floor(fb.y / TILE_SIZE_F);
+      if (r >= 0 && r < rows && c >= 0 && c < cols) {
+        const t = map[r][c];
+        if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
+          Renderer.spawnParticles(fb.x, fb.y, '#f97316', 6);
+          fb.active = false;
+          continue;
+        }
+      }
+      // Fuera del mapa
+      if (fb.x < 0 || fb.x > cols * TILE_SIZE_F || fb.y > rows * TILE_SIZE_F) {
+        fb.active = false;
+      }
+    }
+  }
+
+  function getFireballs() { return state.fireballs; }
+
   function getBounds() {
     return { x: state.x, y: state.y, w: state.w, h: state.h };
   }
@@ -403,9 +498,9 @@ const Player = (() => {
   return {
     CHARACTERS,
     init, update, respawn,
-    tryJump, trySlide, tryGroundPound,
+    tryJump, trySlide, tryGroundPound, tryFireball,
     takeDamage, collectStar, activateCheckpoint,
-    getState, getChar, getCharacters, getBounds,
+    getState, getChar, getCharacters, getBounds, getFireballs,
   };
 
 })();
