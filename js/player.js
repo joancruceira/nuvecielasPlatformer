@@ -78,7 +78,7 @@ const Player = (() => {
     facingY: 0,
     facing: 1,
     charId: 'nuveciela',
-    lives: 3,
+    lives: 5,
     stars: 0,
     checkpointX: 0,
     checkpointY: 0,
@@ -107,7 +107,7 @@ const Player = (() => {
     state.floating = false;
     state.floatTimer = 0;
     state.facing = 1;
-    state.lives = 3;
+    state.lives = 5;
     state.stars = 0;
     state.checkpointX = spawnX;
     state.checkpointY = spawnY;
