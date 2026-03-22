@@ -60,8 +60,8 @@ const Player = (() => {
   };
 
   const TILE_SIZE_P = 48;
-  const PLAYER_W = 40;
-  const PLAYER_H = 56;
+  const PLAYER_W = 58;
+  const PLAYER_H = 72;
 
   const state = {
     x: 0, y: 0,
