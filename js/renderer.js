@@ -9,10 +9,23 @@ const Renderer = (() => {
 
   const particles = [];
 
+  // Frames animados del walker corazón
+  const heartFrames = {};
+
   function init(canvasEl) {
     canvas = canvasEl;
     ctx = canvas.getContext('2d');
     resize();
+    preloadHeartFrames();
+  }
+
+  function preloadHeartFrames() {
+    const names = ['walker_idle0', 'walker_idle1', 'walker_hit', 'walker_attack'];
+    names.forEach(name => {
+      const img = new Image();
+      img.src = `img/${name}.png`;
+      heartFrames[name] = img;
+    });
   }
 
   function resize() {
@@ -360,7 +373,7 @@ const Renderer = (() => {
     ctx.globalAlpha = stunTimer > 0 ? 0.55 : 1;
 
     if (type === 'walker') {
-      drawWalker(x, y, w, h, facing, ts, stunTimer > 0);
+      drawWalker(x, y, w, h, facing, ts, stunTimer > 0, enemy);
     } else if (type === 'flyer') {
       drawFlyer(x, y, w, h, facing, ts, stunTimer > 0);
     } else if (type === 'boss') {
