@@ -58,6 +58,7 @@ const Enemies = (() => {
           hp: HP[type],
           maxHp: HP[type],
           stunTimer: 0,
+          attackTimer: 0,   // corazón: tiempo en estado ataque
           alive: true,
           // para flyers
           startY: r * TILE_SIZE_E - sz.h + TILE_SIZE_E,
@@ -93,7 +94,7 @@ const Enemies = (() => {
         continue;
       }
 
-      if (e.type === 'walker') updateWalker(e, dt, map);
+      if (e.type === 'walker') updateWalker(e, dt, map, playerState);
       if (e.type === 'flyer')  updateFlyer(e, dt, map, playerState);
       if (e.type === 'boss')   updateBoss(e, dt, map, playerState, onBossDefeated);
 
@@ -102,67 +103,88 @@ const Enemies = (() => {
     }
   }
 
-  // ── Walker ──
-  function updateWalker(e, dt, map) {
-    e.x += e.vx * dt;
-
-    // gravedad
-    e.vy += 900 * dt;
-    e.y += e.vy * dt;
-
+  // ── Walker (corazón malvado) ──
+  //   < 300px: persigue al jugador acelerando
+  //   < 60px:  estado ataque — se lanza directo y daña más
+  //   > 300px: patrulla normal
+  function updateWalker(e, dt, map, playerState) {
     const rows = map.length;
     const cols = map[0].length;
 
-    // BUG FIX: Verificar límites de fila antes de acceder a map[r][c]
+    // Calcular distancia al jugador
+    const dx   = (playerState.x + playerState.w / 2) - (e.x + e.w / 2);
+    const dist = Math.abs(dx);
+
+    // Actualizar timer de ataque
+    if (e.attackTimer > 0) e.attackTimer -= dt;
+
+    // ── IA de movimiento ──
+    const CHASE_RANGE  = 300;
+    const ATTACK_RANGE = 65;
+    const BASE_SPEED   = SPEEDS.walker;
+
+    if (dist < ATTACK_RANGE) {
+      // Ataque: se lanza rápido hacia el jugador
+      e.vx = dx > 0 ? BASE_SPEED * 2.2 : -BASE_SPEED * 2.2;
+      if (e.attackTimer <= 0) e.attackTimer = 0.35; // frame de ataque
+    } else if (dist < CHASE_RANGE) {
+      // Persecución: velocidad creciente según cercanía
+      const chaseSpeed = BASE_SPEED * (1 + (1 - dist / CHASE_RANGE) * 0.8);
+      e.vx = dx > 0 ? chaseSpeed : -chaseSpeed;
+    } else {
+      // Patrulla normal
+      if (e.vx === 0) e.vx = -BASE_SPEED; // arrancar si está parado
+    }
+
+    e.x += e.vx * dt;
+
+    // Gravedad
+    e.vy += 900 * dt;
+    e.y  += e.vy * dt;
+
+    // Colisión suelo
     const r  = Math.floor((e.y + e.h) / TILE_SIZE_E);
     const cL = Math.floor((e.x + 4)       / TILE_SIZE_E);
     const cR = Math.floor((e.x + e.w - 4) / TILE_SIZE_E);
-
-    let onGround = false;
 
     if (r >= 0 && r < rows) {
       for (let c = cL; c <= cR; c++) {
         if (c >= 0 && c < cols) {
           const t = map[r][c];
           if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
-            e.y = r * TILE_SIZE_E - e.h;
+            e.y  = r * TILE_SIZE_E - e.h;
             e.vy = 0;
-            onGround = true;
           }
         }
       }
     }
 
-    // voltear al llegar al borde o pared
-    const frontC = Math.floor((e.x + (e.vx > 0 ? e.w + 2 : -2)) / TILE_SIZE_E);
-    const rMid   = Math.floor((e.y + e.h / 2)  / TILE_SIZE_E);
-    const rEdge  = Math.floor((e.y + e.h + 4)  / TILE_SIZE_E);
-
-    // BUG FIX: Verificar todos los rangos antes de acceder al mapa
-    if (frontC >= 0 && frontC < cols) {
-      // pared
-      if (rMid >= 0 && rMid < rows) {
-        const wallT = map[rMid][frontC];
-        if (wallT === TILE.GROUND || wallT === TILE.BLOCK) {
-          e.vx = -e.vx;
-          e.facing = e.vx > 0 ? 1 : -1;
+    // Voltear en paredes y bordes (solo en patrulla)
+    if (dist >= CHASE_RANGE) {
+      const frontC = Math.floor((e.x + (e.vx > 0 ? e.w + 2 : -2)) / TILE_SIZE_E);
+      const rMid   = Math.floor((e.y + e.h / 2) / TILE_SIZE_E);
+      const rEdge  = Math.floor((e.y + e.h + 4) / TILE_SIZE_E);
+      if (frontC >= 0 && frontC < cols) {
+        if (rMid >= 0 && rMid < rows) {
+          const wallT = map[rMid][frontC];
+          if (wallT === TILE.GROUND || wallT === TILE.BLOCK) {
+            e.vx = -e.vx;
+          }
         }
-      }
-      // borde (no hay suelo adelante): solo evaluar si rEdge es válido
-      if (rEdge >= 0 && rEdge < rows) {
-        const groundAhead = map[rEdge][frontC];
-        if (!groundAhead || (groundAhead !== TILE.GROUND && groundAhead !== TILE.BLOCK)) {
-          e.vx = -e.vx;
-          e.facing = e.vx > 0 ? 1 : -1;
+        if (rEdge >= 0 && rEdge < rows) {
+          const groundAhead = map[rEdge][frontC];
+          if (!groundAhead || (groundAhead !== TILE.GROUND && groundAhead !== TILE.BLOCK)) {
+            e.vx = -e.vx;
+          }
         }
       }
     }
 
-    // límite del mapa
-    if (e.x < 0) { e.x = 0; e.vx = Math.abs(e.vx); e.facing = 1; }
-    if (e.x + e.w > cols * TILE_SIZE_E) { e.x = cols * TILE_SIZE_E - e.w; e.vx = -Math.abs(e.vx); e.facing = -1; }
+    // Límites del mapa
+    if (e.x < 0) { e.x = 0; e.vx = Math.abs(e.vx); }
+    if (e.x + e.w > cols * TILE_SIZE_E) { e.x = cols * TILE_SIZE_E - e.w; e.vx = -Math.abs(e.vx); }
 
-    e.facing = e.vx > 0 ? 1 : -1;
+    e.facing = e.vx >= 0 ? 1 : -1;
   }
 
   // ── Flyer ──
