@@ -474,10 +474,23 @@ body {
   transform: scale(0.88);
 }
 
+/* Botón bola de fuego */
+.mc-fire {
+  background: rgba(249,115,22,.35);
+  border-color: rgba(249,115,22,.65);
+  font-size: 20px;
+}
+.mc-fire:active,
+.mc-fire.pressed {
+  background: rgba(249,115,22,.70);
+  transform: scale(0.88);
+}
+
 /* En landscape: controles más chicos para no tapar el juego */
 @media (orientation: landscape) and (max-height: 500px) {
   .mc-btn    { width: 58px; height: 58px; font-size: 18px; }
   .mc-jump   { width: 68px; height: 68px; font-size: 24px; }
+  .mc-fire   { font-size: 16px; }
   .mobile-controls { padding-bottom: calc(var(--sab) + 8px); }
 }
 
