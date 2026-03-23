@@ -74,6 +74,9 @@ const Engine = (() => {
     paused  = false;
     lastTs  = 0;
     resetInput();
+    // Mostrar/ocultar botón de fuego según personaje
+    const fb = document.getElementById('mcFire');
+    if (fb) fb.style.display = (charId === 'nuveciela') ? '' : 'none';
     rafId = requestAnimationFrame(loop);
   }
 
@@ -518,6 +521,18 @@ const Engine = (() => {
       () => { input.jumpPressed = true; input.jumpHeld = true; },
       () => { input.jumpHeld = false; }
     );
+    // Bola de fuego: solo visible y activo si el personaje es Nuveciela
+    const fireBtn = document.getElementById('mcFire');
+    if (fireBtn) {
+      fireBtn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        fireBtn.setPointerCapture(e.pointerId);
+        fireBtn.classList.add('pressed');
+        if (Player.getState().charId === 'nuveciela') Player.tryFireball();
+      }, { passive: false });
+      fireBtn.addEventListener('pointerup',     () => fireBtn.classList.remove('pressed'));
+      fireBtn.addEventListener('pointercancel', () => fireBtn.classList.remove('pressed'));
+    }
   }
 
   function resetInput() {
