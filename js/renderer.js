@@ -9,23 +9,10 @@ const Renderer = (() => {
 
   const particles = [];
 
-  // Frames animados del walker corazón
-  const heartFrames = {};
-
   function init(canvasEl) {
     canvas = canvasEl;
     ctx = canvas.getContext('2d');
     resize();
-    preloadHeartFrames();
-  }
-
-  function preloadHeartFrames() {
-    const names = ['walker_idle0', 'walker_idle1', 'walker_hit', 'walker_attack'];
-    names.forEach(name => {
-      const img = new Image();
-      img.src = `img/${name}.png`;
-      heartFrames[name] = img;
-    });
   }
 
   function resize() {
@@ -361,154 +348,14 @@ const Renderer = (() => {
   }
 
   // ── Enemigos ──
+  // El render de enemigos ahora lo maneja Enemies.drawAll(ctx, camX, camY, ts)
+  // en el módulo enemies/enemies.js — cada tipo delega a su propio módulo.
+  // drawEnemy se mantiene como fallback por compatibilidad.
   function drawEnemy(enemy, ts) {
-    const { x, y, w, h, type, facing, stunTimer, hp, maxHp } = enemy;
-    ctx.save();
-
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + h + 3, w * 0.5, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = stunTimer > 0 ? 0.55 : 1;
-
-    if (type === 'walker') {
-      drawWalker(x, y, w, h, facing, ts, stunTimer > 0, enemy);
-    } else if (type === 'flyer') {
-      drawFlyer(x, y, w, h, facing, ts, stunTimer > 0);
-    } else if (type === 'boss') {
-      drawBoss(x, y, w, h, enemy, ts);
-    }
-
-    // barra de vida para boss
-    if (type === 'boss' && maxHp) {
-      const bw = w * 1.2;
-      const bx = x + w / 2 - bw / 2;
-      const by = y - 16;
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = 'rgba(0,0,0,.5)';
-      ctx.beginPath();
-      ctx.roundRect(bx, by, bw, 8, 4);
-      ctx.fill();
-      const ratio = hp / maxHp;
-      ctx.fillStyle = ratio > 0.5 ? '#4ade80' : ratio > 0.25 ? '#fbbf24' : '#ef4444';
-      ctx.beginPath();
-      // BUG FIX: Asegurar que el ancho de la barra no sea negativo
-      ctx.roundRect(bx, by, Math.max(0, bw * ratio), 8, 4);
-      ctx.fill();
-    }
-
-    ctx.restore();
+    // No-op: mantenido por compatibilidad. Ver Enemies.drawAll()
   }
 
-  function drawWalker(x, y, w, h, facing, ts, stunned) {
-    const bob = Math.sin(ts / 220) * 2;
-    ctx.save();
-    if (facing === -1) { ctx.translate(x + w, y + bob); ctx.scale(-1, 1); }
-    else ctx.translate(x, y + bob);
-
-    ctx.fillStyle = stunned ? '#aaa' : '#e85d7a';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.55, w * 0.42, h * 0.38, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = stunned ? '#888' : '#c03060';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.28, w * 0.48, h * 0.32, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(w * 0.35, h * 0.52, 5, 0, Math.PI * 2);
-    ctx.arc(w * 0.65, h * 0.52, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(w * 0.37, h * 0.53, 2.5, 0, Math.PI * 2);
-    ctx.arc(w * 0.67, h * 0.53, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.7)';
-    ctx.beginPath();
-    ctx.arc(w * 0.38, h * 0.22, 5, 0, Math.PI * 2);
-    ctx.arc(w * 0.62, h * 0.18, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawFlyer(x, y, w, h, facing, ts, stunned) {
-    const flutter = Math.sin(ts / 120) * 5;
-    ctx.save();
-    if (facing === -1) { ctx.translate(x + w, y + flutter); ctx.scale(-1, 1); }
-    else ctx.translate(x, y + flutter);
-
-    ctx.fillStyle = stunned ? '#888' : '#6b21a8';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.55, w * 0.32, h * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = stunned ? '#666' : '#7c3aed';
-    ctx.beginPath();
-    ctx.moveTo(w * 0.2, h * 0.5);
-    ctx.bezierCurveTo(0, h * 0.2, -w * 0.3, h * 0.8, w * 0.2, h * 0.65);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(w * 0.8, h * 0.5);
-    ctx.bezierCurveTo(w, h * 0.2, w * 1.3, h * 0.8, w * 0.8, h * 0.65);
-    ctx.fill();
-    ctx.fillStyle = stunned ? '#aaa' : '#fbbf24';
-    ctx.beginPath();
-    ctx.arc(w * 0.40, h * 0.52, 4, 0, Math.PI * 2);
-    ctx.arc(w * 0.60, h * 0.52, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawBoss(x, y, w, h, enemy, ts) {
-    const { bossPhase = 1 } = enemy;
-    const bob = Math.sin(ts / 300) * 4;
-    ctx.save();
-    ctx.translate(x, y + bob);
-
-    const scale = 1 + (bossPhase - 1) * 0.08;
-    ctx.translate(w / 2, h / 2);
-    ctx.scale(scale, scale);
-    ctx.translate(-w / 2, -h / 2);
-
-    const pulse = 0.5 + Math.sin(ts / 200) * 0.18;
-    const aura = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.9);
-    aura.addColorStop(0, `rgba(239,68,68,${pulse * 0.4})`);
-    aura.addColorStop(1, 'transparent');
-    ctx.fillStyle = aura;
-    ctx.beginPath();
-    ctx.arc(w / 2, h / 2, w * 0.9, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = bossPhase === 3 ? '#ef4444' : bossPhase === 2 ? '#f97316' : '#e85d7a';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.58, w * 0.44, h * 0.38, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = bossPhase === 3 ? '#b91c1c' : bossPhase === 2 ? '#c2410c' : '#be185d';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, h * 0.28, w * 0.52, h * 0.34, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(w * 0.36, h * 0.55, 7, 0, Math.PI * 2);
-    ctx.arc(w * 0.64, h * 0.55, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1a0000';
-    ctx.beginPath();
-    ctx.arc(w * 0.38, h * 0.56, 4, 0, Math.PI * 2);
-    ctx.arc(w * 0.66, h * 0.56, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#1a0000';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w * 0.28, h * 0.47); ctx.lineTo(w * 0.46, h * 0.50);
-    ctx.moveTo(w * 0.54, h * 0.50); ctx.lineTo(w * 0.72, h * 0.47);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  // ── Partículas ──
+    // ── Partículas ──
   function spawnParticles(x, y, color, count = 14) {
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;

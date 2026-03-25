@@ -77,6 +77,8 @@ const Engine = (() => {
     // Mostrar/ocultar botón de fuego según personaje
     const fb = document.getElementById('mcFire');
     if (fb) fb.style.display = (charId === 'nuveciela') ? '' : 'none';
+    // Resetear cooldown de fireball al iniciar nivel
+    Player.getState().fireballCooldown = 0;
     rafId = requestAnimationFrame(loop);
   }
 
@@ -324,18 +326,10 @@ const Engine = (() => {
           fb.active = false;
           Renderer.spawnParticles(fb.x, fb.y, '#f97316', 12);
           // Al boss le quita 1 HP y lo aturde brevemente
+          // Delegar siempre a hitEnemy — el módulo enemies dispara bossDefeated via evento
+          Enemies.hitEnemy(e);
           if (e.type === 'boss') {
-            e.hp = Math.max(0, e.hp - 1);
-            e.stunTimer = 0.4;
             Renderer.spawnText(fb.x, e.y - 10, '-1 🔥', '#f97316');
-            if (e.hp <= 0 && e.alive) {
-              e.alive = false;
-              Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#f9c846', 32);
-              Renderer.flash('#f9c846', 0.6);
-              handleBossDefeated();
-            }
-          } else {
-            Enemies.hitEnemy(e);
           }
           break;
         }
@@ -404,12 +398,8 @@ const Engine = (() => {
       ctx.restore();
     }
 
-    // enemigos
-    for (const e of Enemies.getEnemies()) {
-      const ex = e.x - cam.x;
-      const ey = e.y - cam.y;
-      Renderer.drawEnemy({ ...e, x: ex, y: ey }, timestamp);
-    }
+    // enemigos — cada módulo dibuja a sí mismo
+    Enemies.drawAll(Renderer.getCtx(), cam.x, cam.y, timestamp);
 
     // jugador
     const ps = Player.getState();

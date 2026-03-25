@@ -126,10 +126,16 @@
   </div>
 
   <!-- Scripts en orden de dependencia -->
+  <!-- Dependencias base -->
   <script src="js/levels.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/player.js"></script>
-  <script src="js/enemies.js"></script>
+  <!-- Módulos de enemigos (orden: específicos primero, coordinador último) -->
+  <script src="js/enemies/walker.js"></script>
+  <script src="js/enemies/serpiente.js"></script>
+  <script src="js/enemies/boss.js"></script>
+  <script src="js/enemies/enemies.js"></script>
+  <!-- Motor y UI -->
   <script src="js/engine.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
