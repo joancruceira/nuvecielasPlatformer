@@ -442,7 +442,118 @@ const Renderer = (() => {
   }
 
   // ── Bolas de fuego ──
-  function drawFireballs(fireballs, camX, camY, ts) {
+
+  // ── Proyectiles (hielo, rayo, bolas de Nuve) ──
+  function drawProjectiles(projectiles, camX, camY, ts) {
+    if (!projectiles || projectiles.length === 0) return;
+    for (const p of projectiles) {
+      if (!p.active) continue;
+      const sx = p.x - camX, sy = p.y - camY;
+
+      ctx.save();
+      if (p.kind === 'ice') {
+        // Bola de hielo: hexágono brillante
+        const pulse = 0.7 + Math.sin(ts / 80) * 0.3;
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.r * 2.2);
+        g.addColorStop(0, `rgba(186,230,253,${0.8 * pulse})`);
+        g.addColorStop(1, 'rgba(56,189,248,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(sx, sy, p.r * 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e0f2fe';
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = i * Math.PI / 3 + ts / 400;
+          i === 0 ? ctx.moveTo(sx + Math.cos(a)*p.r, sy + Math.sin(a)*p.r)
+                  : ctx.lineTo(sx + Math.cos(a)*p.r, sy + Math.sin(a)*p.r);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.arc(sx - p.r*0.25, sy - p.r*0.3, p.r*0.3, 0, Math.PI*2); ctx.fill();
+      } else if (p.kind === 'ray') {
+        // Rayo: línea brillante con destello
+        const alpha = (p.life / 1.2) * 0.9;
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth   = 5;
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur  = 14;
+        ctx.beginPath();
+        ctx.moveTo(sx - p.vx * 0.04, sy);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(sx, sy, p.r * 0.55, 0, Math.PI*2); ctx.fill();
+      } else {
+        // Bola de color (Nuve)
+        const pulse = 0.6 + Math.sin(ts / 60) * 0.4;
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.r * 2.5);
+        g.addColorStop(0,   `rgba(255,255,255,${0.9 * pulse})`);
+        g.addColorStop(0.4,  p.color + 'cc');
+        g.addColorStop(1,   p.color + '00');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(sx, sy, p.r * 2.5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(sx, sy, p.r, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.arc(sx - p.r*0.28, sy - p.r*0.32, p.r*0.35, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // ── Árbol Mágico ──
+  function drawMagicTrees(trees, camX, camY, ts) {
+    if (!trees) return;
+    for (const t of trees) {
+      if (t.used) continue;
+      const sx = t.x - camX, sy = t.y - camY;
+      const bob  = Math.sin(ts / 500) * 3;
+      const pulse = 0.6 + Math.sin(ts / 380) * 0.3;
+
+      ctx.save();
+      ctx.translate(sx, sy + bob);
+
+      // Halo verde mágico
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 42);
+      glow.addColorStop(0,   `rgba(74,222,128,${pulse * 0.55})`);
+      glow.addColorStop(0.5, `rgba(34,197,94,${pulse * 0.28})`);
+      glow.addColorStop(1,   'rgba(34,197,94,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, 42, 0, Math.PI*2); ctx.fill();
+
+      // Tronco
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(-5, 8, 10, 20);
+
+      // Copa grande
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath(); ctx.arc(0, -4, 22, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#16a34a';
+      ctx.beginPath(); ctx.arc(-8, -10, 14, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(8, -10, 14, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#4ade80';
+      ctx.beginPath(); ctx.arc(0, -16, 11, 0, Math.PI*2); ctx.fill();
+
+      // Destellos giratorios
+      ctx.fillStyle = `rgba(74,222,128,${pulse})`;
+      for (let i = 0; i < 5; i++) {
+        const a = i * Math.PI * 2 / 5 + ts / 900;
+        const r = 24 + Math.sin(ts/400 + i)*4;
+        ctx.beginPath(); ctx.arc(Math.cos(a)*r, Math.sin(a)*r - 4, 3, 0, Math.PI*2); ctx.fill();
+      }
+
+      // Indicador de poder
+      ctx.font = 'bold 13px Fredoka, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('🌳', 0, -32);
+
+      ctx.restore();
+    }
+  }
+
+    function drawFireballs(fireballs, camX, camY, ts) {
     if (!fireballs || fireballs.length === 0) return;
     for (const fb of fireballs) {
       if (!fb.active) continue;
@@ -492,6 +603,8 @@ const Renderer = (() => {
     drawFlash, flash,
     drawStarAnimated,
     drawFireballs,
+    drawProjectiles,
+    drawMagicTrees,
     clear,
     getCtx: () => ctx,
   };

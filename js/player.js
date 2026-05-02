@@ -21,8 +21,9 @@ const Player = (() => {
     },
     ciela: {
       label:   'Ciela',
-      ability: 'Deslizamiento veloz',
-      desc:    'Se desliza a gran velocidad.',
+      ability: '← ← Bola de hielo',
+      desc:    'Deslizamiento veloz. ← ← congela enemigos 2s.',
+      iceballCooldown: 0.7,
       color:   '#38bdf8',
       img:     'img/ciela.png',
       speed:       300,
@@ -33,8 +34,9 @@ const Player = (() => {
     },
     lunaria: {
       label:   'Lunaria',
-      ability: 'Flotación',
-      desc:    'Mantené ↑ en el aire para flotar.',
+      ability: '← ← Rayo de luz',
+      desc:    'Flotación mágica. ← ← dispara rayo que quema.',
+      rayoCooldown: 0.6,
       color:   '#fbbf24',
       img:     'img/lunaria.png',
       speed:       270,
@@ -46,8 +48,10 @@ const Player = (() => {
     },
     nuve: {
       label:   'Nuve',
-      ability: 'Golpe de tierra',
-      desc:    'Al aterrizar aturde enemigos cercanos.',
+      ability: 'Volar + ← ← Bolas de colores',
+      desc:    '↑↑ para volar. ← ← dispara bolas de colores.',
+      colorballCooldown: 0.45,
+      canFly: true,
       color:   '#f97316',
       img:     'img/nuve.png',
       speed:       265,
@@ -88,6 +92,13 @@ const Player = (() => {
     groundPounding: false,
     wasGrounded: false,
     dead: false,
+    fireballs: [],
+    fireballCooldown: 0,
+    projectiles: [],     // todos los proyectiles (hielo, rayo, bolas)
+    projectileCooldown: 0,
+    immuneTimer: 0,      // árbol mágico
+    flying: false,       // Nuve puede volar
+    colorIdx: 0,         // color rotativo de bolas de Nuve
   };
 
   function getChar() { return CHARACTERS[state.charId]; }
@@ -119,7 +130,11 @@ const Player = (() => {
     state.dead = false;
     state.fireballs = [];
     state.fireballCooldown = 0;
-
+    state.projectiles = [];
+    state.projectileCooldown = 0;
+    state.immuneTimer = 0;
+    state.flying = false;
+    state.colorIdx = 0;
   }
 
   function respawn() {
@@ -138,6 +153,9 @@ const Player = (() => {
     state.dead = false;
     state.fireballs = [];
     state.fireballCooldown = 0;
+    state.projectiles = [];
+    state.projectileCooldown = 0;
+    state.flying = false;
   }
 
   // ── Update principal ──
@@ -221,11 +239,27 @@ const Player = (() => {
       state.groundPounding = false;
     }
 
-    // Cooldown de bola de fuego
-    if (state.fireballCooldown > 0) state.fireballCooldown -= dt;
+    // Cooldowns
+    if (state.fireballCooldown   > 0) state.fireballCooldown   -= dt;
+    if (state.projectileCooldown > 0) state.projectileCooldown -= dt;
+    if (state.immuneTimer        > 0) {
+      state.immuneTimer -= dt;
+      if (state.immuneTimer <= 0) { state.immuneTimer = 0; state.invincible = false; }
+    }
 
-    // Actualizar bolas de fuego
+    // Nuve: volar si tiene canFly y está en el aire manteniendo ↑
+    if (state.charId === 'nuve' && getChar().canFly) {
+      if (!state.grounded && input.jumpHeld && state.vy > -200) {
+        state.flying = true;
+        state.vy     = Math.max(state.vy - 1200 * dt, -300);
+      } else {
+        state.flying = false;
+      }
+    }
+
+    // Actualizar todos los proyectiles
     updateFireballs(dt, map);
+    updateProjectiles(dt, map);
 
     // límite izquierdo
     if (state.x < 0) { state.x = 0; state.vx = 0; }
@@ -470,16 +504,106 @@ const Player = (() => {
 
   function getFireballs() { return state.fireballs; }
 
-  function getBounds() {
+  // ── Proyectil universal (Ciela=hielo, Lunaria=rayo, Nuve=bolas de colores) ──
+  const NUVE_COLORS = ['#f97316','#a78bfa','#38bdf8','#4ade80','#f9c846','#f472b6'];
+
+  function tryProjectile() {
+    const ch = getChar();
+    const id = state.charId;
+    if (id === 'nuveciela') { tryFireball(); return; }
+    if (state.projectileCooldown > 0) return;
+
+    const dir = state.facing;
+    const cx  = state.x + (dir > 0 ? state.w : 0);
+    const cy  = state.y + state.h * 0.35;
+
+    if (id === 'ciela') {
+      state.projectiles.push({
+        kind: 'ice', x: cx, y: cy,
+        vx: dir * 520, vy: -20,
+        r: 10, life: 1.8, active: true,
+        color: '#7dd3fc',
+      });
+      state.projectileCooldown = ch.iceballCooldown || 0.7;
+      Renderer.spawnParticles(cx, cy, '#bae6fd', 8);
+    } else if (id === 'lunaria') {
+      // Rayo: más rápido y recto, sin gravedad
+      state.projectiles.push({
+        kind: 'ray', x: cx, y: cy,
+        vx: dir * 700, vy: 0,
+        r: 8, life: 1.2, active: true,
+        color: '#fde68a',
+      });
+      state.projectileCooldown = ch.rayoCooldown || 0.6;
+      Renderer.spawnParticles(cx, cy, '#fde68a', 10);
+    } else if (id === 'nuve') {
+      const col = NUVE_COLORS[state.colorIdx % NUVE_COLORS.length];
+      state.colorIdx++;
+      state.projectiles.push({
+        kind: 'colorball', x: cx, y: cy,
+        vx: dir * 450, vy: (Math.random() - 0.5) * 80,
+        r: 10, life: 2.0, active: true,
+        color: col,
+      });
+      state.projectileCooldown = ch.colorballCooldown || 0.45;
+      Renderer.spawnParticles(cx, cy, col, 8);
+    }
+  }
+
+  function updateProjectiles(dt, map) {
+    if (!map) return;
+    const rows = map.length, cols = map[0].length;
+    const TS   = 48;
+
+    for (let i = state.projectiles.length - 1; i >= 0; i--) {
+      const p = state.projectiles[i];
+      if (!p.active) { state.projectiles.splice(i, 1); continue; }
+
+      p.life -= dt;
+      if (p.life <= 0) { p.active = false; continue; }
+
+      // Rayo: sin gravedad. Hielo: poca. Bola: normal
+      if (p.kind === 'ice')       p.vy += 120 * dt;
+      else if (p.kind === 'ray')  p.vy  = 0;
+      else                        p.vy += 200 * dt;
+
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      // Colisión con tiles
+      const c = Math.floor(p.x / TS), r = Math.floor(p.y / TS);
+      if (r >= 0 && r < rows && c >= 0 && c < cols) {
+        const t = map[r][c];
+        if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
+          Renderer.spawnParticles(p.x, p.y, p.color, 5);
+          p.active = false; continue;
+        }
+      }
+      if (p.x < 0 || p.x > cols*TS || p.y > rows*TS) p.active = false;
+    }
+  }
+
+  function getProjectiles() { return state.projectiles; }
+
+  // Activar inmunidad del Árbol Mágico
+  function activateImmunity(duration = 5.0) {
+    state.immuneTimer = duration;
+    state.invincible  = true;
+    Renderer.flash('rgba(74,222,128,.5)', 0.6);
+    Renderer.spawnParticles(state.x + state.w/2, state.y, '#4ade80', 24);
+    Renderer.spawnText(state.x + state.w/2, state.y - 20, '🌳 ¡Inmune 5s!', '#4ade80');
+  }
+
+    function getBounds() {
     return { x: state.x, y: state.y, w: state.w, h: state.h };
   }
 
   return {
     CHARACTERS,
     init, update, respawn,
-    tryJump, trySlide, tryGroundPound, tryFireball,
+    tryJump, trySlide, tryGroundPound, tryFireball, tryProjectile,
     takeDamage, collectStar, activateCheckpoint,
-    getState, getChar, getCharacters, getBounds, getFireballs,
+    getState, getChar, getCharacters, getBounds, getFireballs, getProjectiles, activateImmunity,
   };
 
 })();

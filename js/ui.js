@@ -14,10 +14,10 @@ const UI = (() => {
 
   const CHAR_IDS = ['nuveciela', 'ciela', 'lunaria', 'nuve'];
   const CHARS = {
-    nuveciela: { emoji: '🌈', ability: '← ← Bola de fuego' },
-    ciela:     { emoji: '💧', ability: 'Deslizamiento veloz' },
-    lunaria:   { emoji: '✨', ability: 'Flotación mágica' },
-    nuve:      { emoji: '🔥', ability: 'Golpe de tierra' },
+    nuveciela: { emoji: '🌈', ability: '← ← Bola de fuego 🔥' },
+    ciela:     { emoji: '💧', ability: '← ← Hielo ❄️ congela' },
+    lunaria:   { emoji: '✨', ability: '← ← Rayo de luz ☀️' },
+    nuve:      { emoji: '🔥', ability: '↑↑ Volar + ← ← Bolas 🎨' },
   };
 
   let selectedChar = null;
@@ -119,7 +119,7 @@ const UI = (() => {
     updateHUD();
     // BUG FIX: Mostrar la habilidad del personaje al iniciar la partida
     const charData = Player.getChar();
-    if (charData) showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3000);
+    if (charData) showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3500);
   }
 
   function showOverlay(emoji, title, sub, actions) {
