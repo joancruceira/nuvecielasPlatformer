@@ -29,6 +29,9 @@ const TILE = {
   WALKER:    10,
   FLYER:     11,
   BOSS:      12,
+  SERPIENTE:   13,
+  FANTASMA:   14,
+  MAGIC_TREE:  15,
 };
 
 const TILE_SIZE = 48; // px
@@ -127,6 +130,9 @@ function buildLevel1() {
   walker(115); walker(135); walker(155); walker(165);
   flyer(45, 7); flyer(72, 6); flyer(105, 8); flyer(145, 7);
 
+  // ── Árbol mágico en punto alto (fila 6, accesible con doble salto) ──
+  map[6][88] = TILE.MAGIC_TREE;
+
   // ── checkpoint a mitad ──
   map[12][90] = TILE.CHECKPOINT;
 
@@ -211,10 +217,20 @@ function buildLevel2() {
   star(105, 11); star(118, 9);
   star(138, 11); star(148, 11); star(158, 11); star(168, 11);
 
-  walker(12); walker(30); walker(55);
-  walker(72); walker(88); walker(105);
-  walker(120); walker(140); walker(160); walker(172);
-  flyer(40, 5); flyer(68, 5); flyer(98, 5); flyer(150, 5);
+  function serpiente(x, y=12) { map[y][x] = TILE.SERPIENTE; }
+  function fantasma(x, y=7)   { map[y][x] = TILE.FANTASMA;  }
+
+  // Walkers reducidos — la caverna tiene más variedad
+  walker(12); walker(55); walker(105); walker(160);
+  // Serpientes en secciones intermedias
+  serpiente(30); serpiente(72); serpiente(120); serpiente(172);
+  // Flyers
+  flyer(40, 5); flyer(98, 5); flyer(150, 5);
+  // Fantasmas: enemigo especial de la caverna oscura
+  fantasma(50, 6); fantasma(90, 6); fantasma(135, 6); fantasma(165, 6);
+
+  // Árbol mágico en zona alta de la caverna
+  map[4][92] = TILE.MAGIC_TREE;
 
   map[12][93] = TILE.CHECKPOINT;
   map[12][179] = TILE.BOSS;

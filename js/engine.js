@@ -19,6 +19,7 @@ const Engine = (() => {
   const cam = { x: 0, y: 0, targetX: 0, targetY: 0 };
 
   let collectibles = [];
+  let magicTrees    = [];
   let checkpoints  = [];
   let portals      = [];
 
@@ -48,6 +49,9 @@ const Engine = (() => {
 
     setupKeyboard();
     setupMobileControls();
+    setupCanvasTouch();
+    setupOrientationHandler();
+    window.addEventListener('bossDefeated', () => { if (running) handleBossDefeated(); });
   }
 
   // ──────────────────────────────────────────
@@ -64,7 +68,7 @@ const Engine = (() => {
     loadLevel(levelIdx);
     // BUG FIX: Preservar estrellas y vidas al cambiar de nivel (solo resetear en nivel 0)
     const prevStars = levelIdx > 0 ? Player.getState().stars : 0;
-    const prevLives = levelIdx > 0 ? Player.getState().lives : 3;
+    const prevLives = levelIdx > 0 ? Player.getState().lives : 5;
     Player.init(charId, 2 * TILE_SIZE_C, (13 - 2) * TILE_SIZE_C);
     if (levelIdx > 0) {
       Player.getState().stars = prevStars;
@@ -76,9 +80,12 @@ const Engine = (() => {
     resetInput();
     // Mostrar/ocultar botón de fuego según personaje
     const fb = document.getElementById('mcFire');
-    if (fb) fb.style.display = (charId === 'nuveciela') ? '' : 'none';
-    // Resetear cooldown de fireball al iniciar nivel
-    Player.getState().fireballCooldown = 0;
+    if (fb) fb.style.display = ''; // todos los chars pueden disparar
+    // Resetear cooldowns al iniciar nivel
+    Player.getState().fireballCooldown    = 0;
+    Player.getState().projectileCooldown  = 0;
+    Player.getState().immuneTimer         = 0;
+    Player.getState().flying              = false;
     rafId = requestAnimationFrame(loop);
   }
 
@@ -87,7 +94,7 @@ const Engine = (() => {
     // copia profunda del mapa para no modificar el original
     map = levelData.map.map(r => [...r]);
     Enemies.init();
-    Enemies.spawnFromMap(map);
+    Enemies.spawnFromMap(map, idx);
     extractCollectibles();
     extractSpecials();
     cam.x = 0; cam.y = 0;
@@ -114,6 +121,7 @@ const Engine = (() => {
   function extractSpecials() {
     checkpoints = [];
     portals     = [];
+    magicTrees  = [];
     for (let r = 0; r < map.length; r++) {
       for (let c = 0; c < map[r].length; c++) {
         if (map[r][c] === TILE.CHECKPOINT) {
@@ -125,12 +133,21 @@ const Engine = (() => {
           });
           map[r][c] = TILE.AIR;
         }
+        if (map[r][c] === TILE.MAGIC_TREE) {
+          magicTrees.push({
+            x: c * TILE_SIZE_C + TILE_SIZE_C / 2,
+            y: r * TILE_SIZE_C + TILE_SIZE_C / 2,
+            col: c, row: r, used: false,
+          });
+          map[r][c] = TILE.AIR;
+        }
         if (map[r][c] === TILE.PORTAL) {
           portals.push({
             x: c * TILE_SIZE_C + TILE_SIZE_C / 2,
             y: r * TILE_SIZE_C + TILE_SIZE_C / 2,
             col: c, row: r,
             active: false,
+            triggered: false,
           });
           map[r][c] = TILE.AIR;
         }
@@ -163,14 +180,14 @@ const Engine = (() => {
     const ps = Player.getState();
     if (ps.dead && ps.lives <= 0) return; // no actualizar si ya game over
 
-    // ── Jugador ──
-    Player.update(dt, input, map, handlePlayerLand);
-
-    // ── Consumir jump pressed ──
+    // Jump: procesar ANTES del update para que la física lo aplique este frame
     if (input.jumpPressed) {
       Player.tryJump();
       input.jumpPressed = false;
     }
+
+    // ── Jugador ──
+    Player.update(dt, input, map, handlePlayerLand);
     // slide: abajo + movimiento
     if (input.down && (input.left || input.right) && !ps.sliding) {
       Player.trySlide();
@@ -194,6 +211,12 @@ const Engine = (() => {
 
     // ── Portal ──
     checkPortal(ps);
+
+    // ── Árbol mágico ──
+    checkMagicTrees(ps);
+
+    // ── Proyectiles de otros chars ──
+    checkProjectiles();
 
     // ── Bolas de fuego ──
     checkFireballs();
@@ -337,7 +360,63 @@ const Engine = (() => {
     }
   }
 
-  // ──────────────────────────────────────────
+  function checkMagicTrees(ps) {
+    for (const t of magicTrees) {
+      if (t.used) continue;
+      const dx = ps.x + ps.w/2 - t.x;
+      const dy = ps.y + ps.h/2 - t.y;
+      if (Math.hypot(dx, dy) < TILE_SIZE_C * 1.0) {
+        t.used = true;
+        Player.activateImmunity(5.0);
+        UI.showAbilityBadge('🌳 ¡Inmunidad 5 segundos!', 2800);
+      }
+    }
+  }
+
+  function checkProjectiles() {
+    const projs   = Player.getProjectiles();
+    const enemies = Enemies.getEnemies();
+    for (const p of projs) {
+      if (!p.active) continue;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        if (p.x + p.r > e.x && p.x - p.r < e.x + e.w &&
+            p.y + p.r > e.y && p.y - p.r < e.y + e.h) {
+          p.active = false;
+          Renderer.spawnParticles(p.x, p.y, p.color, 10);
+
+          if (p.kind === 'ice') {
+            const isBossType = e.type === 'boss' || e.type === 'fantasma';
+            if (isBossType) {
+              // Boss: hielo lo aturde y quita 1 HP
+              e.stunTimer = 1.8;
+              e.hp = Math.max(0, (e.hp || 0) - 1);
+              Renderer.spawnText(p.x, e.y - 10, '❄️ -1', '#7dd3fc');
+              if (e.hp <= 0 && e.alive) {
+                e.alive = false;
+                window.dispatchEvent(new CustomEvent('bossDefeated'));
+              }
+            } else {
+              // Enemigo normal: congela 2 segundos
+              e.frozenTimer = (e.frozenTimer || 0) + 2.0;
+              Renderer.spawnText(p.x, e.y - 10, '❄️ Congelado!', '#7dd3fc');
+            }
+          } else if (p.kind === 'ray') {
+            // Rayo: quema (daño directo)
+            Enemies.hitEnemy(e);
+            Renderer.spawnText(p.x, e.y - 10, '☀️ ¡Quemado!', '#fde68a');
+          } else if (p.kind === 'colorball') {
+            // Bola de color: mata normales, daña boss
+            Enemies.hitEnemy(e);
+            Renderer.spawnText(p.x, e.y - 10, '💥', p.color);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+    // ──────────────────────────────────────────
   //  RENDER
   // ──────────────────────────────────────────
   function render(timestamp) {
@@ -414,8 +493,10 @@ const Engine = (() => {
     }
 
     // BUG FIX: Calcular dt real para partículas en lugar de usar lastTs directamente
-    // Bolas de fuego de Nuveciela
+    // Todos los proyectiles
     Renderer.drawFireballs(Player.getFireballs(), cam.x, cam.y, timestamp);
+    Renderer.drawProjectiles(Player.getProjectiles(), cam.x, cam.y, timestamp);
+    Renderer.drawMagicTrees(magicTrees, cam.x, cam.y, timestamp);
 
     Renderer.updateAndDrawParticles(Math.min(1 / 30, 1 / 60));
     Renderer.drawFloatingTexts(Math.min(1 / 30, 1 / 60));
@@ -435,10 +516,11 @@ const Engine = (() => {
 
   // ── Doble tap de dirección → bola de fuego ──
   function handleDirTap(dir) {
-    if (Player.getState().charId !== 'nuveciela') return;
     const now = performance.now();
     if (_dirTap.dir === dir && now - _dirTap.time < DIR_TAP_MS) {
-      Player.tryFireball();
+      const cid = Player.getState().charId;
+      if (cid === 'nuveciela') Player.tryFireball();
+      else Player.tryProjectile();
       _dirTap.dir  = '';
       _dirTap.time = 0;
     } else {
@@ -499,8 +581,17 @@ const Engine = (() => {
     function bindBtn(id, onDown, onUp) {
       const btn = document.getElementById(id);
       if (!btn) return;
-      btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.classList.add('pressed'); onDown(); });
-      btn.addEventListener('pointerup',   e => { e.preventDefault(); btn.classList.remove('pressed'); onUp(); });
+      btn.addEventListener('pointerdown', ev => {
+        ev.preventDefault();
+        btn.setPointerCapture(ev.pointerId);
+        btn.classList.add('pressed');
+        onDown();
+      }, { passive: false });
+      btn.addEventListener('pointerup', ev => {
+        ev.preventDefault();
+        btn.classList.remove('pressed');
+        onUp();
+      }, { passive: false });
       btn.addEventListener('pointercancel', () => { btn.classList.remove('pressed'); onUp(); });
     }
 
@@ -518,14 +609,45 @@ const Engine = (() => {
         e.preventDefault();
         fireBtn.setPointerCapture(e.pointerId);
         fireBtn.classList.add('pressed');
-        if (Player.getState().charId === 'nuveciela') Player.tryFireball();
+        const cid = Player.getState().charId;
+        if (cid === 'nuveciela') Player.tryFireball(); else Player.tryProjectile();
       }, { passive: false });
       fireBtn.addEventListener('pointerup',     () => fireBtn.classList.remove('pressed'));
       fireBtn.addEventListener('pointercancel', () => fireBtn.classList.remove('pressed'));
     }
   }
 
-  function resetInput() {
+
+  function setupCanvasTouch() {
+    const canvasEl = document.getElementById('gameCanvas');
+    if (!canvasEl) return;
+    let lastTapTime = 0, lastTapSide = '';
+    canvasEl.addEventListener('pointerdown', ev => {
+      if (!running || paused) return;
+      const controls = document.getElementById('mobileControls');
+      if (controls && getComputedStyle(controls).display !== 'none') return;
+      const side = ev.clientX < window.innerWidth / 2 ? 'left' : 'right';
+      const now  = performance.now();
+      if (side === lastTapSide && now - lastTapTime < 300) {
+        input.jumpPressed = true; input.jumpHeld = true;
+        setTimeout(() => { input.jumpHeld = false; }, 200);
+        lastTapTime = 0;
+      } else {
+        if (side === 'left') { input.left = true; canvasEl.addEventListener('pointerup', () => { input.left = false; }, { once: true }); }
+        else { input.right = true; canvasEl.addEventListener('pointerup', () => { input.right = false; }, { once: true }); }
+        lastTapTime = now; lastTapSide = side;
+      }
+    }, { passive: true });
+  }
+
+  function setupOrientationHandler() {
+    const handleResize = () => { Renderer.resize(); };
+    window.addEventListener('resize', handleResize);
+    if (screen.orientation) screen.orientation.addEventListener('change', handleResize);
+    else window.addEventListener('orientationchange', () => setTimeout(handleResize, 120));
+  }
+
+    function resetInput() {
     input.left = false; input.right = false;
     input.down = false; input.jumpPressed = false; input.jumpHeld = false;
   }

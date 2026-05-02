@@ -14,14 +14,16 @@ const Enemies = (() => {
     walker:    Walker,
     serpiente: Serpiente,
     boss:      Boss,
+    fantasma:  Fantasma,
   };
 
   // Mapa tile → tipo de enemigo
   const TILE_TO_TYPE = {
     [10]: 'walker',
-    [11]: 'flyer',     // flyer todavía inline hasta tener módulo
+    [11]: 'flyer',
     [12]: 'boss',
     [13]: 'serpiente',
+    [14]: 'fantasma',
   };
 
   // ── Precargar sprites de todos los módulos ──
@@ -37,7 +39,7 @@ const Enemies = (() => {
   function getEnemies() { return enemies; }
 
   // ── Extraer spawns del mapa ──
-  function spawnFromMap(map) {
+  function spawnFromMap(map, levelIdx = 0) {
     enemies = [];
     const rows = map.length;
     const cols = map[0].length;
@@ -52,7 +54,12 @@ const Enemies = (() => {
         const spawnY = r * TILE_SIZE_E; // cada módulo ajusta su propio offset si necesita
 
         let e;
-        if (MODULES[type]) {
+        let actualType = type;
+        // Nivel 2+ usa Fantasma como boss en lugar del Alien
+        if (type === 'boss' && levelIdx >= 1) actualType = 'fantasma_boss';
+        if (actualType === 'fantasma_boss') {
+          e = Fantasma.create(spawnX, spawnY);
+        } else if (MODULES[type]) {
           e = MODULES[type].create(spawnX, spawnY);
         } else if (type === 'flyer') {
           e = _createFlyer(c, r);
@@ -78,7 +85,9 @@ const Enemies = (() => {
       vy: 0,
       facing: 1,
       hp: 1, maxHp: 1,
-      stunTimer: 0,
+      stunTimer:   0,
+      attackTimer: 0,
+      frozenTimer: 0,
       alive: true,
       startY,
       flyPhase: Math.random() * Math.PI * 2,
@@ -103,8 +112,9 @@ const Enemies = (() => {
     e.facing = e.vx > 0 ? 1 : -1;
   }
 
-  function _drawFlyer(ctx, e, ts) {
-    const { x, y, w, h, facing, stunTimer } = e;
+  function _drawFlyer(ctx, e, camX, camY, ts) {
+    const x = e.x - camX, y = e.y - camY;
+    const { w, h, facing, stunTimer } = e;
     const flutter = Math.sin(ts / 120) * 5;
     ctx.save();
     ctx.globalAlpha = stunTimer > 0 ? 0.55 : 1;
@@ -142,7 +152,8 @@ const Enemies = (() => {
       // Delegar update al módulo correspondiente
       if (e.type === 'walker')    Walker.update(e, dt, map, ps);
       else if (e.type === 'flyer') _updateFlyer(e, dt, map, ps);
-      else if (e.type === 'boss')  Boss.update(e, dt, map, ps, onBossDefeated);
+      else if (e.type === 'boss')    Boss.update(e, dt, map, ps, onBossDefeated);
+      else if (e.type === 'fantasma')  Fantasma.update(e, dt, map, ps, onBossDefeated);
       else if (MODULES[e.type])    MODULES[e.type].update(e, dt, map, ps);
 
       checkPlayerCollision(e, ps, onPlayerHit);
@@ -157,10 +168,14 @@ const Enemies = (() => {
     const overlapY = (ps.y + ps.h) > e.y && ps.y < (e.y + e.h);
     if (!overlapX || !overlapY) return;
 
-    const stompThreshold = e.type === 'boss' ? 40 : 28;
+    const isBossType = e.type === 'boss' || e.type === 'fantasma';
+    const stompThreshold = isBossType ? 40 : 28;
     const stomping = ps.vy >= 0 && (ps.y + ps.h) < (e.y + stompThreshold) && !ps.wasGrounded;
 
-    if (stomping) {
+    // Congelado: se puede pisar desde cualquier dirección
+    const frozen = (e.frozenTimer || 0) > 0;
+
+    if (stomping || (frozen && overlapX && overlapY && !isBossType)) {
       hitEnemy(e);
       onPlayerHit && onPlayerHit('stomp', e);
     } else if (!ps.invincible) {
@@ -171,19 +186,18 @@ const Enemies = (() => {
   // ── Dibujar todos los enemigos ──
   function drawAll(ctx, camX, camY, ts) {
     for (const e of enemies) {
-      const screenE = { ...e, x: e.x - camX, y: e.y - camY };
-
-      if (e.type === 'walker')      Walker.draw(ctx, screenE, ts);
-      else if (e.type === 'flyer')  _drawFlyer(ctx, screenE, ts);
-      else if (e.type === 'boss')   Boss.draw(ctx, screenE, ts);
-      else if (MODULES[e.type])     MODULES[e.type].draw(ctx, screenE, ts);
+      if (e.type === 'walker')       Walker.draw(ctx, e, camX, camY, ts);
+      else if (e.type === 'flyer')   _drawFlyer(ctx, e, camX, camY, ts);
+      else if (e.type === 'boss')    Boss.draw(ctx, e, camX, camY, ts);
+      else if (e.type === 'fantasma') Fantasma.draw(ctx, e, camX, camY, ts);
+      else if (MODULES[e.type])      MODULES[e.type].draw(ctx, e, camX, camY, ts);
     }
   }
 
   // ── Golpear enemigo ──
   function hitEnemy(e) {
     if (!e.alive) return;
-    if (e.type === 'boss') {
+    if (e.type === 'boss' || e.type === 'fantasma') {
       e.hp       -= 1;
       e.stunTimer = 0.6;
       Renderer.spawnParticles(e.x + e.w / 2, e.y, '#ef4444', 14);
@@ -233,8 +247,8 @@ const Enemies = (() => {
     return hit;
   }
 
-  function isBossAlive()  { return enemies.some(e => e.type === 'boss' && e.alive); }
-  function getBossEnemy() { return enemies.find(e => e.type === 'boss'); }
+  function isBossAlive()  { return enemies.some(e => (e.type === 'boss' || e.type === 'fantasma') && e.alive); }
+  function getBossEnemy() { return enemies.find(e => (e.type === 'boss' || e.type === 'fantasma') && e.alive); }
 
   return {
     init, spawnFromMap, update, drawAll, getEnemies,
