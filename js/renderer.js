@@ -225,46 +225,38 @@ const Renderer = (() => {
 
   // ── Candelabros para el nivel 2 ──
   function _drawCandelabras(camX, camY, ts) {
-    if (!candelabraImg.complete || !candelabraImg.naturalWidth) return;
+    const img = candelabraImg;
+    if (!img.complete || !img.naturalWidth) return;
 
-    const ar = candelabraImg.naturalWidth / candelabraImg.naturalHeight;
+    const ar      = img.naturalWidth / img.naturalHeight;  // ~0.66
+    const flicker = 0.85 + Math.sin(ts / 200) * 0.10 + Math.sin(ts / 90) * 0.05;
 
-    // Parpadeo de llama: oscilación sutil de alpha
-    const flicker = 0.80 + Math.sin(ts / 180) * 0.12 + Math.sin(ts / 90) * 0.06;
+    // Tamaño fijo grande para que sea visible
+    const H1 = 180, W1 = H1 * ar;
+    const H2 = 110, W2 = H2 * ar;
 
-    // Suelo de la caverna en fila 13
-    const GROUND_WORLD_Y = 13 * 48;
-    const groundScreenY  = Math.min(GROUND_WORLD_Y - camY, H - 15);
+    // Posiciones Y fijas — colgados de la pared, nunca tocan el suelo
+    const Y1 = H * 0.30;   // fila media — pared media (debajo de la fila alta)
+    const Y2 = H * 0.08;   // fila muy alta — techo de la caverna
 
-    // Tamaño: el candelabro es vertical — altura proporcional al escenario
-    const CAND_H = 120;
-    const CAND_W = CAND_H * ar;
-
-    // Posición: pegado a la pared izquierda de cada sección, un poco arriba del suelo
-    // Parallax muy lento — como si estuviera fijado en la pared del fondo
-    const GAP     = CAND_W * 5.5;
-    const offset  = (camX * 0.08) % GAP;
-    const candY   = groundScreenY - CAND_H - 20; // flota un poco sobre el suelo
+    // Parallax: se mueven lento simulando pared lejana
+    const GAP1 = W1 * 5.5;
+    const GAP2 = W2 * 7.0;
+    const off1 = ((camX * 0.08) % GAP1 + GAP1) % GAP1;
+    const off2 = ((camX * 0.04 + GAP2 * 0.5) % GAP2 + GAP2) % GAP2;
 
     ctx.save();
-    ctx.globalAlpha = flicker * 0.85;
 
-    for (let i = -1; i < Math.ceil(W / GAP) + 2; i++) {
-      const x = i * GAP - offset;
-      ctx.drawImage(candelabraImg, x, candY, CAND_W, CAND_H);
+    // Fila principal
+    ctx.globalAlpha = flicker;
+    for (let i = -1; i <= Math.ceil(W / GAP1) + 1; i++) {
+      ctx.drawImage(img, i * GAP1 - off1, Y1, W1, H1);
     }
 
-    // Segunda fila: candelabros más altos en el fondo (más pequeños, más alejados)
-    const GAP2    = CAND_W * 7.0;
-    const offset2 = (camX * 0.04 + GAP2 * 0.5) % GAP2;
-    const CAND_H2 = CAND_H * 0.65;
-    const CAND_W2 = CAND_H2 * ar;
-    const candY2  = groundScreenY - CAND_H2 - 80; // más arriba, simulando estar en la pared alta
-
-    ctx.globalAlpha = flicker * 0.55;
-    for (let i = -1; i < Math.ceil(W / GAP2) + 2; i++) {
-      const x = i * GAP2 - offset2;
-      ctx.drawImage(candelabraImg, x, candY2, CAND_W2, CAND_H2);
+    // Fila de fondo (más pequeña, más translúcida)
+    ctx.globalAlpha = flicker * 0.50;
+    for (let i = -1; i <= Math.ceil(W / GAP2) + 1; i++) {
+      ctx.drawImage(img, i * GAP2 - off2, Y2, W2, H2);
     }
 
     ctx.restore();
