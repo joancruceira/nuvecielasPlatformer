@@ -23,7 +23,7 @@ const Enemies = (() => {
     [11]: 'flyer',
     [12]: 'boss',
     [13]: 'serpiente',
-    [14]: 'fantasma',
+    [14]: 'ghost',
   };
 
   // ── Precargar sprites de todos los módulos ──
@@ -61,6 +61,8 @@ const Enemies = (() => {
           e = Fantasma.create(spawnX, spawnY);
         } else if (MODULES[type]) {
           e = MODULES[type].create(spawnX, spawnY);
+        } else if (type === 'ghost') {
+          e = _createSmallGhost(c, r);
         } else if (type === 'flyer') {
           e = _createFlyer(c, r);
         } else {
@@ -92,6 +94,83 @@ const Enemies = (() => {
       startY,
       flyPhase: Math.random() * Math.PI * 2,
     };
+  }
+
+
+  // ── Fantasma pequeño (tile 14) — enemigo volante HP:1, distinto del boss ──
+  function _createSmallGhost(col, row) {
+    return {
+      type:       'ghost',
+      x:          col * TILE_SIZE_E,
+      y:          row * TILE_SIZE_E,
+      w:          34, h: 40,
+      vx:         (Math.random() > 0.5 ? 1 : -1) * 65,
+      vy:         0,
+      facing:     -1,
+      hp:         1, maxHp: 1,
+      stunTimer:  0, frozenTimer: 0, attackTimer: 0,
+      alive:      true,
+      floatPhase: Math.random() * Math.PI * 2,
+      opacity:    0.75,
+      alphaDir:   1,
+    };
+  }
+
+  function _updateSmallGhost(e, dt, map, ps) {
+    const cols = map[0].length, rows = map.length, TS = TILE_SIZE_E;
+    e.opacity += e.alphaDir * dt * 0.6;
+    if (e.opacity >= 0.90) { e.opacity = 0.90; e.alphaDir = -1; }
+    if (e.opacity <= 0.40) { e.opacity = 0.40; e.alphaDir =  1; }
+    e.floatPhase += dt * 1.5;
+
+    if ((e.frozenTimer||0) > 0) { e.frozenTimer -= dt; e.vx *= 0.85; e.vy *= 0.85; }
+    else if (e.stunTimer  > 0)  { e.stunTimer   -= dt; e.vx *= 0.85; e.vy *= 0.85; }
+    else {
+      const dx = (ps.x+ps.w/2)-(e.x+e.w/2), dy = (ps.y+ps.h/2)-(e.y+e.h/2);
+      const d  = Math.hypot(dx, dy);
+      if (d < 280 && d > 8) {
+        e.vx += (dx/d*65 - e.vx) * 3   * dt;
+        e.vy += (dy/d*65 - e.vy) * 2.5 * dt;
+      } else {
+        e.vx += (Math.cos(e.floatPhase)*55 - e.vx) * 2 * dt;
+        e.vy += (Math.sin(e.floatPhase*0.7)*30 - e.vy) * 2 * dt;
+      }
+    }
+    e.x += e.vx * dt; e.y += e.vy * dt;
+    if (e.x < TS)                { e.x = TS;                e.vx =  Math.abs(e.vx); }
+    if (e.x+e.w > (cols-1)*TS)   { e.x = (cols-1)*TS-e.w; e.vx = -Math.abs(e.vx); }
+    if (e.y < TS)                { e.y = TS;                e.vy =  Math.abs(e.vy); }
+    if (e.y+e.h > (rows-3)*TS)   { e.y = (rows-3)*TS-e.h; e.vy = -Math.abs(e.vy); }
+    e.facing = e.vx >= 0 ? 1 : -1;
+  }
+
+  function _drawSmallGhost(ctx, e, camX, camY, ts) {
+    const sx = e.x-camX, sy = e.y-camY;
+    const { w, h, stunTimer, frozenTimer } = e;
+    const frozen = (frozenTimer||0) > 0;
+    const bob    = Math.sin(e.floatPhase) * 5;
+    ctx.save();
+    ctx.globalAlpha = stunTimer > 0 || frozen ? 0.35 : (e.opacity||0.75);
+    ctx.translate(sx+w/2, sy+h/2+bob);
+    ctx.fillStyle = frozen ? '#bfdbfe' : stunTimer > 0 ? '#aaa' : '#ddd6fe';
+    ctx.beginPath();
+    ctx.arc(0, -h*0.12, w*0.38, Math.PI, 0, false);
+    ctx.bezierCurveTo( w*0.38, h*0.14,  w*0.25, h*0.38,  w*0.14, h*0.40);
+    ctx.bezierCurveTo( w*0.05, h*0.42,  0,      h*0.36,  0,      h*0.38);
+    ctx.bezierCurveTo(-w*0.05, h*0.36, -w*0.14, h*0.42, -w*0.25, h*0.40);
+    ctx.bezierCurveTo(-w*0.38, h*0.14, -w*0.38, h*0.14, -w*0.38, -h*0.12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = frozen ? '#3b82f6' : '#312e81';
+    ctx.beginPath();
+    ctx.ellipse(-w*0.13, -h*0.14, w*0.07, h*0.08, 0, 0, Math.PI*2);
+    ctx.ellipse( w*0.13, -h*0.14, w*0.07, h*0.08, 0, 0, Math.PI*2);
+    ctx.fill();
+    if (frozen) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(100,180,255,0.45)';
+      ctx.fillRect(-w/2, -h/2, w, h);
+    }
+    ctx.restore();
   }
 
   function _updateFlyer(e, dt, map, ps) {
@@ -151,6 +230,7 @@ const Enemies = (() => {
 
       // Delegar update al módulo correspondiente
       if (e.type === 'walker')    Walker.update(e, dt, map, ps);
+      else if (e.type === 'ghost')   _updateSmallGhost(e, dt, map, ps);
       else if (e.type === 'flyer') _updateFlyer(e, dt, map, ps);
       else if (e.type === 'boss')    Boss.update(e, dt, map, ps, onBossDefeated);
       else if (e.type === 'fantasma')  Fantasma.update(e, dt, map, ps, onBossDefeated);
@@ -187,6 +267,7 @@ const Enemies = (() => {
   function drawAll(ctx, camX, camY, ts) {
     for (const e of enemies) {
       if (e.type === 'walker')       Walker.draw(ctx, e, camX, camY, ts);
+      else if (e.type === 'ghost')    _drawSmallGhost(ctx, e, camX, camY, ts);
       else if (e.type === 'flyer')   _drawFlyer(ctx, e, camX, camY, ts);
       else if (e.type === 'boss')    Boss.draw(ctx, e, camX, camY, ts);
       else if (e.type === 'fantasma') Fantasma.draw(ctx, e, camX, camY, ts);

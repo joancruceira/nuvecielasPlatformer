@@ -96,9 +96,10 @@ const Player = (() => {
     fireballCooldown: 0,
     projectiles: [],     // todos los proyectiles (hielo, rayo, bolas)
     projectileCooldown: 0,
-    immuneTimer: 0,      // árbol mágico
-    flying: false,       // Nuve puede volar
-    colorIdx: 0,         // color rotativo de bolas de Nuve
+    immuneTimer: 0,
+    flying: false,
+    colorIdx: 0,
+    floatUsed: false,    // Lunaria: bloqueado tras agotar 1.5s
   };
 
   function getChar() { return CHARACTERS[state.charId]; }
@@ -133,8 +134,9 @@ const Player = (() => {
     state.projectiles = [];
     state.projectileCooldown = 0;
     state.immuneTimer = 0;
-    state.flying = false;
+    state.flying   = false;
     state.colorIdx = 0;
+    state.floatUsed = false;
   }
 
   function respawn() {
@@ -155,7 +157,8 @@ const Player = (() => {
     state.fireballCooldown = 0;
     state.projectiles = [];
     state.projectileCooldown = 0;
-    state.flying = false;
+    state.flying    = false;
+    state.floatUsed = false;
   }
 
   // ── Update principal ──
@@ -194,18 +197,20 @@ const Player = (() => {
     // ── Gravedad ──
     let gravity = ch.gravity;
 
-    // Lunaria: flotar manteniendo jump
-    if (state.charId === 'lunaria' && !state.grounded && input.jumpHeld && state.vy > 0) {
-      state.floating = true;
+    // Lunaria: flotar manteniendo jump — se bloquea hasta el próximo salto
+    if (state.charId === 'lunaria' && !state.grounded && input.jumpHeld
+        && state.vy > 0 && !state.floatUsed) {
+      state.floating    = true;
       state.floatTimer += dt;
-      if (state.floatTimer < 1.5) {
-        gravity = ch.floatGravity;
+      if (state.floatTimer >= 1.5) {
+        state.floating  = false;
+        state.floatUsed = true; // bloqueado hasta aterrizar
       } else {
-        state.floating = false;
+        gravity = ch.floatGravity;
       }
     } else {
       state.floating = false;
-      // BUG FIX: Solo resetear floatTimer si jumpHeld está suelto O si está en el suelo
+      // Solo resetear el timer si suelta la tecla o toca el suelo
       if (!input.jumpHeld || state.grounded) state.floatTimer = 0;
     }
 
@@ -229,6 +234,7 @@ const Player = (() => {
       state.doubleJumped = false;
       state.canDoubleJump = true;
       state.floatTimer = 0;
+      state.floatUsed  = false; // puede volver a flotar en el próximo salto
 
       // Nuve: golpe de tierra
       if (state.charId === 'nuve' && state.groundPounding) {
@@ -417,7 +423,7 @@ const Player = (() => {
     state.floating = false;
   }
 
-  function takeDamage() {
+  function takeDamage(sourceX = null) {
     if (state.invincible || state.dead) return;
     state.lives -= 1;
     Renderer.flash('#ef4444', 0.6);
@@ -425,6 +431,13 @@ const Player = (() => {
     if (state.lives <= 0) {
       state.dead = true;
     } else {
+      // Knockback: empujar en dirección contraria a la fuente de daño
+      const kbDir = (sourceX !== null)
+        ? (state.x + state.w / 2 > sourceX ? 1 : -1)
+        : (state.facing * -1);
+      state.vx        = kbDir * 320;
+      state.vy        = -280;
+      state.grounded  = false;
       respawn();
     }
   }
@@ -484,18 +497,25 @@ const Player = (() => {
       fb.x  += fb.vx * dt;
       fb.y  += fb.vy * dt;
 
-      // Colisión con tiles sólidos
+      // Colisión con tiles sólidos — rebota una vez
       const c = Math.floor(fb.x / TILE_SIZE_F);
       const r = Math.floor(fb.y / TILE_SIZE_F);
       if (r >= 0 && r < rows && c >= 0 && c < cols) {
         const t = map[r][c];
         if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
-          Renderer.spawnParticles(fb.x, fb.y, '#f97316', 6);
-          fb.active = false;
-          continue;
+          if (!fb.bounced) {
+            fb.bounced = true;
+            fb.vx = -fb.vx * 0.55;
+            fb.vy = -Math.abs(fb.vy) * 0.5 - 50;
+            fb.life = Math.min(fb.life, 0.55);
+            Renderer.spawnParticles(fb.x, fb.y, '#f97316', 4);
+          } else {
+            Renderer.spawnParticles(fb.x, fb.y, '#f97316', 6);
+            fb.active = false;
+            continue;
+          }
         }
       }
-      // Fuera del mapa
       if (fb.x < 0 || fb.x > cols * TILE_SIZE_F || fb.y > rows * TILE_SIZE_F) {
         fb.active = false;
       }
@@ -570,13 +590,21 @@ const Player = (() => {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      // Colisión con tiles
+      // Colisión con tiles — rebotan una vez antes de destruirse
       const c = Math.floor(p.x / TS), r = Math.floor(p.y / TS);
       if (r >= 0 && r < rows && c >= 0 && c < cols) {
         const t = map[r][c];
         if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
-          Renderer.spawnParticles(p.x, p.y, p.color, 5);
-          p.active = false; continue;
+          if (!p.bounced) {
+            p.bounced = true;
+            p.vx = -p.vx * 0.6;
+            p.vy = -Math.abs(p.vy) * 0.55 - 60;
+            p.life = Math.min(p.life, 0.6);
+            Renderer.spawnParticles(p.x, p.y, p.color, 4);
+          } else {
+            Renderer.spawnParticles(p.x, p.y, p.color, 5);
+            p.active = false; continue;
+          }
         }
       }
       if (p.x < 0 || p.x > cols*TS || p.y > rows*TS) p.active = false;
