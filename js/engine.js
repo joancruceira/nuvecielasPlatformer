@@ -95,6 +95,7 @@ const Engine = (() => {
     map = levelData.map.map(r => [...r]);
     Enemies.init();
     Enemies.spawnFromMap(map, idx);
+    Renderer.resetCastle(); // limpiar el fondo del castillo al iniciar nivel
     extractCollectibles();
     extractSpecials();
     cam.x = 0; cam.y = 0;
@@ -257,11 +258,11 @@ const Engine = (() => {
     if (type === 'stomp') {
       ps.vy = -400;
       ps.grounded = false;
-      // BUG FIX: Los puntos por stomp se suman al contador de estrellas,
-      // pero collectStar() ya suma +1 — aquí sólo hacemos el rebote sin sumar extra
       UI.updateHUD();
     } else if (type === 'damage') {
-      Player.takeDamage();
+      // Pasar posición del enemigo para knockback direccional
+      const sourceX = enemy ? (enemy.x + (enemy.w || 0) / 2) : null;
+      Player.takeDamage(sourceX);
       UI.updateHUD();
     }
   }
@@ -276,12 +277,21 @@ const Engine = (() => {
     for (const p of portals) p.active = true;
     Renderer.flash('#f9c846', 0.75);
     const ps = Player.getState();
-    Renderer.spawnText(
-      ps.x + ps.w / 2,
-      ps.y - 30,
-      '¡JEFE DERROTADO!', '#f9c846'
-    );
+    Renderer.spawnText(ps.x + ps.w / 2, ps.y - 30, '¡JEFE DERROTADO!', '#f9c846');
     UI.showAbilityBadge('¡Portal abierto! →', 3000);
+
+    // Solo mostrar el castillo en el nivel 1 (boss Alien derrotado)
+    if (currentLevelIdx === 0) {
+      Renderer.showCastle();
+      // Partículas rojas dramáticas alrededor del portal
+      setTimeout(() => {
+        for (const p of portals) {
+          Renderer.spawnParticles(p.x - cam.x, p.y - cam.y, '#dc2626', 40);
+          Renderer.spawnParticles(p.x - cam.x, p.y - cam.y, '#ef4444', 30);
+          Renderer.flash('rgba(139,0,0,0.45)', 0.9);
+        }
+      }, 200);
+    }
   }
 
   function checkCollectibles(ps) {
@@ -319,6 +329,7 @@ const Engine = (() => {
       const dy = ps.y + ps.h / 2 - portal.y;
       if (Math.hypot(dx, dy) < TILE_SIZE_C * 1.2) {
         portal.triggered = true;
+        Renderer.hideCastle();
         running = false;
         setTimeout(() => {
           const nextIdx = currentLevelIdx + 1;
@@ -327,7 +338,7 @@ const Engine = (() => {
           } else {
             onGameOver(Player.getState().stars, true);
           }
-        }, 400);
+        }, 600);
       }
     }
   }
@@ -421,8 +432,10 @@ const Engine = (() => {
   // ──────────────────────────────────────────
   function render(timestamp) {
     Renderer.clear();
-    Renderer.drawBackground(levelData, cam.x, timestamp);
+    Renderer.drawBackground(levelData, cam.x, cam.y, timestamp);
     Renderer.drawTilemap(map, levelData, cam.x, cam.y);
+    // Árboles DESPUÉS del tilemap para que se asienten en el suelo real
+    Renderer.drawBgTreesOverlay(cam.x, cam.y, timestamp);
 
     const ctx = Renderer.getCtx();
 

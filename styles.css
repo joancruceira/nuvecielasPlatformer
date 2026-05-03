@@ -502,7 +502,7 @@ body {
 /* ═══ PAUSE BUTTON ═══ */
 #btnPause {
   position: absolute;
-  top: calc(var(--sat) + 8px);
+  top: calc(var(--sat) + 18px); /* +10px extra para Android gesture zone */
   right: calc(var(--sar) + 14px);
   z-index: 60;
   background: rgba(255,255,255,.20);
