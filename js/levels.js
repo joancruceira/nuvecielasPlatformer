@@ -32,6 +32,8 @@ const TILE = {
   SERPIENTE:   13,
   FANTASMA:   14,
   MAGIC_TREE:  15,
+  GIFT_BOX:   16,
+  MAGIC_DOOR: 17,
 };
 
 const TILE_SIZE = 48; // px
@@ -133,6 +135,9 @@ function buildLevel1() {
   // ── Árbol mágico en punto alto (fila 6, accesible con doble salto) ──
   map[6][88] = TILE.MAGIC_TREE;
 
+  // ── Caja sorpresa con gatito — fila 8 sobre la plataforma(80,5,9) ──
+  map[8][82] = TILE.GIFT_BOX;
+
   // ── checkpoint a mitad ──
   map[12][90] = TILE.CHECKPOINT;
 
@@ -231,6 +236,9 @@ function buildLevel2() {
 
   // Árbol mágico en zona alta de la caverna
   map[4][92] = TILE.MAGIC_TREE;
+
+  // Puerta mágica — se abre con 10 disparos
+  map[11][96] = TILE.MAGIC_DOOR;
 
   map[12][93] = TILE.CHECKPOINT;
   map[12][179] = TILE.BOSS;

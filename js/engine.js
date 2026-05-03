@@ -95,7 +95,13 @@ const Engine = (() => {
     map = levelData.map.map(r => [...r]);
     Enemies.init();
     Enemies.spawnFromMap(map, idx);
-    Renderer.resetCastle(); // limpiar el fondo del castillo al iniciar nivel
+    Renderer.resetCastle();
+    GiftBox.init();
+    GiftBox.spawnFromMap(map);
+    GiftBox.preload();
+    MagicDoor.init();
+    MagicDoor.spawnFromMap(map);
+    MagicDoor.preload(); // limpiar el fondo del castillo al iniciar nivel
     extractCollectibles();
     extractSpecials();
     cam.x = 0; cam.y = 0;
@@ -215,6 +221,15 @@ const Engine = (() => {
 
     // ── Árbol mágico ──
     checkMagicTrees(ps);
+
+    // ── Puerta mágica ──
+    MagicDoor.update(dt);
+    MagicDoor.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
+
+    // ── Caja sorpresa ──
+    GiftBox.update(dt, ps, (box) => {
+      UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);
+    });
 
     // ── Proyectiles de otros chars ──
     checkProjectiles();
@@ -433,6 +448,9 @@ const Engine = (() => {
   function render(timestamp) {
     Renderer.clear();
     Renderer.drawBackground(levelData, cam.x, cam.y, timestamp);
+    // Fondos multicolor (caja gatito + puerta mágica)
+    GiftBox.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
+    MagicDoor.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
     Renderer.drawTilemap(map, levelData, cam.x, cam.y);
     // Árboles DESPUÉS del tilemap para que se asienten en el suelo real
     Renderer.drawBgTreesOverlay(cam.x, cam.y, timestamp);
@@ -491,6 +509,8 @@ const Engine = (() => {
     }
 
     // enemigos — cada módulo dibuja a sí mismo
+    GiftBox.draw(Renderer.getCtx(), cam.x, cam.y, timestamp);
+    MagicDoor.draw(Renderer.getCtx(), cam.x, cam.y, timestamp);
     Enemies.drawAll(Renderer.getCtx(), cam.x, cam.y, timestamp);
 
     // jugador
