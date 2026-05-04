@@ -238,9 +238,9 @@ function buildLevel2() {
   map[4][92] = TILE.MAGIC_TREE;
 
   // Puerta mágica — se abre con 10 disparos
-  map[11][96] = TILE.MAGIC_DOOR;
+  map[11][104] = TILE.MAGIC_DOOR; // movida de col 96 (borde) a col 104 (más adentro)
 
-  map[12][93] = TILE.CHECKPOINT;
+  map[12][101] = TILE.CHECKPOINT; // movido de col 93 (foso) a col 101 (suelo firme)
   map[12][179] = TILE.BOSS;
   map[12][182] = TILE.PORTAL;
 

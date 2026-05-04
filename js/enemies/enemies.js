@@ -58,7 +58,8 @@ const Enemies = (() => {
         // Nivel 2+ usa Fantasma como boss en lugar del Alien
         if (type === 'boss' && levelIdx >= 1) actualType = 'fantasma_boss';
         if (actualType === 'fantasma_boss') {
-          e = Fantasma.create(spawnX, spawnY);
+          // Spawnar 4 filas arriba del suelo para que el fantasma esté en el aire
+          e = Fantasma.create(spawnX, spawnY - 4 * TILE_SIZE_E);
         } else if (MODULES[type]) {
           e = MODULES[type].create(spawnX, spawnY);
         } else if (type === 'ghost') {

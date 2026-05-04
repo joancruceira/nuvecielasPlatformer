@@ -47,11 +47,11 @@ const Renderer = (() => {
   function resetCastle() { castleAlpha = 0; castleActive = false; castleAnimDir = 0; }
 
   function resize() {
-    // BUG FIX: Usar clientWidth/clientHeight como fallback si offsetWidth es 0
+    if (!canvas) return; // protección: canvas no inicializado aún
     W = canvas.offsetWidth  || canvas.clientWidth  || window.innerWidth;
     H = canvas.offsetHeight || canvas.clientHeight || window.innerHeight;
-    canvas.width  = W;
-    canvas.height = H;
+    if (W > 0) canvas.width  = W;
+    if (H > 0) canvas.height = H;
   }
 
   function getSize() { return { W, H }; }
