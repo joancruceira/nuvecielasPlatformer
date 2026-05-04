@@ -20,6 +20,12 @@ const MagicDoor = (() => {
     const img = new Image();
     img.src = 'img/puerta_cerrada.png';
     imgs['cerrada'] = img;
+
+    ['melli_celeste', 'melli_amarilla'].forEach(name => {
+      const m = new Image();
+      m.src = `img/${name}.png`;
+      imgs[name] = m;
+    });
   }
 
   let doors         = [];
@@ -47,6 +53,10 @@ const MagicDoor = (() => {
             hitFlash:    0,
             shakeTimer:  0,
             shakeX:      0,
+            melliTimer:  0,    // cuánto llevan aparecidas
+            melliAlpha:  0,    // fade in de las mellis
+            melli1Y:     0,    // offset Y de melli_amarilla
+            melli2Y:     0,    // offset Y de melli_celeste
           });
           map[r][c] = TILE.AIR;
         }
@@ -114,7 +124,15 @@ const MagicDoor = (() => {
           ? Math.sin(door.shakeTimer * 60) * 5 * (door.shakeTimer / 0.20)
           : 0;
       }
-      if (door.opened) door.openTimer += dt;
+      if (door.opened) {
+        door.openTimer += dt;
+        door.melliTimer += dt;
+        // Fade in y subida de las mellis durante 1.2s
+        door.melliAlpha = Math.min(1, door.melliTimer * 1.2);
+        const rise      = Math.min(1, door.melliTimer / 1.0);
+        door.melli1Y    = (1 - rise) * 60;  // sube desde abajo
+        door.melli2Y    = (1 - rise) * 80;
+      }
     }
   }
 
@@ -221,8 +239,47 @@ const MagicDoor = (() => {
             RAINBOW_COLORS[Math.floor(Math.random()*RAINBOW_COLORS.length)], 2
           );
         }
-
         ctx.restore();
+
+        // ── Las mellis aparecen saliendo de la puerta ──
+        if (door.melliAlpha > 0) {
+          const mH  = 140;  // alto del sprite en pantalla
+          const ar1 = imgs['melli_amarilla']?.naturalWidth / imgs['melli_amarilla']?.naturalHeight || 0.44;
+          const ar2 = imgs['melli_celeste']?.naturalWidth  / imgs['melli_celeste']?.naturalHeight  || 0.44;
+          const mW1 = mH * ar1;
+          const mW2 = mH * ar2;
+
+          // Melli amarilla — izquierda de la puerta
+          const m1x = sx - mW1 * 0.1;
+          const m1y = sy + DOOR_H - mH + door.melli1Y;
+          // Melli celeste — derecha
+          const m2x = sx + DOOR_W - mW2 * 0.9;
+          const m2y = sy + DOOR_H - mH + door.melli2Y;
+
+          ctx.save();
+          ctx.globalAlpha = door.melliAlpha;
+
+          // Estrellitas y colores alrededor de cada melli
+          if (door.melliTimer < 3.0 && Math.random() < 0.35) {
+            const col = RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)];
+            Renderer.spawnParticles(m1x + mW1/2 + (Math.random()-0.5)*40, m1y, col, 2);
+            Renderer.spawnParticles(m2x + mW2/2 + (Math.random()-0.5)*40, m2y, col, 2);
+          }
+
+          const img1 = imgs['melli_amarilla'];
+          const img2 = imgs['melli_celeste'];
+          if (img1?.complete && img1.naturalWidth) ctx.drawImage(img1, m1x, m1y, mW1, mH);
+          if (img2?.complete && img2.naturalWidth) ctx.drawImage(img2, m2x, m2y, mW2, mH);
+
+          // Nombres sobre sus cabezas
+          ctx.font      = 'bold 13px Fredoka, system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ffd93d';
+          ctx.fillText('✨ Melli ✨', m1x + mW1/2, m1y - 6);
+          ctx.fillText('✨ Melli ✨', m2x + mW2/2, m2y - 6);
+
+          ctx.restore();
+        }
       }
     }
   }
