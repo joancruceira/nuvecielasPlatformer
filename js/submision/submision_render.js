@@ -724,25 +724,45 @@ const SubRender = (() => {
     ctx.fillText('Liberalo y llevate la gema mágica.',W/2,H/2-100);
     ctx.font='18px Fredoka,system-ui';ctx.fillStyle='#ddd6fe';
     ctx.fillText('Elegí tu agente:',W/2,H/2-70);
-    _drawCharBtn(ctx,W/2-165,H/2-50,'Nina','nina','#fde68a');
+    // Botones — también registran su zona para touch/click
+    _drawCharBtn(ctx,W/2-165,H/2-50,'Nina',  'nina',  '#fde68a');
     _drawCharBtn(ctx,W/2+35, H/2-50,'Jazmín','jazmin','#7dd3fc');
-    ctx.font='13px Fredoka,system-ui';ctx.fillStyle='#888';
+    // Hint teclado — solo en desktop
+    ctx.font='13px Fredoka,system-ui';ctx.fillStyle='#666';
     ctx.fillText('N = Nina   |   J = Jazmín',W/2,H/2+170);
     ctx.restore();
   }
 
   function _drawCharBtn(ctx, x, y, label, id, color) {
+    const BW=130, BH=190;
     const sel=S.selectedChar===id;
+
+    // Registrar zona para hit-test táctil (lazy — SubMision se define después)
+    if(typeof SubMision !== 'undefined' && SubMision.registerBtnZone){
+      SubMision.registerBtnZone(id, x, y, BW, BH);
+    }
+
     ctx.save();
+    // Fondo con highlight en hover/selected
     ctx.fillStyle=sel?color:'rgba(255,255,255,0.06)';
-    ctx.beginPath();ctx.roundRect(x,y,130,190,12);ctx.fill();
+    ctx.beginPath();ctx.roundRect(x,y,BW,BH,12);ctx.fill();
     ctx.strokeStyle=color;ctx.lineWidth=sel?3:1;
-    ctx.beginPath();ctx.roundRect(x,y,130,190,12);ctx.stroke();
+    ctx.beginPath();ctx.roundRect(x,y,BW,BH,12);ctx.stroke();
+
+    // Sprite del personaje
     const im=img(`${id}_run0`);
     if(im){const ar=im.naturalWidth/im.naturalHeight;const ih=112,iw=ih*ar;ctx.drawImage(im,x+65-iw/2,y+8,iw,ih);}
     else{ctx.fillStyle=color;ctx.beginPath();ctx.arc(x+65,y+68,36,0,Math.PI*2);ctx.fill();}
+
+    // Nombre
     ctx.font='bold 16px Fredoka,system-ui';ctx.fillStyle=sel?'#000':'#fff';
     ctx.textAlign='center';ctx.fillText(label,x+65,y+172);
+
+    // "Toca aquí" en móvil si no hay personaje seleccionado aún
+    if(!sel && !S.selectedChar){
+      ctx.font='11px Fredoka,system-ui';ctx.fillStyle='rgba(255,255,255,0.5)';
+      ctx.fillText('Tocá aquí',x+65,y+BH-8);
+    }
     ctx.restore();
   }
 
