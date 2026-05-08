@@ -54,6 +54,7 @@ const Engine = (() => {
     window.addEventListener('bossDefeated', () => { if (running) handleBossDefeated(); });
   }
 
+
   // ──────────────────────────────────────────
   //  EMPEZAR JUEGO
   // ──────────────────────────────────────────
@@ -172,11 +173,13 @@ const Engine = (() => {
     lastTs = timestamp;
     const dt = Math.min(rawDt, 0.05);
 
-    if (!paused) {
+    if (SubMision.isActive()) {
+      // SubMision maneja su propio update dentro de render()
+    } else if (!paused) {
       update(dt);
     }
 
-    render(timestamp);
+    render(timestamp, dt);
     rafId = requestAnimationFrame(loop);
   }
 
@@ -196,7 +199,7 @@ const Engine = (() => {
     // ── Jugador ──
     Player.update(dt, input, map, handlePlayerLand);
     // slide: abajo + movimiento
-    if (input.down && (input.left || input.right) && !ps.sliding) {
+    if (!SubMision.isActive() && input.down && (input.left || input.right) && !ps.sliding) {
       Player.trySlide();
     }
     // ground pound (Nuve): abajo en el aire
@@ -218,6 +221,9 @@ const Engine = (() => {
 
     // ── Portal ──
     checkPortal(ps);
+
+    // ── Entrada al SubNivel (ANTES del slide para que ↓ no se consuma) ──
+    checkSubMisionEntry(ps);
 
     // ── Árbol mágico ──
     checkMagicTrees(ps);
@@ -386,6 +392,40 @@ const Engine = (() => {
     }
   }
 
+  function checkSubMisionEntry(ps) {
+    // Entrar al subnivel: ↓ frente a la puerta mágica abierta
+    if (!input.down) return;
+    const DOOR_W = 48 * 2;   // 2 tiles
+    const DOOR_H = 48 * 2.5; // 2.5 tiles
+    for (const door of MagicDoor.getDoors()) {
+      if (!door.opened) continue;
+      const doorCX = door.x + DOOR_W / 2;
+      const doorCY = door.y + DOOR_H / 2;
+      const psCX   = ps.x + ps.w / 2;
+      const psCY   = ps.y + ps.h / 2;
+      const dx = Math.abs(psCX - doorCX);
+      const dy = Math.abs(psCY - doorCY);
+      // Zona generosa: 150px horizontal y 200px vertical
+      if (dx < 150 && dy < 200) {
+        // Guardar estado del nivel 2
+        const savedState = {
+          camX: cam.x, camY: cam.y,
+          levelIdx: currentLevelIdx,
+          stars: ps.stars, lives: ps.lives,
+          charId: ps.charId,
+        };
+        // NO pausar con paused=true — SubMision maneja su propio estado
+        SubMision.start(savedState, {
+          onReturn: () => {
+            UI.showAbilityBadge('✨ ¡De vuelta en Manolandia!', 2500);
+          }
+        });
+        input.down = false;
+        return;
+      }
+    }
+  }
+
   function checkMagicTrees(ps) {
     for (const t of magicTrees) {
       if (t.used) continue;
@@ -445,8 +485,16 @@ const Engine = (() => {
     // ──────────────────────────────────────────
   //  RENDER
   // ──────────────────────────────────────────
-  function render(timestamp) {
+  function render(timestamp, dt = 1/60) {
     Renderer.clear();
+
+    // ── SubMisión activa: delegar render completo ──
+    if (SubMision.isActive()) {
+      const { W, H } = Renderer.getSize();
+      SubMision.update(dt, Renderer.getCtx(), W, H);
+      return;
+    }
+
     Renderer.drawBackground(levelData, cam.x, cam.y, timestamp);
     // Fondos multicolor (caja gatito + puerta mágica)
     GiftBox.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
@@ -567,10 +615,15 @@ const Engine = (() => {
   // ──────────────────────────────────────────
   function setupKeyboard() {
     window.addEventListener('keydown', e => {
+      // SubMisión captura sus propias teclas
+      if (SubMision.isActive()) {
+        SubMision.handleKeyForSubMision(e.key);
+        return;
+      }
+
       if (e.repeat) return;
       _keys[e.key] = true;
       if (!running || paused) {
-        // BUG FIX: Solo procesar pausa/resume cuando el juego está activo
         if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
           if (running) { isPaused() ? resume() : pause(); }
         }
