@@ -293,8 +293,11 @@ const SubPhysics = (() => {
           Renderer.spawnParticles && Renderer.spawnParticles(h.x-cam.x, h.y-cam.y, '#ff6b9d', 10);
           Renderer.spawnText && Renderer.spawnText(h.x-cam.x, h.y-cam.y, '-1 ❤️', '#ff6b9d');
           if(boss.hp <= 0){
-            boss.alive    = false;
-            S.pablo.freed = true;
+            boss.alive     = false;
+            S.pablo.freed  = true;
+            S.pablo.state  = 'idle';   // pasa a moverse en la plataforma
+            S.pablo.freeVx = 40;
+            S.pablo.freeFacing = 1;
             Renderer.spawnParticles && Renderer.spawnParticles(
               boss.x-cam.x+boss.w/2, boss.y-cam.y, '#ffd93d', 40);
             Renderer.flash && Renderer.flash('rgba(255,215,0,0.6)', 0.8);
