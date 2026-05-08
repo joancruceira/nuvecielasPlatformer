@@ -413,10 +413,11 @@ const SubRender = (() => {
   }
 
   // ═══════════════════════════════════════════════════
-  //  CAPA 6 — PABLO (jaula / libre)
+  //  CAPA 6 — PABLO (jaula / libre / pickup / gone)
   // ═══════════════════════════════════════════════════
   function drawPablo(ctx) {
     const p=S.pablo, cam=S.cam;
+    if(p.state==='gone') return;
     const sx=p.x-cam.x, sy=p.y;
     if(sx<-200||sx>2000) return;
 
@@ -424,47 +425,18 @@ const SubRender = (() => {
     ctx.save();
 
     // Halo
-    const glowR=p.freed?58:50;
+    const glowR = p.state==='pickup' ? 70 : p.freed ? 58 : 50;
+    const glowA = p.state==='pickup' ? pulse*0.90 : p.freed ? pulse*0.80 : pulse*0.52;
     const glow=ctx.createRadialGradient(sx+p.w/2,sy+p.h/2,0,sx+p.w/2,sy+p.h/2,glowR);
-    glow.addColorStop(0,`rgba(255,200,0,${pulse*(p.freed?0.80:0.52)})`);
+    glow.addColorStop(0,`rgba(255,215,0,${glowA})`);
     glow.addColorStop(1,'transparent');
     ctx.fillStyle=glow;ctx.beginPath();ctx.arc(sx+p.w/2,sy+p.h/2,glowR,0,Math.PI*2);ctx.fill();
 
     if(!p.freed){
-      // ── Sprite jaula ──────────────────────────────
+      // ── Enjaulado ────────────────────────────────
       const fn=S.JAULA_CYCLE[p.frameIdx%S.JAULA_CYCLE.length];
       if(!drawImg(ctx,`jaula_pablo_${fn}`,sx,sy,p.w,p.h)){
-        // Fallback jaula canvas
-        ctx.fillStyle='rgba(0,0,0,0.22)';
-        ctx.beginPath();ctx.ellipse(sx+p.w/2,sy+p.h+4,p.w*0.45,6,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#887060';ctx.fillRect(sx-4,sy+p.h-4,p.w+8,8);
-        ctx.fillStyle='#a09080';ctx.fillRect(sx-4,sy+p.h-4,p.w+8,3);
-        ctx.fillStyle='rgba(180,140,50,0.12)';ctx.fillRect(sx+3,sy+3,p.w-6,p.h-6);
-        ctx.strokeStyle='#c8a030';ctx.lineWidth=3;ctx.lineCap='round';
-        for(let i=0;i<=4;i++){
-          const bx=sx+4+i*(p.w-8)/4;
-          ctx.beginPath();ctx.moveTo(bx,sy+6);ctx.lineTo(bx,sy+p.h-4);ctx.stroke();
-        }
-        ctx.strokeStyle='#d4aa38';ctx.lineWidth=4;
-        ctx.beginPath();ctx.moveTo(sx+2,sy+6);ctx.lineTo(sx+p.w-2,sy+6);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(sx+2,sy+p.h-4);ctx.lineTo(sx+p.w-2,sy+p.h-4);ctx.stroke();
-        ctx.fillStyle='#d4aa38';
-        ctx.beginPath();ctx.arc(sx+p.w/2,sy+4,5,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#a08020';ctx.fillRect(sx+p.w/2-5,sy+p.h/2-4,10,8);
-        ctx.strokeStyle='#c0a030';ctx.lineWidth=2;
-        ctx.beginPath();ctx.arc(sx+p.w/2,sy+p.h/2-5,4,Math.PI,0);ctx.stroke();
-        // Gatito gris adentro
-        const ky=sy+p.h-28;
-        ctx.fillStyle='#aaaaaa';ctx.beginPath();ctx.ellipse(sx+p.w/2,ky+10,10,8,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#bbbbbb';ctx.beginPath();ctx.arc(sx+p.w/2,ky,10,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#aaaaaa';
-        ctx.beginPath();ctx.moveTo(sx+p.w/2-8,ky-8);ctx.lineTo(sx+p.w/2-4,ky-16);ctx.lineTo(sx+p.w/2,ky-8);ctx.fill();
-        ctx.beginPath();ctx.moveTo(sx+p.w/2,ky-8);ctx.lineTo(sx+p.w/2+4,ky-16);ctx.lineTo(sx+p.w/2+8,ky-8);ctx.fill();
-        ctx.fillStyle='#336688';
-        ctx.beginPath();ctx.arc(sx+p.w/2-4,ky-1,2.5,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.arc(sx+p.w/2+4,ky-1,2.5,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle='#aaaaaa';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(sx+p.w/2+8,ky+12);ctx.quadraticCurveTo(sx+p.w/2+18,ky+8,sx+p.w/2+14,ky);ctx.stroke();
+        _drawCageFallback(ctx,sx,sy,p.w,p.h);
       }
       ctx.font='bold 13px Fredoka,system-ui';ctx.fillStyle='#ffd93d';ctx.textAlign='center';
       ctx.shadowColor='#000';ctx.shadowBlur=4;
@@ -472,24 +444,78 @@ const SubRender = (() => {
       ctx.font='10px Fredoka,system-ui';ctx.fillStyle='rgba(220,220,220,0.9)';
       ctx.fillText('(derrota al Inspector)',sx+p.w/2,sy+p.h+14);
 
-    } else {
-      // ── Pablo libre ───────────────────────────────
-      if(!drawImg(ctx,`pablo_free_${p.freeFrameIdx}`,sx,sy,p.w,p.h)){
-        ctx.fillStyle='#bbb';ctx.beginPath();ctx.ellipse(sx+p.w/2,sy+p.h/2+6,14,10,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#ccc';ctx.beginPath();ctx.arc(sx+p.w/2,sy+p.h/2-10,11,0,Math.PI*2);ctx.fill();
+    } else if(p.state==='pickup'){
+      // ── Subiendo con estrellitas ──────────────────
+      const alpha=Math.max(0,1-(p.pickupTimer||0)/0.8);
+      ctx.globalAlpha=alpha;
+      if(!drawImg(ctx,`pablo_free_${p.freeFrameIdx||0}`,sx,sy,p.w,p.h)){
+        _drawFreeFallback(ctx,sx,sy,p.w,p.h);
       }
+      const t=S.gameTime;
+      for(let i=0;i<6;i++){
+        const a=t*4+i*Math.PI/3, r=28+Math.sin(t*3+i)*8;
+        ctx.globalAlpha=alpha*(0.7+Math.sin(t*5+i)*0.3);
+        ctx.font='14px system-ui';ctx.textAlign='center';
+        ctx.fillText(['✨','⭐','💫','🌟'][i%4],sx+p.w/2+Math.cos(a)*r,sy+p.h/2+Math.sin(a)*r);
+      }
+
+    } else {
+      // ── Libre: se mueve en la plataforma ──────────
+      const facing=p.freeFacing||1;
+      ctx.translate(sx+p.w/2,sy+p.h/2);
+      if(facing===-1) ctx.scale(-1,1);
+      if(!drawImgAR(ctx,`pablo_free_${p.freeFrameIdx}`,0,0,p.h*1.1)){
+        _drawFreeFallback(ctx,-p.w/2,-p.h/2,p.w,p.h);
+      }
+      ctx.setTransform(1,0,0,1,0,0);
       ctx.font='bold 13px Fredoka,system-ui';ctx.fillStyle='#ffd93d';ctx.textAlign='center';
       ctx.shadowColor='#000';ctx.shadowBlur=4;
       ctx.fillText('¡Pablo libre! 🎉',sx+p.w/2,sy-10);ctx.shadowBlur=0;
+      if(Math.sin(S.gameTime*4)>0){
+        ctx.font='11px Fredoka,system-ui';ctx.fillStyle='#fff';
+        ctx.fillText('¡Tócalo para rescatarlo!',sx+p.w/2,sy+p.h+14);
+      }
     }
     ctx.restore();
+  }
+
+  function _drawCageFallback(ctx,sx,sy,w,h){
+    ctx.fillStyle='rgba(0,0,0,0.22)';
+    ctx.beginPath();ctx.ellipse(sx+w/2,sy+h+4,w*0.45,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#887060';ctx.fillRect(sx-4,sy+h-4,w+8,8);
+    ctx.fillStyle='rgba(180,140,50,0.12)';ctx.fillRect(sx+3,sy+3,w-6,h-6);
+    ctx.strokeStyle='#c8a030';ctx.lineWidth=3;ctx.lineCap='round';
+    for(let i=0;i<=4;i++){
+      const bx=sx+4+i*(w-8)/4;
+      ctx.beginPath();ctx.moveTo(bx,sy+6);ctx.lineTo(bx,sy+h-4);ctx.stroke();
+    }
+    ctx.strokeStyle='#d4aa38';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(sx+2,sy+6);ctx.lineTo(sx+w-2,sy+6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sx+2,sy+h-4);ctx.lineTo(sx+w-2,sy+h-4);ctx.stroke();
+    ctx.fillStyle='#a08020';ctx.fillRect(sx+w/2-5,sy+h/2-4,10,8);
+    ctx.strokeStyle='#c0a030';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(sx+w/2,sy+h/2-5,4,Math.PI,0);ctx.stroke();
+    const ky=sy+h-28;
+    ctx.fillStyle='#bbbbbb';ctx.beginPath();ctx.arc(sx+w/2,ky,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#aaaaaa';ctx.beginPath();ctx.ellipse(sx+w/2,ky+10,10,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#336688';
+    ctx.beginPath();ctx.arc(sx+w/2-4,ky-1,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(sx+w/2+4,ky-1,2.5,0,Math.PI*2);ctx.fill();
+  }
+
+  function _drawFreeFallback(ctx,sx,sy,w,h){
+    ctx.fillStyle='#bbb';ctx.beginPath();ctx.ellipse(sx+w/2,sy+h/2+6,14,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ccc';ctx.beginPath();ctx.arc(sx+w/2,sy+h/2-10,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#aaa';
+    ctx.beginPath();ctx.moveTo(sx+w/2-8,sy+h/2-18);ctx.lineTo(sx+w/2-4,sy+h/2-26);ctx.lineTo(sx+w/2,sy+h/2-18);ctx.fill();
+    ctx.beginPath();ctx.moveTo(sx+w/2,sy+h/2-18);ctx.lineTo(sx+w/2+4,sy+h/2-26);ctx.lineTo(sx+w/2+8,sy+h/2-18);ctx.fill();
   }
 
   // ═══════════════════════════════════════════════════
   //  CAPA 7 — GEM
   // ═══════════════════════════════════════════════════
   function drawGem(ctx) {
-    if(!S.pablo.freed) return;
+    if(S.pablo.state !== 'gone') return;
     const gem=S.gem, cam=S.cam;
     const sx=gem.x-cam.x, sy=gem.y;
     if(sx<-100||sx>2000) return;

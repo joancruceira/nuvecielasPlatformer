@@ -417,7 +417,11 @@ const Engine = (() => {
         // NO pausar con paused=true — SubMision maneja su propio estado
         SubMision.start(savedState, {
           onReturn: () => {
-            UI.showAbilityBadge('✨ ¡De vuelta en Manolandia!', 2500);
+            // Premio por completar la misión: vidas al máximo
+            const ps = Player.getState();
+            ps.lives = ps.maxLives || 5;
+            UI.updateHUD();
+            UI.showAbilityBadge('✨ ¡De vuelta en Manolandia! ❤️❤️❤️❤️❤️', 3000);
           }
         });
         input.down = false;
