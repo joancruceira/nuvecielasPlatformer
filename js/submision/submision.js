@@ -11,6 +11,53 @@
 
 const SubMision = (() => {
 
+  // Referencia al canvas y listener de tap para la pantalla de selección
+  let _canvas     = null;
+  let _tapHandler = null;
+
+  // Registra las zonas de botones para hit-test (se calculan en cada drawSelect)
+  const _btnZones = {};  // { nina: {x,y,w,h}, jazmin: {x,y,w,h} }
+
+  // Expone las zonas para que drawSelect las pueda registrar
+  function _registerBtnZone(id, x, y, w, h) {
+    _btnZones[id] = { x, y, w, h };
+  }
+
+  function _bindCanvasTap() {
+    _canvas = document.getElementById('gameCanvas');
+    if(!_canvas) return;
+
+    _tapHandler = (ev) => {
+      if(S.phase !== 'select') return;
+      ev.preventDefault();
+
+      // Coordenadas relativas al canvas, corregidas por DPR / CSS scaling
+      const rect  = _canvas.getBoundingClientRect();
+      const scaleX = _canvas.width  / rect.width;
+      const scaleY = _canvas.height / rect.height;
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const cx = (clientX - rect.left) * scaleX;
+      const cy = (clientY - rect.top)  * scaleY;
+
+      for(const [id, z] of Object.entries(_btnZones)){
+        if(cx >= z.x && cx <= z.x+z.w && cy >= z.y && cy <= z.y+z.h){
+          _confirmChar(id);
+          return;
+        }
+      }
+    };
+
+    _canvas.addEventListener('pointerdown', _tapHandler, { passive: false });
+  }
+
+  function _unbindCanvasTap() {
+    if(_canvas && _tapHandler){
+      _canvas.removeEventListener('pointerdown', _tapHandler);
+      _tapHandler = null;
+    }
+  }
+
   // ── GAME LOOP ──────────────────────────────────────────
   function _updatePlaying(dt, ctx, W, H) {
     S.gameTime += dt;
@@ -58,6 +105,13 @@ const SubMision = (() => {
     }
     if(S.transTimer >= 1.0){
       stop();
+      // Premio por completar la misión — restaurar vidas del personaje de Manolandia.
+      // Funciona siempre, independientemente de cómo se llamó a start().
+      try {
+        const ps = Player.getState();
+        if(ps) ps.lives = 5;
+        UI && UI.updateHUD && UI.updateHUD();
+      } catch(e) {}
       S.onComplete && S.onComplete.onReturn && S.onComplete.onReturn();
     }
   }
@@ -101,6 +155,7 @@ const SubMision = (() => {
 
     SubPhysics.bindInput();
     SubPhysics.resetCheckpoint();
+    _bindCanvasTap();    // touch para selección de personaje en móvil
 
     const hud = document.getElementById('hud');
     if(hud) hud.style.display = 'none';
@@ -109,6 +164,7 @@ const SubMision = (() => {
   function stop() {
     S.phase = 'idle';
     SubPhysics.unbindInput();
+    _unbindCanvasTap();
     const hud = document.getElementById('hud');
     if(hud) hud.style.display = '';
   }
@@ -140,6 +196,6 @@ const SubMision = (() => {
     return false;
   }
 
-  return { start, stop, isActive, update, handleKeyForSubMision };
+  return { start, stop, isActive, update, handleKeyForSubMision, registerBtnZone: _registerBtnZone };
 
 })();
