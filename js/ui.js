@@ -88,6 +88,9 @@ const UI = (() => {
   function hideAll() {
     [elMenu, elChar, elHow, elGame].forEach(s => { if (s) s.classList.remove('active'); });
     if (elOverlay) elOverlay.hidden = true;
+    // Ocultar el mapa si estaba visible
+    const mapEl = document.getElementById('screenMap');
+    if (mapEl) mapEl.classList.remove('active');
   }
 
   function showMenu() {
@@ -114,12 +117,14 @@ const UI = (() => {
 
   function startGame() {
     if (!selectedChar) return;
-    showGame();
-    Engine.startGame(selectedChar, 0);
-    updateHUD();
-    // BUG FIX: Mostrar la habilidad del personaje al iniciar la partida
-    const charData = Player.getChar();
-    if (charData) showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3500);
+    // En vez de ir directo al juego, mostrar el mapa de niveles
+    showMap();
+  }
+
+  function showMap() {
+    if (!selectedChar) return;
+    hideAll();
+    LevelMap.show(selectedChar);
   }
 
   function showOverlay(emoji, title, sub, actions) {
@@ -274,20 +279,19 @@ const UI = (() => {
   }
 
   function onLevelClear(nextIdx, stars) {
+    // Guardar progreso y desbloquear siguiente nivel
+    LevelMap.onLevelComplete(nextIdx - 1, stars);
+
     const nextLevel = LEVELS[nextIdx];
     showOverlay('🌟', `¡Nivel ${nextIdx} completado!`,
-      `Siguiente: ${nextLevel.name} — Estrellas: ${stars} ⭐`,
+      `${nextLevel ? 'Siguiente: ' + nextLevel.name : '¡Todos los niveles completados!'} — ⭐ ${stars}`,
       [
         {
-          label: `▶ Ir al nivel ${nextIdx + 1}`,
+          label: nextLevel ? `🗺️ Ver mapa` : `🎉 Ver logros`,
           primary: true,
           onClick: () => {
             hideOverlay();
-            showGame();
-            // BUG FIX: Pasar charId correcto al avanzar de nivel
-            const charId = Player.getState().charId;
-            Engine.startGame(charId, nextIdx);
-            updateHUD();
+            showMap();
           }
         },
         { label: '🏠 Menú principal', primary: false, onClick: () => { hideOverlay(); showMenu(); } },
@@ -319,7 +323,7 @@ const UI = (() => {
 
   return {
     init,
-    showMenu, showChar, showHow, showGame,
+    showMenu, showChar, showHow, showGame, showMap,
     showOverlay, hideOverlay,
     updateHUD,
     showAbilityBadge, showCheckpointFlash,

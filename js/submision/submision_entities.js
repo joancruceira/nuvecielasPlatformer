@@ -170,9 +170,10 @@ const SubEntities = (() => {
   }
 
   // ── PABLO ─────────────────────────────────────────────
-  // Estados de pablo libre:
-  //   'idle'    → se mueve en la plataforma
-  //   'pickup'  → jugador lo toca → animación de estrellitas → desaparece
+  // Máquina de estados unificada — una sola variable `p.state`:
+  //   'caged'   → enjaulado, esperando que el boss muera
+  //   'idle'    → libre, se mueve en la plataforma
+  //   'pickup'  → jugador lo toca → sube con estrellitas → desaparece
   //   'gone'    → desapareció, muestra gema
 
   function updatePablo(dt) {
@@ -184,8 +185,8 @@ const SubEntities = (() => {
     p.glowPhase += dt * 2;
     p.frameTick += dt;
 
-    if(!p.freed){
-      // Animación jaula
+    // ── Enjaulado ─────────────────────────────────────
+    if(p.state === 'caged'){
       if(p.frameTick > 0.35){
         p.frameTick = 0;
         p.frameIdx  = (p.frameIdx+1) % S.JAULA_CYCLE.length;
@@ -193,70 +194,58 @@ const SubEntities = (() => {
       return;
     }
 
-    // ── Pablo libre ───────────────────────────────────
-    if(p.state === 'pickup') {
-      // Animación de recoger — sube y desaparece
+    // ── Subiendo con estrellitas ───────────────────────
+    if(p.state === 'pickup'){
       p.pickupTimer = (p.pickupTimer||0) + dt;
-      p.y -= 60 * dt;                      // sube
-      p.glowPhase += dt * 8;               // parpadeo rápido
-
-      // Partículas continuas mientras sube
+      p.y -= 60 * dt;
+      p.glowPhase += dt * 8;
       if(Math.random() < 0.4){
         const colors = ['#ffd93d','#ff6b9d','#c77dff','#6bcb77'];
         Renderer.spawnParticles && Renderer.spawnParticles(
           p.x - cam.x + p.w/2,
           p.y - cam.y + p.h/2,
-          colors[Math.floor(Math.random()*colors.length)], 3
-        );
+          colors[Math.floor(Math.random()*colors.length)], 3);
       }
-
       if(p.pickupTimer > 0.8){
-        // Desapareció — activar gema
         p.state = 'gone';
         Renderer.flash && Renderer.flash('rgba(255,215,0,0.6)', 0.6);
         Renderer.spawnText && Renderer.spawnText(
-          p.x - cam.x + p.w/2,
-          p.y - cam.y,
-          '¡Pablo rescatado! 🐱✨', '#ffd93d'
-        );
+          p.x - cam.x + p.w/2, p.y - cam.y,
+          '¡Pablo rescatado! 🐱✨', '#ffd93d');
       }
       return;
     }
 
+    // ── Desapareció ────────────────────────────────────
     if(p.state === 'gone') return;
 
-    // ── Estado 'idle': se mueve en la plataforma ──────
-    // Animación de frames
+    // ── Libre: se mueve en la plataforma ──────────────
+    // (estado 'idle')
     p.freeFrameTick = (p.freeFrameTick||0) + dt;
     if(p.freeFrameTick > 0.12){
       p.freeFrameTick = 0;
       p.freeFrameIdx  = (p.freeFrameIdx+1) % 7;
     }
 
-    // Camina de un lado al otro del pedestal (cols 191-194 → x 9168-9360)
+    // Camina entre los bordes del pedestal plat(191,4,8) → cols 191-194
     const platLeft  = 191 * TS + 4;
     const platRight = 195 * TS - p.w - 4;
-    p.freeVx = (p.freeVx||0);
-    if(p.freeVx === 0) p.freeVx = 40;
+    if(!p.freeVx) p.freeVx = 40;
 
     p.x += p.freeVx * dt;
     if(p.x <= platLeft)  { p.x = platLeft;  p.freeVx =  40; p.freeFacing =  1; }
     if(p.x >= platRight) { p.x = platRight; p.freeVx = -40; p.freeFacing = -1; }
 
-    // ── Detección de "recoger" — jugador toca a pablo ─
+    // Detección de toque para rescatar
     const ox = (ps.x+ps.w)>p.x && ps.x<(p.x+p.w);
     const oy = (ps.y+ps.h)>p.y && ps.y<(p.y+p.h);
-    if(ox && oy && p.state !== 'pickup'){
+    if(ox && oy){
       p.state = 'pickup';
       p.pickupTimer = 0;
       ps.score += 200;
-      // Partículas de rescate
-      Renderer.spawnParticles && Renderer.spawnParticles(
-        p.x-cam.x+p.w/2, p.y-cam.y, '#ffd93d', 30);
-      Renderer.spawnParticles && Renderer.spawnParticles(
-        p.x-cam.x+p.w/2, p.y-cam.y, '#ff6b9d', 20);
-      Renderer.spawnParticles && Renderer.spawnParticles(
-        p.x-cam.x+p.w/2, p.y-cam.y, '#c77dff', 20);
+      Renderer.spawnParticles && Renderer.spawnParticles(p.x-cam.x+p.w/2, p.y-cam.y, '#ffd93d', 30);
+      Renderer.spawnParticles && Renderer.spawnParticles(p.x-cam.x+p.w/2, p.y-cam.y, '#ff6b9d', 20);
+      Renderer.spawnParticles && Renderer.spawnParticles(p.x-cam.x+p.w/2, p.y-cam.y, '#c77dff', 20);
     }
   }
 
@@ -370,31 +359,35 @@ const SubEntities = (() => {
   function reset() {
     const { TS, GROUND_ROW } = S;
 
+    // Pablo — empieza enjaulado
     const p = S.pablo;
+    p.state        = 'caged';
     p.freed        = false;
-    p.state        = 'caged';   // caged | idle | pickup | gone
     p.glowPhase    = 0;
     p.frameIdx     = 0;
     p.frameTick    = 0;
-    p.freeFrameIdx = 0;
+    p.freeFrameIdx  = 0;
     p.freeFrameTick = 0;
     p.freeVx       = 40;
     p.freeFacing   = 1;
     p.pickupTimer  = 0;
+    // Centrado en el pedestal plat(191,4,8)
     p.x = 192 * TS;
-    p.y = 8   * TS - 72;
+    p.y = 8 * TS - 72;
 
+    // Gema — aparece cuando pablo es rescatado
     S.gem.collected = false;
     S.gem.glowPhase = 0;
     S.gem.x = 196 * TS;
     S.gem.y = GROUND_ROW * TS - 36;
 
+    // Boss — al lado de la jaula, patrulla corta que la defiende
     const b = S.boss;
     b.hp         = 8;
     b.alive      = true;
     b.activated  = false;
-    // Boss más cerca de pablo — defiende la jaula
-    b.x          = 185 * TS;
+    // Parado justo a la izquierda de la jaula (pablo en col 192, boss en 188)
+    b.x          = 188 * TS;
     b.y          = GROUND_ROW * TS - 96;
     b.vx         = 0;
     b.state      = 'patrol';
@@ -403,9 +396,11 @@ const SubEntities = (() => {
     b.stunTimer  = 0;
     b.frameIdx   = 0;
     b.frameTick  = 0;
-    // Patrulla centrada en la jaula — no llega hasta el inicio del dark
-    b.patrolLeft  = 176 * TS;
-    b.patrolRight = 196 * TS;
+    // Patrulla ajustada: se queda cerca de la jaula
+    // izquierda: col 182 (no abandona la zona dark)
+    // derecha:   col 195 (borde de la jaula)
+    b.patrolLeft  = 182 * TS;
+    b.patrolRight = 195 * TS;
 
     spawnEnemies();
     spawnKitties();

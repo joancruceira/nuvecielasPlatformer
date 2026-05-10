@@ -424,15 +424,15 @@ const SubRender = (() => {
     const pulse=0.55+Math.sin(p.glowPhase)*0.35;
     ctx.save();
 
-    // Halo
-    const glowR = p.state==='pickup' ? 70 : p.freed ? 58 : 50;
-    const glowA = p.state==='pickup' ? pulse*0.90 : p.freed ? pulse*0.80 : pulse*0.52;
+    // Halo — tamaño y alpha según estado
+    const glowR = p.state==='pickup' ? 70 : p.state==='idle' ? 58 : 50;
+    const glowA = p.state==='pickup' ? pulse*0.90 : p.state==='idle' ? pulse*0.80 : pulse*0.52;
     const glow=ctx.createRadialGradient(sx+p.w/2,sy+p.h/2,0,sx+p.w/2,sy+p.h/2,glowR);
     glow.addColorStop(0,`rgba(255,215,0,${glowA})`);
     glow.addColorStop(1,'transparent');
     ctx.fillStyle=glow;ctx.beginPath();ctx.arc(sx+p.w/2,sy+p.h/2,glowR,0,Math.PI*2);ctx.fill();
 
-    if(!p.freed){
+    if(p.state==='caged'){
       // ── Enjaulado ────────────────────────────────
       const fn=S.JAULA_CYCLE[p.frameIdx%S.JAULA_CYCLE.length];
       if(!drawImg(ctx,`jaula_pablo_${fn}`,sx,sy,p.w,p.h)){
@@ -460,7 +460,7 @@ const SubRender = (() => {
       }
 
     } else {
-      // ── Libre: se mueve en la plataforma ──────────
+      // ── Libre (state==='idle'): se mueve en la plataforma ──
       const facing=p.freeFacing||1;
       ctx.translate(sx+p.w/2,sy+p.h/2);
       if(facing===-1) ctx.scale(-1,1);
