@@ -54,42 +54,35 @@ body {
 }
 .screen.active { display: flex; }
 
-/* ═══ FOREST BG ═══ */
+/* ═══ FOREST BG — reemplazado por el flyer ═══ */
 .menu-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 45%, var(--green-pale) 70%, var(--green-mid) 100%);
+  /* Flyer como fondo, centrado y cubriendo toda la pantalla */
+  background-image: url('img/FLYER_NUVEBOSQUE.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
   overflow: hidden;
 }
 
-.forest-layer {
+/* Overlay degradado solo en la parte inferior
+   para que los botones sean legibles sin tapar el arte */
+.menu-bg::after {
+  content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 200%;
-  background-repeat: repeat-x;
-  background-position: bottom;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent          0%,
+    transparent          52%,
+    rgba(5, 10, 20, 0.55) 70%,
+    rgba(5, 10, 20, 0.88) 100%
+  );
 }
 
-.layer3 {
-  height: 160px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='160'%3E%3Cpolygon points='60,10 100,100 20,100' fill='%232d5a3d' opacity='.5'/%3E%3Cpolygon points='60,40 90,110 30,110' fill='%23336644' opacity='.5'/%3E%3Crect x='53' y='110' width='14' height='50' fill='%235a3a1a' opacity='.4'/%3E%3C/svg%3E");
-  background-size: 120px 160px;
-  opacity: 0.7;
-  animation: scrollBg 18s linear infinite;
-}
-.layer2 {
-  height: 200px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='200'%3E%3Cpolygon points='70,8 118,110 22,110' fill='%23256040'/%3E%3Cpolygon points='70,45 105,125 35,125' fill='%232d7a4f'/%3E%3Ccircle cx='70' cy='85' r='38' fill='%2338924f'/%3E%3Crect x='62' y='128' width='16' height='72' fill='%234a2c0a'/%3E%3C/svg%3E");
-  background-size: 140px 200px;
-  animation: scrollBg 10s linear infinite;
-}
-.layer1 {
-  height: 240px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='240'%3E%3Cpolygon points='90,5 150,130 30,130' fill='%231e5c38'/%3E%3Cpolygon points='90,50 135,145 45,145' fill='%2326754a'/%3E%3Ccircle cx='90' cy='105' r='48' fill='%23309050'/%3E%3Crect x='78' y='155' width='24' height='85' fill='%23391d05'/%3E%3Ccircle cx='50' cy='200' r='22' fill='%23e85d7a' opacity='.7'/%3E%3Ccircle cx='130' cy='195' r='18' fill='%23f9c846' opacity='.6'/%3E%3C/svg%3E");
-  background-size: 180px 240px;
-  animation: scrollBg 5s linear infinite;
-}
+/* Las capas de árboles SVG ya no se usan — ocultarlas */
+.forest-layer { display: none; }
 
 @keyframes scrollBg {
   from { transform: translateX(0); }
@@ -103,15 +96,16 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
-  /* Respetar safe area en menú */
-  padding: calc(var(--sat) + 16px) var(--sar) calc(var(--sab) + 16px) var(--sal);
+  /* Empujar los botones hacia abajo del flyer */
+  justify-content: flex-end;
+  height: 100%;
+  gap: 18px;
+  padding: calc(var(--sat) + 16px) var(--sar) calc(var(--sab) + 32px) var(--sal);
 }
 
-.logo-wrap {
-  text-align: center;
-  filter: drop-shadow(0 4px 24px rgba(0,0,0,.35));
-}
+/* El logo de texto ya no hace falta — el flyer tiene el título.
+   Lo ocultamos para no tapar el arte. */
+.logo-wrap { display: none; }
 
 .logo-title {
   font-family: var(--font-title);
@@ -142,9 +136,10 @@ body {
 }
 
 .menu-hint {
-  font-size: 14px;
-  color: rgba(255,255,255,.7);
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
   font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
 }
 
 /* ═══ BUTTONS ═══ */
@@ -595,4 +590,295 @@ body {
   .overlay-title { font-size: 26px; }
   .mc-btn  { width: 64px; height: 64px; font-size: 20px; }
   .mc-jump { width: 76px; height: 76px; font-size: 26px; }
+}
+
+/* ════════════════════════════════════════════
+   LEVEL MAP SCREEN
+════════════════════════════════════════════ */
+
+/* Fondo — degradado atardecer del juego */
+.map-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg,
+    #1a0a3d 0%,
+    #3d1a6e 30%,
+    #c25218 62%,
+    #f4813a 82%,
+    #fbbf6e 100%);
+  overflow: hidden;
+}
+
+/* Estrellas decorativas en el fondo */
+.map-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 8%,  rgba(255,255,255,.70) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 28% 14%, rgba(255,255,255,.55) 0%, transparent 100%),
+    radial-gradient(2px   2px   at 45% 6%,  rgba(255,255,255,.65) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 60% 11%, rgba(255,255,255,.50) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 75% 7%,  rgba(255,255,255,.70) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 88% 13%, rgba(255,255,255,.55) 0%, transparent 100%),
+    radial-gradient(1px   1px   at 20% 22%, rgba(255,255,255,.40) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 18%, rgba(255,255,255,.50) 0%, transparent 100%);
+}
+
+/* Silueta de ciudad en el horizonte */
+.map-bg::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 35%;
+  background:
+    linear-gradient(to top, rgba(10,5,30,0.85) 0%, transparent 100%);
+}
+
+/* Contenedor principal */
+.map-content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--sat) + 12px) 16px calc(var(--sab) + 12px);
+  gap: 12px;
+}
+
+/* Header */
+.map-header {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.map-title {
+  font-family: var(--font-title);
+  font-size: clamp(26px, 6vw, 48px);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0,0,0,.5), 0 6px 20px rgba(0,0,0,.4);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.map-sub {
+  font-family: var(--font-title);
+  font-size: clamp(13px, 3vw, 18px);
+  color: #fcd34d;
+  margin-top: 4px;
+  text-shadow: 0 1px 6px rgba(0,0,0,.4);
+}
+
+/* Stage — área del mapa con los nodos */
+.map-stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 700px;
+  min-height: 0;
+}
+
+/* SVG del path entre nodos */
+.map-path-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Contenedor de nodos */
+.map-nodes {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── Nodo individual ── */
+.map-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform .18s, filter .18s;
+  /* Área táctil mínima */
+  padding: 6px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.map-node.locked {
+  cursor: default;
+  filter: grayscale(1) brightness(.5);
+}
+
+.map-node-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--node-dark, #166534);
+  border: 3px solid var(--node-color, #4ade80);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow:
+    0 0 0 0 var(--node-color, #4ade80),
+    0 4px 16px rgba(0,0,0,.45);
+  transition: box-shadow .22s, transform .18s;
+  position: relative;
+}
+
+/* Número del nivel dentro del borde */
+.map-node-label {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.75);
+  letter-spacing: .5px;
+}
+
+.map-node-stars {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+/* Estado seleccionado */
+.map-node.selected .map-node-icon {
+  transform: scale(1.18);
+  box-shadow:
+    0 0 0 5px var(--node-color, #4ade80),
+    0 0 28px var(--node-color, #4ade80),
+    0 6px 20px rgba(0,0,0,.5);
+}
+
+/* Hover en desktop */
+@media (hover: hover) {
+  .map-node.unlocked:hover .map-node-icon {
+    transform: scale(1.1);
+    box-shadow:
+      0 0 0 3px var(--node-color, #4ade80),
+      0 4px 20px rgba(0,0,0,.45);
+  }
+}
+
+/* Nodo especial (submisión) — parpadeante para llamar atención */
+.map-node.special .map-node-icon {
+  animation: mapNodePulse 1.4s ease-in-out infinite;
+}
+@keyframes mapNodePulse {
+  0%,100% { box-shadow: 0 0 0 3px var(--node-color), 0 0 16px var(--node-color), 0 4px 16px rgba(0,0,0,.45); }
+  50%     { box-shadow: 0 0 0 7px var(--node-color), 0 0 32px var(--node-color), 0 4px 16px rgba(0,0,0,.45); }
+}
+
+/* Tap feedback en móvil */
+.map-node.unlocked:active .map-node-icon {
+  transform: scale(0.92);
+}
+
+/* ── Detail card — info del nivel seleccionado ── */
+.map-detail {
+  width: 100%;
+  max-width: 500px;
+  flex-shrink: 0;
+  background: rgba(8,4,28,0.82);
+  border: 1.5px solid var(--node-color, #4ade80);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  padding: 14px 18px;
+  box-shadow: 0 0 24px rgba(0,0,0,.4), 0 0 0 0 var(--node-color, #4ade80);
+  transition: border-color .25s, box-shadow .25s;
+}
+
+.map-detail-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.map-detail-emoji {
+  font-size: 36px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.map-detail-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.map-detail-name {
+  font-family: var(--font-title);
+  font-size: clamp(15px, 4vw, 20px);
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-detail-boss {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,.60);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-detail-stars {
+  font-size: 13px;
+  color: #fcd34d;
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+.map-play-btn {
+  flex-shrink: 0;
+  font-size: 16px;
+  padding: 12px 22px;
+  min-width: 100px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+/* Animación de entrada del detail */
+.map-detail-in {
+  animation: mapDetailPop .22s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes mapDetailPop {
+  from { opacity: .4; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1;  transform: translateY(0)   scale(1);   }
+}
+
+/* Botón volver */
+.map-back-btn {
+  flex-shrink: 0;
+  font-size: 15px;
+  padding: 10px 24px;
+  min-height: 44px;
+}
+
+/* ── Responsive landscape ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .map-title   { font-size: 22px; }
+  .map-node-icon { width: 44px; height: 44px; font-size: 18px; }
+  .map-detail  { padding: 10px 14px; }
+  .map-detail-emoji { font-size: 26px; }
+  .map-detail-name  { font-size: 14px; }
+  .map-play-btn { font-size: 14px; padding: 8px 16px; }
+}
+
+/* ── Pantallas muy pequeñas ── */
+@media (max-width: 380px) {
+  .map-node-icon { width: 48px; height: 48px; font-size: 20px; }
+  .map-detail-inner { gap: 10px; }
+  .map-play-btn { font-size: 14px; padding: 10px 14px; min-width: 80px; }
 }

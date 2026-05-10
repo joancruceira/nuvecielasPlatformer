@@ -15,14 +15,27 @@ const Renderer = (() => {
   const candelabraImg = new Image();
   candelabraImg.src = 'img/candelabro01.png'; // se llena en drawBackground, se usa en drawBgTreesOverlay
 
-  // Frames animados de árboles (viento) para el fondo del nivel 1
-  const treeFrames = [];
+  // Frames del Bosque Mágico (nivel 1) — 3 capas de parallax
+  // bosqueMagico01 = capa lejana (árboles al fondo, luz dorada)
+  // bosqueMagico02 = capa media (hongos, flores mágicas, mariposas)
+  // bosqueMagico03 = capa frontal (siluetas de árboles, plantas)
+  const bosqueFrames = [];
   (function() {
-    for (let i = 1; i <= 6; i++) {
+    ['bosqueMagico01','bosqueMagico02','bosqueMagico03'].forEach(name => {
       const img = new Image();
-      img.src = `img/arbol0${i}.png`;
-      treeFrames.push(img);
-    }
+      img.src = `img/${name}.png`;
+      bosqueFrames.push(img);
+    });
+  })();
+
+  // Frames del fondo del castillo (nivel 2) — 3 capas de parallax
+  const castleNCFrames = [];
+  (function() {
+    ['back_castlenc01','back_castlenc02','back_castlenc03'].forEach(name => {
+      const img = new Image();
+      img.src = `img/${name}.png`;
+      castleNCFrames.push(img);
+    });
   })();
 
   // Imagen del castillo portal
@@ -77,10 +90,14 @@ const Renderer = (() => {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    if (level.bgTrees)   _bgTreesConfig = { camY, dark: level.dark, crystals: false };
-    if (level.crystals)  _bgTreesConfig = { camY, dark: level.dark, crystals: true };
-    if (level.crystals) drawBgCrystals(camX, ts);
-    if (level.glowing)  drawBgGlow(camX, ts);
+    if (level.bosqueMagico) _bgTreesConfig = { camY, dark: false, bosqueMagico: true };
+    if (level.bgTrees)      _bgTreesConfig = { camY, dark: level.dark, crystals: false };
+    if (level.crystals)     _bgTreesConfig = { camY, dark: level.dark, crystals: true };
+    if (level.castleNC)     _bgTreesConfig = { camY, dark: level.dark, castleNC: true };
+    if (level.bosqueMagico) _drawBosqueMagicoBg(camX, ts);
+    if (level.crystals)     drawBgCrystals(camX, ts);
+    if (level.castleNC)     _drawCastleNCBg(camX, ts);
+    if (level.glowing)      drawBgGlow(camX, ts);
 
     // Castillo del portal — aparece cuando el boss muere
     _drawCastle(ts, camX);
@@ -141,86 +158,165 @@ const Renderer = (() => {
     ctx.restore();
   }
 
-  function drawBgTrees(camX, camY, ts, dark) {
-    if (!dark && treeFrames.length === 6 && treeFrames[0].complete && treeFrames[0].naturalWidth > 0) {
-      _drawAnimatedTrees(camX, camY, ts);
-    } else {
-      // Fallback: árboles canvas para niveles oscuros o si las imágenes no cargaron
-      _drawCanvasTrees(camX, ts, dark);
+  // ── Fondo del Bosque Mágico — 3 capas parallax ──────────
+  // Las 3 imágenes son panorámicas y llenan el canvas completo.
+  // Se anclan al suelo para que el horizonte coincida con el nivel.
+  function _drawBosqueMagicoBg(camX, ts) {
+    const layers = [
+      { img: bosqueFrames[0], px: 0.03, alpha: 0.72, scaleH: 1.10 },  // lejana, lenta
+      { img: bosqueFrames[1], px: 0.08, alpha: 0.82, scaleH: 1.05 },  // media
+      { img: bosqueFrames[2], px: 0.16, alpha: 0.90, scaleH: 1.00 },  // frontal, rápida
+    ];
+
+    // Pulso suave de partículas mágicas — leve variación de alpha
+    const magicPulse = 0.94 + Math.sin(ts / 1200) * 0.06;
+
+    for(const l of layers) {
+      const { img, px, alpha, scaleH } = l;
+      if(!img.complete || !img.naturalWidth) continue;
+
+      const ar  = img.naturalWidth / img.naturalHeight;
+      const dh  = H * scaleH;
+      const dw  = Math.max(W + 200, dh * ar);
+      // Anclar al suelo — la base del bosque coincide con el suelo del nivel
+      const dy  = H - dh;
+      const off = ((camX * px) % dw + dw) % dw;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * magicPulse;
+      ctx.drawImage(img, -off,      dy, dw, dh);
+      ctx.drawImage(img, -off + dw, dy, dw, dh);
+      ctx.restore();
     }
   }
 
-  // Árboles animados con sprites reales — 3 capas de parallax
-  function _drawAnimatedTrees(camX, camY, ts) {
-    // UN SOLO frameIdx para todas las capas — animación coherente del viento
-    const frameIdx = Math.floor(ts / 450) % 6;
-    const img      = treeFrames[frameIdx];
-    if (!img || !img.complete || !img.naturalWidth) return;
+  function drawBgTrees(camX, camY, ts, dark) {
+    // Legacy — ya no se usa en nivel 1, mantenido por compatibilidad
+    _drawCanvasTrees(camX, ts, dark);
+  }
 
-    const ar = img.naturalWidth / img.naturalHeight;
+  // ── Fondo del castillo de Nuveciela — 3 capas parallax ──
+  // back_castlenc01 = fondo lejano (más oscuro, pillares al fondo)
+  // back_castlenc02 = medio (pillares grandes, candelabros)
+  // back_castlenc03 = foreground (suelo, antorchas, detalles)
+  function _drawCastleNCBg(camX, ts) {
+    const layers = [
+      { img: castleNCFrames[0], px: 0.04, alpha: 0.70, scaleH: 0.85 },
+      { img: castleNCFrames[1], px: 0.10, alpha: 0.82, scaleH: 0.95 },
+      { img: castleNCFrames[2], px: 0.20, alpha: 0.95, scaleH: 1.05 },
+    ];
 
-    // Suelo real: fila 13 × 48px en coordenadas de pantalla
-    // Se clampea para que siempre quede visible aunque camY sea grande
-    const GROUND_WORLD_Y = 13 * 48;
-    const groundScreenY  = Math.min(GROUND_WORLD_Y - camY, H - 15);
+    // Pulso de luz roja — simula antorchas parpadeando
+    const flicker = 0.92 + Math.sin(ts / 180) * 0.05 + Math.sin(ts / 80) * 0.03;
 
-    // Tamaño 3× más grande que antes (96 * 3 = 288px de alto)
-    const TREE_H = 288;
-    const TREE_W = TREE_H * ar;
+    for(const l of layers) {
+      const { img, px, alpha, scaleH } = l;
+      if(!img.complete || !img.naturalWidth) continue;
 
-    // Separación: 8× el ancho del árbol entre cada uno
-    // Capa trasera
-    const BACK_H   = TREE_H * 0.7;
-    const BACK_W   = BACK_H * ar;
-    const BACK_GAP = BACK_W * 8.0;
-    const backOff  = (camX * 0.06) % BACK_GAP;
-    const backY    = groundScreenY - BACK_H;
-    ctx.save();
-    ctx.globalAlpha = 0.55;
-    for (let i = -1; i < Math.ceil(W / BACK_GAP) + 2; i++) {
-      ctx.drawImage(img, i * BACK_GAP - backOff, backY, BACK_W, BACK_H);
+      const ar  = img.naturalWidth / img.naturalHeight;
+      const dh  = H * scaleH;
+      const dw  = Math.max(W + 200, dh * ar);
+      // Anclar a la parte inferior — el suelo del castillo coincide con el suelo del nivel
+      const dy  = H - dh;
+      const off = ((camX * px) % dw + dw) % dw;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * flicker;
+      // Dibujar 2 repeticiones para cubrir cualquier ancho de pantalla
+      ctx.drawImage(img, -off,      dy, dw, dh);
+      ctx.drawImage(img, -off + dw, dy, dw, dh);
+      ctx.restore();
     }
-    ctx.restore();
 
-    // Capa media
-    const MID_H   = TREE_H * 0.85;
-    const MID_W   = MID_H * ar;
-    const MID_GAP = MID_W * 9.0;
-    const midOff  = (camX * 0.11 + MID_GAP * 0.5) % MID_GAP;
-    const midY    = groundScreenY - MID_H;
+    // Overlay de atmósfera roja oscura — refuerza la estética del castillo
     ctx.save();
-    ctx.globalAlpha = 0.72;
-    for (let i = -1; i < Math.ceil(W / MID_GAP) + 2; i++) {
-      ctx.drawImage(img, i * MID_GAP - midOff, midY, MID_W, MID_H);
-    }
-    ctx.restore();
-
-    // Capa delantera
-    const FRONT_GAP = TREE_W * 10.0;
-    const frontOff  = (camX * 0.18 + FRONT_GAP * 0.3) % FRONT_GAP;
-    const frontY    = groundScreenY - TREE_H;
-    ctx.save();
-    ctx.globalAlpha = 0.88;
-    for (let i = -1; i < Math.ceil(W / FRONT_GAP) + 2; i++) {
-      ctx.drawImage(img, i * FRONT_GAP - frontOff, frontY, TREE_W, TREE_H);
-    }
+    const atmo = ctx.createLinearGradient(0, 0, 0, H);
+    atmo.addColorStop(0,    'rgba(60,0,0,0.28)');
+    atmo.addColorStop(0.6,  'rgba(30,0,0,0.12)');
+    atmo.addColorStop(1,    'rgba(0,0,0,0.40)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = atmo;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
   // Llamar desde engine DESPUÉS de drawTilemap
   function drawBgTreesOverlay(camX, camY, ts) {
     if (!_bgTreesConfig) return;
-    const { dark, crystals } = _bgTreesConfig;
+    const { dark, crystals, castleNC, bosqueMagico } = _bgTreesConfig;
 
-    if (crystals) {
-      // Nivel 2: candelabros en las paredes
+    if (bosqueMagico) {
+      // Nivel 1: partículas mágicas flotantes encima del tilemap
+      _drawBosqueParticles(camX, ts);
+    } else if (castleNC) {
+      // Nivel 2: wisps fantasmales encima del tilemap
+      _drawCastleWisps(camX, ts);
+    } else if (crystals) {
+      // Nivel 2 legacy: candelabros canvas
       _drawCandelabras(camX, camY, ts);
-    } else if (!dark && treeFrames.length === 6 && treeFrames[0].complete && treeFrames[0].naturalWidth > 0) {
-      // Nivel 1: árboles animados
-      _drawAnimatedTrees(camX, camY, ts);
     } else {
       _drawCanvasTrees(camX, ts, dark);
     }
+  }
+
+  // Partículas mágicas flotantes — overlay del bosque mágico
+  function _drawBosqueParticles(camX, ts) {
+    ctx.save();
+    // 8 partículas con posiciones, colores y velocidades distintas
+    const particles = [
+      { bx: 0.08, speed: 0.5, size: 8,  col: 'rgba(100,220,255,0.70)', oy: 0.55 },
+      { bx: 0.22, speed: 0.3, size: 5,  col: 'rgba(180,100,255,0.60)', oy: 0.45 },
+      { bx: 0.35, speed: 0.7, size: 9,  col: 'rgba(80,255,180,0.55)',  oy: 0.60 },
+      { bx: 0.50, speed: 0.4, size: 6,  col: 'rgba(255,220,80,0.65)',  oy: 0.40 },
+      { bx: 0.63, speed: 0.6, size: 7,  col: 'rgba(100,200,255,0.60)', oy: 0.50 },
+      { bx: 0.75, speed: 0.8, size: 5,  col: 'rgba(200,100,255,0.55)', oy: 0.48 },
+      { bx: 0.85, speed: 0.3, size: 8,  col: 'rgba(80,255,200,0.65)',  oy: 0.58 },
+      { bx: 0.93, speed: 0.5, size: 6,  col: 'rgba(255,240,100,0.70)', oy: 0.42 },
+    ];
+
+    for(const p of particles){
+      const wx  = ((p.bx * W - camX * 0.05 + ts * p.speed * 0.015) % (W + 40) + W + 40) % (W + 40) - 20;
+      const wy  = H * p.oy + Math.sin(ts / 700 + p.bx * 10) * 18;
+      const pulse = 0.55 + Math.sin(ts / 500 + p.bx * 8) * 0.45;
+      const glow = ctx.createRadialGradient(wx, wy, 0, wx, wy, p.size * 2.5);
+      glow.addColorStop(0, p.col);
+      glow.addColorStop(1, 'transparent');
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(wx, wy, p.size * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Wisps fantasmales sobre el tilemap — nivel 2
+  function _drawCastleWisps(camX, ts) {
+    ctx.save();
+    // 6 wisps flotantes con posiciones y velocidades distintas
+    const wisps = [
+      { bx: 0.12, speed: 0.6, size: 14, col: 'rgba(0,220,220,0.55)'  },
+      { bx: 0.28, speed: 0.4, size: 10, col: 'rgba(255,80,80,0.40)'  },
+      { bx: 0.45, speed: 0.7, size: 16, col: 'rgba(0,200,200,0.45)'  },
+      { bx: 0.62, speed: 0.5, size: 11, col: 'rgba(255,60,60,0.35)'  },
+      { bx: 0.78, speed: 0.8, size: 13, col: 'rgba(180,100,255,0.40)'},
+      { bx: 0.91, speed: 0.3, size: 9,  col: 'rgba(0,180,180,0.50)'  },
+    ];
+
+    for(const w of wisps){
+      const wx = ((w.bx * W - camX * 0.05 + ts * w.speed * 0.02) % (W + 60) + W + 60) % (W + 60) - 30;
+      const wy = H * 0.35 + Math.sin(ts / 800 + w.bx * 8) * H * 0.12;
+      const pulse = 0.6 + Math.sin(ts / 400 + w.bx * 5) * 0.4;
+      const glow = ctx.createRadialGradient(wx, wy, 0, wx, wy, w.size * 2);
+      glow.addColorStop(0, w.col);
+      glow.addColorStop(1, 'transparent');
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(wx, wy, w.size * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // ── Candelabros para el nivel 2 ──
