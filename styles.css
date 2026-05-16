@@ -54,20 +54,19 @@ body {
 }
 .screen.active { display: flex; }
 
-/* ═══ FOREST BG — reemplazado por el flyer ═══ */
+/* ═══ MENÚ — FLYER COMO FONDO ═══ */
 .menu-bg {
   position: absolute;
   inset: 0;
-  /* Flyer como fondo, centrado y cubriendo toda la pantalla */
   background-image: url('img/FLYER_NUVEBOSQUE.png');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
   overflow: hidden;
+  pointer-events: none;  /* no interceptar clicks */
 }
 
-/* Overlay degradado solo en la parte inferior
-   para que los botones sean legibles sin tapar el arte */
+/* Overlay degradado solo en la parte inferior — botones legibles */
 .menu-bg::after {
   content: '';
   position: absolute;
@@ -76,13 +75,16 @@ body {
     to bottom,
     transparent          0%,
     transparent          52%,
-    rgba(5, 10, 20, 0.55) 70%,
-    rgba(5, 10, 20, 0.88) 100%
+    rgba(5,10,20,0.55)   70%,
+    rgba(5,10,20,0.88)   100%
   );
+  pointer-events: none;  /* no interceptar clicks */
 }
 
-/* Las capas de árboles SVG ya no se usan — ocultarlas */
+/* Las capas SVG ya no se usan */
 .forest-layer { display: none; }
+.menu-bg::before { pointer-events: none; }
+.menu-bg { pointer-events: none; }
 
 @keyframes scrollBg {
   from { transform: translateX(0); }
@@ -96,15 +98,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Empujar los botones hacia abajo del flyer */
-  justify-content: flex-end;
+  justify-content: flex-end;   /* botones abajo sobre el overlay */
   height: 100%;
   gap: 18px;
   padding: calc(var(--sat) + 16px) var(--sar) calc(var(--sab) + 32px) var(--sal);
 }
 
-/* El logo de texto ya no hace falta — el flyer tiene el título.
-   Lo ocultamos para no tapar el arte. */
+/* El título ya está en el flyer — ocultarlo */
 .logo-wrap { display: none; }
 
 .logo-title {
@@ -401,92 +401,107 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  /* Respetar home bar de iPhone */
-  padding: 10px calc(var(--sar) + 20px) calc(var(--sab) + 16px) calc(var(--sal) + 20px);
+  /* Padding generoso para Redmi 9/10 — sin home bar pero sí con chin */
+  padding: 10px
+           calc(var(--sar) + 14px)
+           calc(var(--sab) + 20px)
+           calc(var(--sal) + 14px);
   pointer-events: none;
+  /* Evitar que los botones queden muy pegados al borde */
+  min-height: 120px;
 }
 
 .mc-left, .mc-right {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-end;
   pointer-events: all;
 }
 
 .mc-btn {
-  /* Botones grandes para dedos */
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
-  background: rgba(255,255,255,.20);
-  border: 2px solid rgba(255,255,255,.40);
+  background: rgba(255,255,255,.18);
+  border: 2.5px solid rgba(255,255,255,.38);
   color: white;
   font-size: 22px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background .08s, transform .08s;
-  /* Importante: evitar doble tap zoom en iOS */
+  /* Sin transition — respuesta instantánea en móvil */
+  transition: background .05s;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  /* Feedback háptico visual rápido */
   will-change: transform;
-  /* Sombra para visibilidad sobre cualquier fondo */
-  box-shadow: 0 4px 12px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  box-shadow: 0 4px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.22);
+  /* Área táctil mínima recomendada por Google: 48dp */
+  min-width: 48px; min-height: 48px;
 }
 
 .mc-btn:active,
 .mc-btn.pressed {
-  background: rgba(249,200,70,.45);
-  transform: scale(0.88);
-  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  background: rgba(249,200,70,.50);
+  transform: scale(0.85);
+  box-shadow: 0 2px 6px rgba(0,0,0,.30);
 }
 
-/* Botón salto: más grande y destacado */
+/* ── Botón SALTO — el más importante, el más grande ──
+   Posicionado separado del grupo derecho para que el
+   pulgar llegue cómodo en pantallas pequeñas (Redmi 9) */
 .mc-jump {
-  width: 84px;
-  height: 84px;
-  font-size: 28px;
-  background: rgba(167,139,250,.40);
-  border-color: rgba(167,139,250,.70);
-  box-shadow: 0 4px 16px rgba(167,139,250,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  width: 90px;
+  height: 90px;
+  font-size: 30px;
+  background: rgba(167,139,250,.42);
+  border: 3px solid rgba(167,139,250,.75);
+  box-shadow: 0 4px 20px rgba(167,139,250,.45), inset 0 1px 0 rgba(255,255,255,.28);
+  /* Levantarlo un poco para que no quede pegado al borde */
+  margin-bottom: 4px;
 }
 .mc-jump:active,
 .mc-jump.pressed {
-  background: rgba(167,139,250,.70);
-  transform: scale(0.88);
+  background: rgba(167,139,250,.75);
+  transform: scale(0.84);
 }
 
-/* Botón abajo (slide/groundpound) */
+/* ── Botón abajo (slide/groundpound) ── */
 .mc-down {
-  background: rgba(251,191,36,.25);
-  border-color: rgba(251,191,36,.50);
+  background: rgba(251,191,36,.22);
+  border-color: rgba(251,191,36,.48);
 }
 .mc-down:active,
 .mc-down.pressed {
   background: rgba(251,191,36,.55);
-  transform: scale(0.88);
+  transform: scale(0.85);
 }
 
-/* Botón bola de fuego */
+/* ── Botón disparo ── */
 .mc-fire {
-  background: rgba(249,115,22,.35);
-  border-color: rgba(249,115,22,.65);
+  background: rgba(249,115,22,.32);
+  border-color: rgba(249,115,22,.62);
   font-size: 20px;
 }
 .mc-fire:active,
 .mc-fire.pressed {
-  background: rgba(249,115,22,.70);
-  transform: scale(0.88);
+  background: rgba(249,115,22,.68);
+  transform: scale(0.85);
 }
 
-/* En landscape: controles más chicos para no tapar el juego */
-@media (orientation: landscape) and (max-height: 500px) {
-  .mc-btn    { width: 58px; height: 58px; font-size: 18px; }
-  .mc-jump   { width: 68px; height: 68px; font-size: 24px; }
-  .mc-fire   { font-size: 16px; }
-  .mobile-controls { padding-bottom: calc(var(--sab) + 8px); }
+/* ── Landscape: controles compactos ── */
+@media (orientation: landscape) and (max-height: 420px) {
+  .mobile-controls { padding-bottom: calc(var(--sab) + 6px); min-height: 90px; }
+  .mc-btn  { width: 54px; height: 54px; font-size: 18px; }
+  .mc-jump { width: 72px; height: 72px; font-size: 24px; }
+  .mc-fire { font-size: 15px; }
+}
+
+/* ── Pantallas muy pequeñas (< 360px ancho) ── */
+@media (max-width: 360px) {
+  .mc-btn  { width: 60px; height: 60px; font-size: 20px; }
+  .mc-jump { width: 80px; height: 80px; font-size: 26px; }
+  .mobile-controls { gap: 4px; padding-left: 10px; padding-right: 10px; }
 }
 
 /* Solo mostrar en pantallas táctiles */
@@ -591,7 +606,6 @@ body {
   .mc-btn  { width: 64px; height: 64px; font-size: 20px; }
   .mc-jump { width: 76px; height: 76px; font-size: 26px; }
 }
-
 /* ════════════════════════════════════════════
    LEVEL MAP SCREEN
 ════════════════════════════════════════════ */
@@ -601,15 +615,11 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(160deg,
-    #1a0a3d 0%,
-    #3d1a6e 30%,
-    #c25218 62%,
-    #f4813a 82%,
-    #fbbf6e 100%);
+    #1a0a3d 0%, #3d1a6e 30%, #c25218 62%, #f4813a 82%, #fbbf6e 100%);
   overflow: hidden;
 }
 
-/* Estrellas decorativas en el fondo */
+/* Estrellas decorativas */
 .map-bg::before {
   content: '';
   position: absolute;
@@ -620,19 +630,16 @@ body {
     radial-gradient(2px   2px   at 45% 6%,  rgba(255,255,255,.65) 0%, transparent 100%),
     radial-gradient(1px   1px   at 60% 11%, rgba(255,255,255,.50) 0%, transparent 100%),
     radial-gradient(1.5px 1.5px at 75% 7%,  rgba(255,255,255,.70) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 88% 13%, rgba(255,255,255,.55) 0%, transparent 100%),
-    radial-gradient(1px   1px   at 20% 22%, rgba(255,255,255,.40) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 55% 18%, rgba(255,255,255,.50) 0%, transparent 100%);
+    radial-gradient(1px   1px   at 88% 13%, rgba(255,255,255,.55) 0%, transparent 100%);
 }
 
-/* Silueta de ciudad en el horizonte */
+/* Overlay oscuro inferior */
 .map-bg::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 35%;
-  background:
-    linear-gradient(to top, rgba(10,5,30,0.85) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(10,5,30,0.85) 0%, transparent 100%);
 }
 
 /* Contenedor principal */
@@ -649,10 +656,7 @@ body {
 }
 
 /* Header */
-.map-header {
-  text-align: center;
-  flex-shrink: 0;
-}
+.map-header { text-align: center; flex-shrink: 0; }
 
 .map-title {
   font-family: var(--font-title);
@@ -672,7 +676,7 @@ body {
   text-shadow: 0 1px 6px rgba(0,0,0,.4);
 }
 
-/* Stage — área del mapa con los nodos */
+/* Stage — área del mapa */
 .map-stage {
   position: relative;
   flex: 1 1 auto;
@@ -681,7 +685,6 @@ body {
   min-height: 0;
 }
 
-/* SVG del path entre nodos */
 .map-path-svg {
   position: absolute;
   inset: 0;
@@ -690,13 +693,9 @@ body {
   pointer-events: none;
 }
 
-/* Contenedor de nodos */
-.map-nodes {
-  position: absolute;
-  inset: 0;
-}
+.map-nodes { position: absolute; inset: 0; }
 
-/* ── Nodo individual ── */
+/* Nodo individual */
 .map-node {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -705,17 +704,12 @@ body {
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: transform .18s, filter .18s;
-  /* Área táctil mínima */
   padding: 6px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.map-node.locked {
-  cursor: default;
-  filter: grayscale(1) brightness(.5);
-}
+.map-node.locked { cursor: default; filter: grayscale(1) brightness(.5); }
 
 .map-node-icon {
   width: 56px;
@@ -727,48 +721,36 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  box-shadow:
-    0 0 0 0 var(--node-color, #4ade80),
-    0 4px 16px rgba(0,0,0,.45);
+  box-shadow: 0 4px 16px rgba(0,0,0,.45);
   transition: box-shadow .22s, transform .18s;
-  position: relative;
 }
 
-/* Número del nivel dentro del borde */
 .map-node-label {
   font-family: var(--font-title);
   font-size: 11px;
   font-weight: 700;
   color: rgba(255,255,255,.75);
-  letter-spacing: .5px;
 }
 
-.map-node-stars {
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: -1px;
-}
+.map-node-stars { font-size: 10px; line-height: 1; letter-spacing: -1px; }
 
-/* Estado seleccionado */
 .map-node.selected .map-node-icon {
   transform: scale(1.18);
-  box-shadow:
-    0 0 0 5px var(--node-color, #4ade80),
-    0 0 28px var(--node-color, #4ade80),
-    0 6px 20px rgba(0,0,0,.5);
+  box-shadow: 0 0 0 5px var(--node-color, #4ade80),
+              0 0 28px var(--node-color, #4ade80),
+              0 6px 20px rgba(0,0,0,.5);
 }
 
-/* Hover en desktop */
 @media (hover: hover) {
   .map-node.unlocked:hover .map-node-icon {
     transform: scale(1.1);
-    box-shadow:
-      0 0 0 3px var(--node-color, #4ade80),
-      0 4px 20px rgba(0,0,0,.45);
+    box-shadow: 0 0 0 3px var(--node-color, #4ade80), 0 4px 20px rgba(0,0,0,.45);
   }
 }
 
-/* Nodo especial (submisión) — parpadeante para llamar atención */
+.map-node.unlocked:active .map-node-icon { transform: scale(0.92); }
+
+/* Nodo especial (submisión) — parpadeante */
 .map-node.special .map-node-icon {
   animation: mapNodePulse 1.4s ease-in-out infinite;
 }
@@ -777,12 +759,7 @@ body {
   50%     { box-shadow: 0 0 0 7px var(--node-color), 0 0 32px var(--node-color), 0 4px 16px rgba(0,0,0,.45); }
 }
 
-/* Tap feedback en móvil */
-.map-node.unlocked:active .map-node-icon {
-  transform: scale(0.92);
-}
-
-/* ── Detail card — info del nivel seleccionado ── */
+/* Detail card */
 .map-detail {
   width: 100%;
   max-width: 500px;
@@ -792,26 +769,13 @@ body {
   border-radius: 20px;
   backdrop-filter: blur(12px);
   padding: 14px 18px;
-  box-shadow: 0 0 24px rgba(0,0,0,.4), 0 0 0 0 var(--node-color, #4ade80);
-  transition: border-color .25s, box-shadow .25s;
+  box-shadow: 0 0 24px rgba(0,0,0,.4);
+  transition: border-color .25s;
 }
 
-.map-detail-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.map-detail-emoji {
-  font-size: 36px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.map-detail-info {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+.map-detail-inner { display: flex; align-items: center; gap: 14px; }
+.map-detail-emoji { font-size: 36px; flex-shrink: 0; line-height: 1; }
+.map-detail-info  { flex: 1 1 auto; min-width: 0; }
 
 .map-detail-name {
   font-family: var(--font-title);
@@ -833,12 +797,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.map-detail-stars {
-  font-size: 13px;
-  color: #fcd34d;
-  margin-top: 4px;
-  letter-spacing: 1px;
-}
+.map-detail-stars { font-size: 13px; color: #fcd34d; margin-top: 4px; letter-spacing: 1px; }
 
 .map-play-btn {
   flex-shrink: 0;
@@ -849,7 +808,6 @@ body {
   white-space: nowrap;
 }
 
-/* Animación de entrada del detail */
 .map-detail-in {
   animation: mapDetailPop .22s cubic-bezier(.34,1.56,.64,1) both;
 }
@@ -858,25 +816,18 @@ body {
   to   { opacity: 1;  transform: translateY(0)   scale(1);   }
 }
 
-/* Botón volver */
-.map-back-btn {
-  flex-shrink: 0;
-  font-size: 15px;
-  padding: 10px 24px;
-  min-height: 44px;
-}
+.map-back-btn { flex-shrink: 0; font-size: 15px; padding: 10px 24px; min-height: 44px; }
 
-/* ── Responsive landscape ── */
+/* Landscape compacto */
 @media (orientation: landscape) and (max-height: 500px) {
-  .map-title   { font-size: 22px; }
+  .map-title { font-size: 22px; }
   .map-node-icon { width: 44px; height: 44px; font-size: 18px; }
-  .map-detail  { padding: 10px 14px; }
+  .map-detail { padding: 10px 14px; }
   .map-detail-emoji { font-size: 26px; }
   .map-detail-name  { font-size: 14px; }
   .map-play-btn { font-size: 14px; padding: 8px 16px; }
 }
 
-/* ── Pantallas muy pequeñas ── */
 @media (max-width: 380px) {
   .map-node-icon { width: 48px; height: 48px; font-size: 20px; }
   .map-detail-inner { gap: 10px; }

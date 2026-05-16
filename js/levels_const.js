@@ -1,0 +1,91 @@
+// ═══════════════════════════════════════════════════════
+//  LEVELS_CONST.JS — Constantes y helpers compartidos
+//  Cargá este archivo PRIMERO, antes de cualquier level.
+// ═══════════════════════════════════════════════════════
+
+const TILE = {
+  AIR:        0,
+  GROUND:     1,
+  PLATFORM:   2,
+  SPIKES:     3,
+  BLOCK:      4,
+  STAR:       5,
+  CHECKPOINT: 6,
+  PORTAL:     7,
+  DECO:       8,
+  WALKER:    10,
+  FLYER:     11,
+  BOSS:      12,
+  SERPIENTE: 13,
+  FANTASMA:  14,
+  MAGIC_TREE:15,
+  GIFT_BOX:  16,
+  MAGIC_DOOR:17,
+  // Nivel 3 — Sendero Nocturno
+  ORUGA:     20,
+  ARBUSTO:   21,
+  MURCIELAGO:22,
+  CIENPIES:  23,
+};
+
+const TILE_SIZE = 48; // px
+
+// ─────────────────────────────────────────────────────
+//  Helpers para construir tilemaps compactos
+//  Disponibles globalmente para todos los level*.js
+// ─────────────────────────────────────────────────────
+
+/** Crea una fila de N tiles con valor v */
+function row(v, n) { return Array(n).fill(v); }
+
+/** Combina segmentos: seg(AIR,8, GROUND,4, ...) */
+function seg(...pairs) {
+  const out = [];
+  for (let i = 0; i < pairs.length; i += 2) {
+    const val = pairs[i], len = pairs[i+1];
+    for (let j = 0; j < len; j++) out.push(val);
+  }
+  return out;
+}
+
+/**
+ * Crea un mapa vacío de W×H tiles lleno de AIR.
+ * @param {number} W ancho en tiles
+ * @param {number} H alto en tiles
+ */
+function emptyMap(W, H) {
+  return Array.from({length: H}, () => row(0, W));
+}
+
+/**
+ * Helpers de construcción reutilizables.
+ * Reciben el mapa como primer argumento para ser portables.
+ */
+const MapBuilder = {
+  ground(map, x, len, y=13) {
+    const H = map.length;
+    for (let i=0; i<len; i++) {
+      map[y][x+i]   = TILE.GROUND;
+      if (y+1 < H) map[y+1][x+i] = TILE.BLOCK;
+      if (y+2 < H) map[y+2][x+i] = TILE.BLOCK;
+    }
+  },
+  platform(map, x, len, y) {
+    for (let i=0; i<len; i++) map[y][x+i] = TILE.PLATFORM;
+  },
+  spikes(map, x, len, y=13) {
+    for (let i=0; i<len; i++) map[y][x+i] = TILE.SPIKES;
+  },
+  ceiling(map, x, len, y=2) {
+    for (let i=0; i<len; i++) map[y][x+i] = TILE.BLOCK;
+  },
+  star(map, x, y)    { map[y][x] = TILE.STAR;       },
+  walker(map, x, y=12){ map[y][x] = TILE.WALKER;    },
+  flyer(map, x, y=7) { map[y][x] = TILE.FLYER;      },
+  serpiente(map,x,y=12){ map[y][x]=TILE.SERPIENTE;  },
+  fantasma(map,x,y=7){ map[y][x] = TILE.FANTASMA;   },
+  oruga(map,x,y=12)  { map[y][x] = TILE.ORUGA;      },
+  arbusto(map,x,y=12){ map[y][x] = TILE.ARBUSTO;    },
+  murcielago(map,x,y=7){ map[y][x]=TILE.MURCIELAGO; },
+  cienpies(map,x,y=12){ map[y][x]=TILE.CIENPIES;    },
+};

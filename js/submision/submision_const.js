@@ -89,9 +89,16 @@ const S = {
   // ── Pablo (jaula/libre) ───────────────────────────────
   pablo: {
     x:0, y:0, w:64, h:72,
-    freed:false, glowPhase:0,
-    frameIdx:0, frameTick:0,
-    freeFrameIdx:0, freeFrameTick:0,
+    state:        'caged',  // 'caged' | 'idle' | 'pickup' | 'gone'
+    freed:        false,
+    glowPhase:    0,
+    frameIdx:     0,
+    frameTick:    0,
+    freeFrameIdx:  0,
+    freeFrameTick: 0,
+    freeVx:       40,
+    freeFacing:   1,
+    pickupTimer:  0,
   },
   JAULA_CYCLE: [0,0,0,0,1,0,0,0,2,0,0,0,3,0,0,0,0,4,0,0],
 
