@@ -105,14 +105,17 @@
 
     <!-- Controles móvil -->
     <div class="mobile-controls" id="mobileControls">
+      <!-- Grupo izquierdo: direcciones -->
       <div class="mc-left">
         <button class="mc-btn" id="mcLeft">◀</button>
         <button class="mc-btn" id="mcRight">▶</button>
       </div>
+      <!-- Botón salto — centro derecha, el más grande -->
+      <button class="mc-btn mc-jump" id="mcJump">▲</button>
+      <!-- Grupo derecho: acciones secundarias -->
       <div class="mc-right">
         <button class="mc-btn mc-down" id="mcDown">▼</button>
         <button class="mc-btn mc-fire" id="mcFire">🔥</button>
-        <button class="mc-btn mc-jump" id="mcJump">▲</button>
       </div>
     </div>
   </div>
@@ -129,29 +132,65 @@
     </div>
   </div>
 
-  <!-- Scripts en orden de dependencia -->
-  <!-- Dependencias base -->
+  <!-- Scripts en orden estricto de dependencia -->
+
+  <!-- Niveles — const primero, coordinador último -->
+  <script src="js/levels_const.js"></script>
+  <script src="js/level1.js"></script>
+  <script src="js/level2.js"></script>
+  <script src="js/level3.js"></script>
+  <script src="js/level4.js"></script>
   <script src="js/levels.js"></script>
-  <script src="js/renderer.js"></script>
+
+  <!-- Asset loader — debe ir antes que renderer y enemies -->
+  <script src="js/asset_loader.js"></script>
+  <script src="js/loading_screen.js"></script>
+
+  <!-- Renderer — core primero, coordinador último -->
+  <script src="js/renderer/renderer_core.js"></script>
+  <script src="js/renderer/renderer_bg.js"></script>
+  <script src="js/renderer/renderer_tiles.js"></script>
+  <script src="js/renderer/renderer_entities.js"></script>
+  <script src="js/renderer/renderer_fx.js"></script>
+  <script src="js/renderer/renderer.js"></script>
+
+  <!-- Player — characters primero -->
+  <script src="js/player_characters.js"></script>
   <script src="js/player.js"></script>
-  <!-- Módulos de enemigos (orden: específicos primero, coordinador último) -->
+
+  <!-- Enemigos — específicos primero, coordinador último -->
   <script src="js/enemies/walker.js"></script>
   <script src="js/enemies/serpiente.js"></script>
   <script src="js/enemies/boss.js"></script>
   <script src="js/enemies/fantasma.js"></script>
+  <!-- Enemigos nivel 3 -->
+  <script src="js/enemies/oruga.js"></script>
+  <script src="js/enemies/arbusto.js"></script>
+  <script src="js/enemies/murcielago.js"></script>
+  <script src="js/enemies/cienpies.js"></script>
+  <script src="js/enemies/enemies_level3.js"></script>
+  <!-- Coordinador general -->
   <script src="js/enemies/enemies.js"></script>
-  <!-- SubMision — módulos en orden estricto de dependencia -->
+
+  <!-- SubMisión — const primero, coordinador último -->
   <script src="js/submision/submision_const.js"></script>
   <script src="js/submision/submision_map.js"></script>
   <script src="js/submision/submision_physics.js"></script>
   <script src="js/submision/submision_entities.js"></script>
   <script src="js/submision/submision_render.js"></script>
   <script src="js/submision/submision.js"></script>
-  <!-- Motor y UI -->
+
+  <!-- Motor y mecánicas -->
   <script src="js/giftbox.js"></script>
   <script src="js/magicdoor.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/Levelmap.js"></script>
+
+  <!-- Engine — input y render primero, coordinador último -->
+  <script src="js/engine/engine_input.js"></script>
+  <script src="js/engine/engine_render.js"></script>
+  <script src="js/engine/engine.js"></script>
+
+  <!-- UI y arranque -->
+  <script src="js/levelmap.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>

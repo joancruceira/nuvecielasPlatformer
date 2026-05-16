@@ -419,7 +419,9 @@ const SubRender = (() => {
     const p=S.pablo, cam=S.cam;
     if(p.state==='gone') return;
     const sx=p.x-cam.x, sy=p.y;
-    if(sx<-200||sx>2000) return;
+    // Usar ancho real del canvas para el check de visibilidad
+    const canvasW = ctx.canvas ? ctx.canvas.width : 1920;
+    if(sx < -p.w-100 || sx > canvasW+100) return;
 
     const pulse=0.55+Math.sin(p.glowPhase)*0.35;
     ctx.save();
@@ -518,7 +520,8 @@ const SubRender = (() => {
     if(S.pablo.state !== 'gone') return;
     const gem=S.gem, cam=S.cam;
     const sx=gem.x-cam.x, sy=gem.y;
-    if(sx<-100||sx>2000) return;
+    const canvasW = ctx.canvas ? ctx.canvas.width : 1920;
+    if(sx < -100 || sx > canvasW+100) return;
 
     const pulse=0.65+Math.sin(gem.glowPhase)*0.35;
     ctx.save();
@@ -587,7 +590,8 @@ const SubRender = (() => {
     const boss=S.boss, cam=S.cam;
     if(!boss.alive) return;
     const sx=boss.x-cam.x, sy=boss.y;
-    if(sx<-200||sx>2000) return;
+    const canvasW = ctx.canvas ? ctx.canvas.width : 1920;
+    if(sx<-200||sx>canvasW+200) return;
 
     const ikey=`enemigo_jefe_${boss.frameIdx}`;
     const dh=boss.h*1.6*(1+(boss.bossPhase-1)*0.08);

@@ -22,6 +22,12 @@ const UI = (() => {
 
   let selectedChar = null;
 
+  function _bindBtn(id, fn) {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', fn);
+    else console.warn(`UI: botón #${id} no encontrado`);
+  }
+
   function init() {
     elMenu    = document.getElementById('screenMenu');
     elChar    = document.getElementById('screenChar');
@@ -60,11 +66,11 @@ const UI = (() => {
 
     preloadImages();
 
-    document.getElementById('btnPlay').addEventListener('click', showChar);
-    document.getElementById('btnHow').addEventListener('click', showHow);
-    document.getElementById('btnHowBack').addEventListener('click', showMenu);
-    document.getElementById('btnCharBack').addEventListener('click', showMenu);
-    document.getElementById('btnCharStart').addEventListener('click', startGame);
+    _bindBtn('btnPlay',      showChar);
+    _bindBtn('btnHow',       showHow);
+    _bindBtn('btnHowBack',   showMenu);
+    _bindBtn('btnCharBack',  showMenu);
+    _bindBtn('btnCharStart', startGame);
 
     buildCharGrid();
 
@@ -102,6 +108,7 @@ const UI = (() => {
   function showChar() {
     hideAll();
     elChar.classList.add('active');
+    buildCharGrid();   // siempre regenerar — garantiza que Player esté listo
   }
 
   function showHow() {
@@ -260,19 +267,24 @@ const UI = (() => {
         ]
       );
     } else {
+      const currentLevel = Engine.getCurrentLevel();
       showOverlay('💀', 'Game Over',
-        `Llegaste hasta el nivel ${Engine.getCurrentLevel() + 1} con ${stars} estrellas ⭐`,
+        `Nivel ${currentLevel + 1} — ${stars} estrellas ⭐`,
         [
           {
-            label: '▶ Intentar de nuevo', primary: true,
+            label: '↩ Reintentar nivel', primary: true,
             onClick: () => {
               hideOverlay();
               showGame();
-              Engine.startGame(selectedChar || Player.getState().charId, 0);
+              Engine.startGame(selectedChar || Player.getState().charId, currentLevel);
               updateHUD();
             }
           },
-          { label: '🏠 Menú principal', primary: false, onClick: () => { hideOverlay(); showMenu(); } },
+          {
+            label: '🗺️ Ver mapa', primary: false,
+            onClick: () => { hideOverlay(); showMap(); }
+          },
+          { label: '🏠 Menú', primary: false, onClick: () => { hideOverlay(); showMenu(); } },
         ]
       );
     }
