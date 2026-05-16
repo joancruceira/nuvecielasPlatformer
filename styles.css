@@ -447,18 +447,14 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,.30);
 }
 
-/* ── Botón SALTO — el más importante, el más grande ──
-   Posicionado separado del grupo derecho para que el
-   pulgar llegue cómodo en pantallas pequeñas (Redmi 9) */
+/* ── Botón SALTO — el más grande, alineado al fondo del grupo derecho ── */
 .mc-jump {
-  width: 90px;
-  height: 90px;
+  width: 88px;
+  height: 88px;
   font-size: 30px;
   background: rgba(167,139,250,.42);
   border: 3px solid rgba(167,139,250,.75);
   box-shadow: 0 4px 20px rgba(167,139,250,.45), inset 0 1px 0 rgba(255,255,255,.28);
-  margin-bottom: 4px;
-  pointer-events: all;  /* fuera de mc-left/mc-right, necesita override explícito */
 }
 .mc-jump:active,
 .mc-jump.pressed {
