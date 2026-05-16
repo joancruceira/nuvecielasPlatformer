@@ -457,8 +457,8 @@ body {
   background: rgba(167,139,250,.42);
   border: 3px solid rgba(167,139,250,.75);
   box-shadow: 0 4px 20px rgba(167,139,250,.45), inset 0 1px 0 rgba(255,255,255,.28);
-  /* Levantarlo un poco para que no quede pegado al borde */
   margin-bottom: 4px;
+  pointer-events: all;  /* fuera de mc-left/mc-right, necesita override explícito */
 }
 .mc-jump:active,
 .mc-jump.pressed {
