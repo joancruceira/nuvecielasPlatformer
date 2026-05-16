@@ -206,6 +206,10 @@ const UI = (() => {
     });
     const startBtn = document.getElementById('btnCharStart');
     if (startBtn) startBtn.disabled = false;
+
+    // Mostrar nombre del personaje seleccionado en el botón
+    const ch = Player.getCharacters()[id];
+    if (startBtn && ch) startBtn.textContent = `▶ Jugar con ${ch.label}`;
   }
 
   // ──────────────────────────────────────────
@@ -222,7 +226,12 @@ const UI = (() => {
     }
     if (elHudStars)  elHudStars.textContent  = ps.stars;
     if (elHudLevel && levelData) elHudLevel.textContent = `Nivel ${levelData.id} — ${levelData.name}`;
-    if (elHudChar)   elHudChar.textContent   = Player.getChar()?.label || '';
+    if (elHudChar) {
+      // Mostrar el personaje seleccionado — puede no coincidir con Player.getChar()
+      // si el juego acaba de arrancar
+      const ch = Player.getChar();
+      elHudChar.textContent = ch?.label || '';
+    }
   }
 
   // ──────────────────────────────────────────

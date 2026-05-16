@@ -65,18 +65,27 @@
       <h2 class="char-title">Cómo jugar</h2>
       <div class="how-grid">
         <div class="how-item"><span class="how-key">← →</span><span>Moverse</span></div>
-        <div class="how-item"><span class="how-key">↑ / Z</span><span>Saltar</span></div>
-        <div class="how-item"><span class="how-key">↑↑</span><span>Doble salto</span></div>
-        <div class="how-item"><span class="how-key">↓ + →</span><span>Deslizarse</span></div>
-        <div class="how-item"><span class="how-key">Pisar</span><span>Mata enemigos</span></div>
+        <div class="how-item"><span class="how-key">↑ / Z / Espacio</span><span>Saltar</span></div>
+        <div class="how-item"><span class="how-key">↑ ↑</span><span>Doble salto</span></div>
+        <div class="how-item"><span class="how-key">↓ + ←→</span><span>Deslizarse</span></div>
+        <div class="how-item"><span class="how-key">Pisar enemigo</span><span>Lo derrota</span></div>
+        <div class="how-item"><span class="how-key">← ← o → →</span><span>Disparar</span></div>
         <div class="how-item"><span class="how-key">⭐</span><span>Colectá estrellas</span></div>
+        <div class="how-item"><span class="how-key">🌳 Árbol mágico</span><span>5 segundos de inmunidad</span></div>
       </div>
       <div class="how-chars">
         <h3>Habilidades especiales</h3>
-        <div class="how-ability"><strong>Nuveciela</strong> — ← ← lanza bola de fuego</div>
-        <div class="how-ability"><strong>Ciela</strong> — Deslizarse muy rápido</div>
-        <div class="how-ability"><strong>Lunaria</strong> — Mantener ↑ para flotar</div>
-        <div class="how-ability"><strong>Nuve</strong> — Golpe al aterrizar aturde enemigos</div>
+        <div class="how-ability"><strong>🌈 Nuveciela</strong> — Doble salto alto. ← ← lanza bola de fuego 🔥</div>
+        <div class="how-ability"><strong>💧 Ciela</strong> — Deslizamiento veloz. ← ← dispara hielo ❄️ que congela enemigos</div>
+        <div class="how-ability"><strong>✨ Lunaria</strong> — Mantener ↑ para flotar. ← ← dispara rayo ☀️ que quema</div>
+        <div class="how-ability"><strong>🔥 Nuve</strong> — ↑↑ volar. Golpe al aterrizar aturde enemigos. ← ← bolas de colores 🎨</div>
+      </div>
+      <div class="how-chars">
+        <h3>Los niveles</h3>
+        <div class="how-ability"><strong>🌿 Nivel 1 — Bosque Mágico</strong> — Caminadores y voladores</div>
+        <div class="how-ability"><strong>🏰 Nivel 2 — Castillo de Nuveciela</strong> — Fantasmas y serpientes</div>
+        <div class="how-ability"><strong>🌙 Nivel 3 — Sendero Nocturno</strong> — Orugas 🐛, arbustos ⚡, murciélagos 🦇 y el Boss Ciempiés</div>
+        <div class="how-ability"><strong>👤 Nivel 4 — Núcleo del Bosque</strong> — El jefe final te espera</div>
       </div>
       <button class="btn-main" id="btnHowBack">← Entendido</button>
     </div>
@@ -136,10 +145,10 @@
 
   <!-- Niveles — const primero, coordinador último -->
   <script src="js/levels_const.js"></script>
-  <script src="js/Level1.js"></script>
-  <script src="js/Level2.js"></script>
+  <script src="js/level1.js"></script>
+  <script src="js/level2.js"></script>
   <script src="js/level3.js"></script>
-  <script src="js/Level4.js"></script>
+  <script src="js/level4.js"></script>
   <script src="js/levels.js"></script>
 
   <!-- Asset loader — debe ir antes que renderer y enemies -->
@@ -190,7 +199,7 @@
   <script src="js/engine/engine.js"></script>
 
   <!-- UI y arranque -->
-  <script src="js/Levelmap.js"></script>
+  <script src="js/levelmap.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>
