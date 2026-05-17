@@ -15,7 +15,7 @@ const AudioManager = (() => {
   // ── Tracks por nivel ─────────────────────────────────
   // Agregá más tracks acá cuando tengas música para otros niveles
   const TRACKS = {
-    0: 'audio/CANCION_NUVE.mp3',   // Nivel 1 — Bosque Mágico
+    0: 'audio/cancion_nuve.mp3',   // Nivel 1 — Bosque Mágico
     // 1: 'audio/castillo.mp3',    // Nivel 2 (futuro)
     // 2: 'audio/sendero.mp3',     // Nivel 3 (futuro)
   };
