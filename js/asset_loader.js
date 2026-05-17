@@ -53,8 +53,9 @@ const AssetLoader = (() => {
       { key:'serpiente_walk2',src:'img/serpiente_walk2.png'},
       { key:'alien',          src:'img/alien.png'          },
       // Mecánicas nivel 1
-      { key:'giftbox',        src:'img/giftbox.png'        },
-      { key:'giftbox_open',   src:'img/giftbox_open.png'   },
+      { key:'caja_cerrada', src:'img/caja_cerrada.png' },
+      { key:'caja_abierta', src:'img/caja_abierta.png' },
+      { key:'gatito',       src:'img/gatito.png'       },
     ],
 
     // ── Nivel 1 — Castillo de Nuveciela ──────────────

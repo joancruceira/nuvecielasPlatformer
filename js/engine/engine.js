@@ -53,7 +53,7 @@ const Engine = (() => {
 
   const input = {
     left:false, right:false, down:false,
-    jumpPressed:false, jumpHeld:false,
+    jumpPressed: 0, jumpHeld: false,
   };
 
   // ── INIT ───────────────────────────────────────────────
@@ -196,8 +196,11 @@ const Engine = (() => {
     const ps = Player.getState();
     if (ps.dead && ps.lives <= 0) return;
 
-    // Jump antes del update para que la física lo aplique este frame
-    if (input.jumpPressed) { Player.tryJump(); input.jumpPressed = false; }
+    // Jump antes del update — usar contador para no perder taps rápidos
+    if (input.jumpPressed > 0) {
+      Player.tryJump();
+      input.jumpPressed--;
+    }
 
     Player.update(dt, input, map, _handlePlayerLand);
 

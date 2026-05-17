@@ -61,7 +61,7 @@ const EngineInput = (() => {
       if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') { _input.down  = true; }
       if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W' ||
           e.key === 'z'          || e.key === 'Z' || e.key === ' ') {
-        _input.jumpPressed = true;
+        _input.jumpPressed++;
         _input.jumpHeld    = true;
       }
     });
@@ -110,44 +110,32 @@ const EngineInput = (() => {
     bindBtn('mcRight', () => _input.right = true,  () => _input.right = false);
     bindBtn('mcDown',  () => _input.down  = true,  () => _input.down  = false);
 
-    // Botón salto con buffer anti-miss
+    // ── Botón salto ───────────────────────────────────────
+    // Cada pointerdown = un salto. Simple y confiable.
+    // El engine consume jumpPressed en el frame, lo resetea,
+    // y el siguiente toque del dedo genera otro jumpPressed.
     const jumpBtn = document.getElementById('mcJump');
     if (jumpBtn) {
       jumpBtn.addEventListener('pointerdown', ev => {
         ev.preventDefault();
         jumpBtn.setPointerCapture(ev.pointerId);
         jumpBtn.classList.add('pressed');
-        _input.jumpPressed = true;
+        // Cada toque es un salto — el engine decide si es primero o doble
+        _input.jumpPressed++;
         _input.jumpHeld    = true;
-        _jumpBuffer        = performance.now();
-        _jumpBufferUsed    = false;
       }, { passive: false });
+
       jumpBtn.addEventListener('pointerup', ev => {
         ev.preventDefault();
         jumpBtn.classList.remove('pressed');
         _input.jumpHeld = false;
       }, { passive: false });
+
       jumpBtn.addEventListener('pointercancel', () => {
         jumpBtn.classList.remove('pressed');
         _input.jumpHeld = false;
       });
     }
-
-    // Tick que re-aplica jumpPressed UNA SOLA VEZ si el engine
-    // ya lo consumió pero el toque fue hace menos de JUMP_BUFFER_MS
-    function _tickJumpBuffer() {
-      if (_jumpBuffer > 0 && !_jumpBufferUsed && !_input.jumpPressed) {
-        const age = performance.now() - _jumpBuffer;
-        if (age < JUMP_BUFFER_MS) {
-          _input.jumpPressed = true;
-          _jumpBufferUsed    = true;
-        } else {
-          _jumpBuffer = 0;
-        }
-      }
-      requestAnimationFrame(_tickJumpBuffer);
-    }
-    requestAnimationFrame(_tickJumpBuffer);
 
     // Botón de fuego — dispara según el personaje
     const fireBtn = document.getElementById('mcFire');
@@ -227,7 +215,8 @@ const EngineInput = (() => {
   function reset() {
     if (!_input) return;
     _input.left = _input.right = _input.down = false;
-    _input.jumpPressed = _input.jumpHeld = false;
+    _input.jumpPressed = 0;
+    _input.jumpHeld    = false;
   }
 
   return { setup, reset };
