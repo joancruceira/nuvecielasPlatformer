@@ -124,6 +124,9 @@ const Engine = (() => {
     // Precargar el siguiente nivel en background
     AssetLoader.preloadNext(levelIdx);
 
+    // Música de fondo del nivel
+    if (typeof AudioManager !== 'undefined') AudioManager.play(levelIdx);
+
     rafId = requestAnimationFrame(_loop);
   }
 
@@ -431,8 +434,17 @@ const Engine = (() => {
   }
 
   // ── PAUSA ──────────────────────────────────────────────
-  function pause()  { EngineState.paused = true;  onPause(true);  }
-  function resume() { EngineState.paused = false; onPause(false); lastTs = 0; }
+  function pause()  {
+    EngineState.paused = true;
+    onPause(true);
+    if (typeof AudioManager !== 'undefined') AudioManager.pause();
+  }
+  function resume() {
+    EngineState.paused = false;
+    onPause(false);
+    lastTs = 0;
+    if (typeof AudioManager !== 'undefined') AudioManager.resume();
+  }
   function isPaused()  { return EngineState.paused;   }
   function isRunning() { return EngineState.running;  }
 
