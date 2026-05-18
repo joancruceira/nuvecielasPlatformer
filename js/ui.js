@@ -72,6 +72,26 @@ const UI = (() => {
     _bindBtn('btnCharBack',  showMenu);
     _bindBtn('btnCharStart', startGame);
 
+    // Botón de audio — menú y juego
+    function _setupAudioBtn(id) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        if (typeof AudioManager === 'undefined') return;
+        // Primer click también desbloquea el audio en mobile
+        const muted = AudioManager.toggleMute();
+        // Actualizar ícono en todos los botones de audio
+        document.querySelectorAll('.audio-btn').forEach(b => {
+          b.textContent = muted ? '🔇' : '🔊';
+          b.classList.toggle('muted', muted);
+        });
+        // Si la música no arrancó todavía, arrancarla ahora
+        if (!muted) AudioManager.playMenu();
+      });
+    }
+    _setupAudioBtn('btnAudio');
+    _setupAudioBtn('btnAudioGame');
+
     buildCharGrid();
 
     showMenu();
