@@ -829,3 +829,37 @@ body {
   .map-detail-inner { gap: 10px; }
   .map-play-btn { font-size: 14px; padding: 10px 14px; min-width: 80px; }
 }
+
+/* ═══ BOTÓN DE AUDIO ═══ */
+.audio-btn {
+  position: absolute;
+  top: calc(var(--sat) + 12px);
+  right: calc(var(--sar) + 14px);
+  z-index: 100;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  border: 2px solid rgba(255,255,255,0.30);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .12s;
+  pointer-events: all;
+}
+.audio-btn:active { transform: scale(0.88); background: rgba(0,0,0,0.65); }
+.audio-btn.muted  { opacity: 0.55; }
+
+/* En el HUD del juego — posición relativa al hud-right */
+.audio-btn-hud {
+  position: relative;
+  top: auto; right: auto;
+  width: 36px; height: 36px;
+  font-size: 16px;
+  margin-left: 6px;
+}
