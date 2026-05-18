@@ -314,6 +314,7 @@ const Player = (() => {
 
   function collectStar() {
     state.stars += 1;
+    if (typeof AudioManager !== 'undefined') AudioManager.sfx('grab_star');
     Renderer.spawnParticles(state.x+state.w/2, state.y, '#f9c846', 16);
     Renderer.spawnText(state.x+state.w/2, state.y-10, '+⭐', '#f9c846');
   }
@@ -326,6 +327,7 @@ const Player = (() => {
 
   function activateImmunity(duration = 5.0) {
     state.immuneTimer=duration; state.invincible=true;
+    if (typeof AudioManager !== 'undefined') AudioManager.sfx('get_tree');
     Renderer.flash('rgba(74,222,128,.5)', 0.6);
     Renderer.spawnParticles(state.x+state.w/2, state.y, '#4ade80', 24);
     Renderer.spawnText(state.x+state.w/2, state.y-20, '🌳 ¡Inmune 5s!', '#4ade80');
@@ -392,6 +394,8 @@ const Player = (() => {
     });
 
     state.projectileCooldown = def.cooldown;
+    if (typeof AudioManager !== 'undefined' && def.kind === 'ray')
+      AudioManager.sfx('lunaria_shoot');
     Renderer.spawnParticles(cx, cy, def.particleColor || color, def.particleCount || 8);
   }
 

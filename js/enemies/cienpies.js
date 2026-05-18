@@ -136,10 +136,11 @@ const Cienpies = (() => {
   function hit(e) {
     if(!e.alive || e.state==='death') return;
     e.hp--;
+    if(typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
     Renderer.spawnParticles && Renderer.spawnParticles(e.x+e.w/2, e.y, '#84cc16', 8);
     if(e.hp <= 0) {
       e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;
-      // El event de boss derrotado lo dispara enemies.js
+      if(typeof AudioManager !== 'undefined') AudioManager.sfx('death_boss');
       window.dispatchEvent(new CustomEvent('bossDefeated'));
     } else {
       e.state='damage'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;

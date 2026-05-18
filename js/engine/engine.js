@@ -219,7 +219,10 @@ const Engine = (() => {
 
     MagicDoor.update(dt);
     MagicDoor.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
-    GiftBox.update(dt, ps, () => UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000));
+    GiftBox.update(dt, ps, () => {
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('giftbox_open');
+      UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);
+    });
 
     if (ps.dead && ps.lives <= 0) {
       EngineState.running = false;
@@ -298,6 +301,7 @@ const Engine = (() => {
       if (Math.abs(dx) < TS && Math.abs(dy) < TS*1.5) {
         cp.activated = true;
         Player.activateCheckpoint(cp.x, cp.y);
+        if(typeof AudioManager !== 'undefined') AudioManager.sfx('flag_point');
         UI.showCheckpointFlash();
       }
     }

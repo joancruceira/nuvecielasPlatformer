@@ -220,16 +220,19 @@ const Enemies = (() => {
     if (!e.alive) return;
     if (e.type==='boss'||e.type==='fantasma') {
       e.hp-=1; e.stunTimer=0.6;
+      if(typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
       Renderer.spawnParticles(e.x+e.w/2,e.y,'#ef4444',14);
       Renderer.spawnText(e.x+e.w/2,e.y-10,'-1','#ef4444');
       if (e.hp<=0) {
         e.alive=false;
+        if(typeof AudioManager !== 'undefined') AudioManager.sfx('death_boss');
         Renderer.spawnParticles(e.x+e.w/2,e.y+e.h/2,'#f9c846',32);
         Renderer.flash('#f9c846',0.6);
         window.dispatchEvent(new CustomEvent('bossDefeated'));
       }
     } else {
       e.alive=false;
+      if(typeof AudioManager !== 'undefined') AudioManager.sfx('death_enemy');
       Renderer.spawnParticles(e.x+e.w/2,e.y+e.h/2,'#f9c846',14);
       Renderer.spawnText(e.x+e.w/2,e.y,'+100','#f9c846');
     }

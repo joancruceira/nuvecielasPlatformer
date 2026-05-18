@@ -131,7 +131,7 @@ const Murcielago = (() => {
     if(!e.alive || e.state==='death') return;
     e.hp--;
     if(e.hp <= 0) {
-      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; e.vy=0;
+      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; if(typeof AudioManager!=='undefined') AudioManager.sfx('death_enemy'); e.vy=0;
     } else {
       e.state='damage'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;
       e.vx = -e.vx;
