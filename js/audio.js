@@ -56,10 +56,24 @@ const AudioManager = (() => {
   // ── Estado de música ──────────────────────────────────
   let _current     = null;
   let _currentKey  = null;
+  let _pendingKey  = null;   // track esperando interacción del usuario
+  let _unlocked    = false;  // el navegador ya permitió audio
   let _volume      = 0.50;
   let _sfxVolume   = 0.75;
   let _muted       = false;
   let _fadeTick    = null;
+
+  // Al primer toque/tecla, desbloquear y arrancar el track pendiente
+  function _onUnlock() {
+    _unlocked = true;
+    if (_pendingKey !== null) {
+      const key = _pendingKey;
+      _pendingKey = null;
+      _startTrack(key);
+    }
+  }
+  window.addEventListener('pointerdown', _onUnlock, { once: true });
+  window.addEventListener('keydown',     _onUnlock, { once: true });
 
   function _fadeOut(el, cb) {
     if (!el) { cb && cb(); return; }
@@ -79,20 +93,17 @@ const AudioManager = (() => {
     const src = TRACKS[key];
     if (!src) { _current = null; _currentKey = null; return; }
 
-    const audio      = new Audio(src);
-    audio.loop       = true;
-    audio.volume     = 0;
-    audio.preload    = 'auto';
+    // Si el navegador aún no desbloqueó el audio, encolar para después
+    if (!_unlocked) {
+      _pendingKey = key;
+      return;
+    }
 
-    audio.play().catch(() => {
-      const unlock = () => {
-        audio.play().catch(() => {});
-        window.removeEventListener('pointerdown', unlock);
-        window.removeEventListener('keydown',     unlock);
-      };
-      window.addEventListener('pointerdown', unlock, { once: true });
-      window.addEventListener('keydown',     unlock, { once: true });
-    });
+    const audio  = new Audio(src);
+    audio.loop   = true;
+    audio.volume = 0;
+    audio.preload = 'auto';
+    audio.play().catch(() => {});
 
     _current    = audio;
     _currentKey = key;
@@ -110,13 +121,15 @@ const AudioManager = (() => {
   // ── API pública ───────────────────────────────────────
 
   function playMenu() {
-    if (_currentKey === 'menu') return;
+    if (_currentKey === 'menu' && _current && !_current.paused) return;
+    if (!_unlocked) { _pendingKey = 'menu'; return; }
     _fadeOut(_current, () => _startTrack('menu'));
   }
 
   function play(levelIdx) {
     const key = levelIdx;
     if (_currentKey === key && _current && !_current.paused) return;
+    if (!_unlocked) { _pendingKey = key; return; }
     _fadeOut(_current, () => _startTrack(key));
   }
 
