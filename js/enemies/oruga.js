@@ -115,7 +115,7 @@ const Oruga = (() => {
     if(!e.alive || e.state==='death') return;
     e.hp--;
     if(e.hp <= 0) {
-      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;
+      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; if(typeof AudioManager!=='undefined') AudioManager.sfx('death_enemy');
     } else {
       e.state='damage'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;
       e.vx = -e.vx;  // rebote
@@ -134,7 +134,9 @@ const Oruga = (() => {
 
     ctx.save();
     ctx.translate(sx + e.w/2, sy + e.h/2);
-    if(e.facing === 1) ctx.scale(-1, 1);
+    // El sprite mira hacia la derecha por defecto
+    // facing = -1 (izquierda) → mirror, facing = 1 (derecha) → sin flip
+    if(e.facing === -1) ctx.scale(-1, 1);
 
     if(im) {
       ctx.drawImage(im, -e.w/2, -e.h/2, e.w, e.h);

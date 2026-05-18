@@ -128,7 +128,7 @@ const Arbusto = (() => {
     if(!e.alive || e.state==='death') return;
     e.hp--;
     if(e.hp <= 0) {
-      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; e.sparks=[];
+      e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; if(typeof AudioManager!=='undefined') AudioManager.sfx('death_enemy'); e.sparks=[];
     } else {
       _enterDamage(e);
     }

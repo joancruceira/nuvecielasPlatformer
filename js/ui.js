@@ -103,6 +103,7 @@ const UI = (() => {
     Engine.stop();
     hideAll();
     elMenu.classList.add('active');
+    if (typeof AudioManager !== 'undefined') AudioManager.playMenu();
   }
 
   function showChar() {
@@ -258,6 +259,10 @@ const UI = (() => {
   //  CALLBACKS DEL ENGINE
   // ──────────────────────────────────────────
   function onGameOver(stars, win = false) {
+    if (typeof AudioManager !== 'undefined') {
+      if (!win) AudioManager.sfx('game_over');
+      AudioManager.stop();
+    }
     if (win) {
       showOverlay('🎉', '¡Felicitaciones!',
         `Completaste el Bosque Mágico con ${stars} estrellas ⭐`,
