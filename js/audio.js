@@ -130,6 +130,11 @@ const AudioManager = (() => {
     const key = levelIdx;
     if (_currentKey === key && _current && !_current.paused) return;
     if (!_unlocked) { _pendingKey = key; return; }
+    // Si no hay track para este nivel, parar la música del menú
+    if (!(key in TRACKS)) {
+      if (_currentKey === 'menu') stop();
+      return;
+    }
     _fadeOut(_current, () => _startTrack(key));
   }
 
