@@ -5,6 +5,47 @@
 
 const RendererTiles = (() => {
 
+  // ── Sprites nivel 2 ──────────────────────────────────
+  const L2 = {};
+  [
+    ['piso0',               'level2/piso0.png'],
+    ['piso1',               'level2/piso1.png'],
+    ['piso_banderin',       'level2/piso_banderin.png'],
+    ['piso_ventanas',       'level2/piso_ventanas.png'],
+    ['pinches0',            'level2/pinches0.png'],
+    ['pinches_corto',       'level2/pinches_corto.png'],
+    ['pinches_largo',       'level2/pinches_largo.png'],
+    ['pinches_techo_corto', 'level2/pinches_techo_corto.png'],
+    ['pinches_techo_largo', 'level2/pinches_techo_largo.png'],
+  ].forEach(([key, src]) => {
+    const img = new Image();
+    img.src = `img/${src}`;
+    L2[key] = img;
+  });
+
+  function _l2img(key) {
+    const i = L2[key];
+    return (i && i.complete && i.naturalWidth > 0) ? i : null;
+  }
+
+  // Elige el sprite de piso según la columna para variedad
+  function _pisoSprite(c) {
+    if (c % 12 === 0) return _l2img('piso_banderin');
+    if (c % 7  === 0) return _l2img('piso_ventanas');
+    return c % 2 === 0 ? _l2img('piso0') : _l2img('piso1');
+  }
+
+  // Elige el sprite de pinches según cuántos tiles hay en la fila
+  function _pinchesSprite(col) {
+    if (col % 5 === 0) return _l2img('pinches_largo');
+    return _l2img('pinches_corto') || _l2img('pinches0');
+  }
+
+  function _pinchesSpriteTecho(col) {
+    if (col % 5 === 0) return _l2img('pinches_techo_largo');
+    return _l2img('pinches_techo_corto');
+  }
+
   function getTilePalette(level) {
     return {
       groundTop:  level.groundCol,
@@ -34,14 +75,33 @@ const RendererTiles = (() => {
         if (tile === TILE.AIR) continue;
         const x = Math.floor(c * TILE_SIZE - camX);
         const y = Math.floor(r * TILE_SIZE - camY);
-        _drawTile(tile, x, y, TILE_SIZE, pal, level);
+        _drawTile(tile, x, y, TILE_SIZE, pal, level, c, r);
       }
     }
   }
 
-  function _drawTile(tile, x, y, T, pal, level) {
+  function _drawTile(tile, x, y, T, pal, level, col, row) {
     const { ctx } = R;
     ctx.save();
+
+    // ── Nivel 2: usar sprites cuando están disponibles ──
+    if (level.castleNC) {
+      if (tile === TILE.GROUND) {
+        const img = _pisoSprite(col);
+        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+      }
+      if (tile === TILE.BLOCK) {
+        const img = _l2img('piso1') || _l2img('piso0');
+        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+      }
+      if (tile === TILE.SPIKES) {
+        // Fila < 6 = pinchos de techo (apuntan hacia abajo)
+        const isCeiling = row < 6;
+        const img = isCeiling ? _pinchesSpriteTecho(col) : _pinchesSprite(col);
+        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+      }
+    }
+
     switch (tile) {
 
       case TILE.GROUND: {

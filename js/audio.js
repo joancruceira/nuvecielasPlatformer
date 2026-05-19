@@ -8,6 +8,7 @@ const AudioManager = (() => {
   const TRACKS = {
     menu: 'audio/nuvecielas_portada.mp3',
     0:    'audio/CANCION_NUVE.mp3',
+    1:    'audio/castillo_nuveciela.mp3',
     2:    'audio/sendero_nocturno.mp3',
   };
 
