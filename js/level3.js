@@ -117,7 +117,9 @@ const Level3 = {
 
     // ══ ESPECIALES ══
     // Cueva a mitad del nivel
-    map[10][120] = TILE.MAGIC_DOOR;
+    // Cueva — col 128, fila 12 (aire sobre suelo firme de zona 3)
+    // spawnFromMap usará y = groundRow*TS - H_DOOR para ponerla al ras
+    map[12][128] = TILE.MAGIC_DOOR;
 
     // Checkpoints
     map[12][62]  = TILE.CHECKPOINT;   // fin zona 1

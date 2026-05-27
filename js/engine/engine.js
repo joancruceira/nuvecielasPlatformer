@@ -137,7 +137,13 @@ const Engine = (() => {
     Enemies.spawnFromMap(map, idx);
     Renderer.resetCastle();
     GiftBox.init();  GiftBox.spawnFromMap(map);  GiftBox.preload();
-    MagicDoor.init(); MagicDoor.spawnFromMap(map); MagicDoor.preload();
+    // Nivel 2: puerta mágica (Pablo) — Nivel 3: cueva (SuperNatan)
+    if (idx === 1 && typeof MagicDoor !== 'undefined') {
+      MagicDoor.init(); MagicDoor.spawnFromMap(map); MagicDoor.preload();
+    }
+    if (idx === 2 && typeof Cueva !== 'undefined') {
+      Cueva.init(); Cueva.spawnFromMap(map, TS); Cueva.preload();
+    }
     _extractCollectibles();
     _extractSpecials();
     cam.x = 0; cam.y = 0; cam.targetX = 0; cam.targetY = 0;
@@ -185,7 +191,8 @@ const Engine = (() => {
     lastTs = timestamp;
     const dt = Math.min(rawDt, 0.05);
 
-    if (!SubMision.isActive() && !EngineState.paused) _update(dt);
+    const natanActive = typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive();
+    if (!SubMision.isActive() && !natanActive && !EngineState.paused) _update(dt);
 
     EngineRender.frame(timestamp, dt, { map, levelData, cam, collectibles, checkpoints, portals, magicTrees });
     rafId = requestAnimationFrame(_loop);
@@ -217,8 +224,14 @@ const Engine = (() => {
     _checkMagicTrees(ps);
     _checkPlayerProjectiles();
 
-    MagicDoor.update(dt);
-    MagicDoor.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
+    if (currentLevelIdx === 1 && typeof MagicDoor !== 'undefined') {
+      MagicDoor.update(dt);
+      MagicDoor.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
+    }
+    if (currentLevelIdx === 2 && typeof Cueva !== 'undefined') {
+      Cueva.update(dt);
+      Cueva.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
+    }
     GiftBox.update(dt, ps, () => {
       if (typeof AudioManager !== 'undefined') AudioManager.sfx('giftbox_open');
       UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);
@@ -385,26 +398,37 @@ const Engine = (() => {
            py+pr > e.y && py-pr < e.y+e.h;
   }
 
-  // ── ENTRADA SUBNIVEL ───────────────────────────────────
   function _checkSubMisionEntry(ps) {
-    // No entrar si el jugador acaba de recibir daño (invincible)
-    // o si está siendo lanzado por knockback
     if (!input.down) return;
     if (ps.invincible) return;
-    if (Math.abs(ps.vx) > 200 || ps.vy < -100) return; // está en knockback
+    if (Math.abs(ps.vx) > 200 || ps.vy < -100) return;
 
-    const DOOR_W = TS*2, DOOR_H = TS*2.5;
+    // Nivel 2 — Puerta mágica → submisión Pablo
+    if (currentLevelIdx === 1 && typeof MagicDoor !== 'undefined') {
+      const DOOR_W = TS*2, DOOR_H = TS*2.5;
+      for (const door of MagicDoor.getDoors()) {
+        if (!door.opened) continue;
+        const dx = Math.abs(ps.x+ps.w/2 - (door.x+DOOR_W/2));
+        const dy = Math.abs(ps.y+ps.h/2 - (door.y+DOOR_H/2));
+        if (dx < 60 && dy < 80 && ps.grounded) {
+          _launchSubMision(ps);
+          input.down = false;
+          return;
+        }
+      }
+    }
 
-    for (const door of MagicDoor.getDoors()) {
-      if (!door.opened) continue;
-      const dx = Math.abs(ps.x+ps.w/2 - (door.x+DOOR_W/2));
-      const dy = Math.abs(ps.y+ps.h/2 - (door.y+DOOR_H/2));
-      // Zona de detección ajustada — el jugador tiene que estar
-      // deliberadamente parado frente a la puerta
-      if (dx < 60 && dy < 80 && ps.grounded) {
-        _launchSubMision(ps);
-        input.down = false;
-        return;
+    // Nivel 3 — Cueva → submisión SuperNatan
+    if (currentLevelIdx === 2 && typeof Cueva !== 'undefined') {
+      for (const door of Cueva.getDoors()) {
+        if (!door.opened) continue;
+        const dx = Math.abs(ps.x+ps.w/2 - (door.x+48));
+        const dy = Math.abs(ps.y+ps.h/2 - (door.y+64));
+        if (dx < 70 && dy < 90 && ps.grounded) {
+          _launchSubMisionNatan(ps);
+          input.down = false;
+          return;
+        }
       }
     }
   }
@@ -424,6 +448,22 @@ const Engine = (() => {
         UI.showAbilityBadge('✨ ¡De vuelta en Manolandia! ❤️❤️❤️❤️❤️', 3000);
       },
     });
+  }
+
+  function _launchSubMisionNatan(ps) {
+    if (typeof SubMisionNatan === 'undefined') return;
+    // NO detener EngineState.running — el loop sigue para que
+    // EngineRender.frame() pueda delegar a SubMisionNatan.update()
+    SubMisionNatan.start(
+      { camX: cam.x, camY: cam.y, levelIdx: currentLevelIdx },
+      {
+        onReturn: () => {
+          lastTs = 0;
+          Player.activateImmunity(3.0);
+          UI.showAbilityBadge('🦸 ¡SuperNatan pasó por acá!', 3000);
+        },
+      }
+    );
   }
 
   // ── ÁRBOL MÁGICO ───────────────────────────────────────
