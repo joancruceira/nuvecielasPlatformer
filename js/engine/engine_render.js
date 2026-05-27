@@ -32,6 +32,13 @@ const EngineRender = (() => {
       return;
     }
 
+    // ── Sub-misión Natan activa ──────────────────────────
+    if (typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive()) {
+      const { W, H } = Renderer.getSize();
+      SubMisionNatan.update(dt, Renderer.getCtx(), W, H);
+      return;
+    }
+
     // ── Fondo ───────────────────────────────────────────
     Renderer.drawBackground(levelData, cam.x, cam.y, timestamp);
     GiftBox.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
@@ -58,6 +65,7 @@ const EngineRender = (() => {
     // ── Mecánicas de nivel (caja sorpresa, puerta mágica) ─
     GiftBox.draw(ctx, cam.x, cam.y, timestamp);
     MagicDoor.draw(ctx, cam.x, cam.y, timestamp);
+    if (typeof Cueva !== 'undefined') Cueva.draw(ctx, cam.x, cam.y, timestamp);
 
     // ── Enemigos ─────────────────────────────────────────
     Enemies.drawAll(ctx, cam.x, cam.y, timestamp);
