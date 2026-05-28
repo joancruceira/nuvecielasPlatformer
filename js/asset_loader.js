@@ -76,11 +76,6 @@ const AssetLoader = (() => {
 
     // ── Nivel 2 — Sendero Nocturno ───────────────────
     2: [
-      { key:'back_sendero01', src:'img/back_sendero01.png' },
-      { key:'back_sendero02', src:'img/back_sendero02.png' },
-      { key:'back_sendero03', src:'img/back_sendero03.png' },
-      { key:'cueva_cerrada',  src:'img/cueva_cerrada.png'  },
-      { key:'cueva_abierta',  src:'img/cueva_abierta.png'  },
       // Enemigos nivel 3 — nombres reales: walk0.png, walk01.png, walk02.png...
       ...['0','01','02','03'].map(s=>({key:`oruga_walk${s}`,    src:`img/level3/oruga_walk${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`oruga_attack${s}`,  src:`img/level3/oruga_attack${s}.png`})),
