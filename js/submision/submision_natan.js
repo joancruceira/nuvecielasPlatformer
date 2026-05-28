@@ -10,7 +10,7 @@ const SubMisionNatan = (() => {
   let W=800, H=600, camX=0, groundY=0, time=0;
   let phase=C.PHASE.TRANSITION, transitionTimer=0;
   let score=0, flying=false, jumpCount=0, lastJumpTs=0;
-  let finalTimer=0, hitstop=0;
+  let finalTimer=0, hitstop=0, skyAlpha=0;
   let _hudEl=null;
 
   // Disparo: solo doble-tap de dirección o botón 🔥 en móvil
@@ -44,7 +44,7 @@ const SubMisionNatan = (() => {
     camX=0; time=0; transitionTimer=0;
     phase=C.PHASE.TRANSITION; score=0;
     flying=false; jumpCount=0; lastJumpTs=0;
-    finalTimer=0; hitstop=0; message=null;
+    finalTimer=0; hitstop=0; skyAlpha=0; message=null;
     rays.length=enemies.length=particles.length=0;
     spawned.clear();
 
@@ -143,6 +143,14 @@ const SubMisionNatan = (() => {
     }
     _updateNatan(dt);
     _updatePhase();
+    // skyAlpha: solo en fase VUELO, sube con la altura de Natan (0 en groundY, 1 en top)
+    if(phase===C.PHASE.VUELO){
+      const heightPct = 1 - (N.y / groundY); // 0 en suelo, 1 arriba del todo
+      skyAlpha = Math.min(1, skyAlpha + dt * 0.8); // sube gradual (~1.25s para llegar a 1)
+      skyAlpha = Math.max(skyAlpha, Math.min(1, heightPct * 1.5)); // también responde a altura
+    } else {
+      skyAlpha = 0;
+    }
     _spawnByProgress();
     _updateToys();
     _updateRays(dt);
@@ -437,7 +445,7 @@ const SubMisionNatan = (() => {
 
   // ── Draw ──────────────────────────────────────────────
   function _draw(ctx){
-    R.draw(ctx,{W,H,camX,groundY,time,phase,flying,score,
+    R.draw(ctx,{W,H,camX,groundY,time,phase,flying,score,skyAlpha,
       transitionT:transitionTimer/C.WORLD.transitionDuration,
       natan:N,rays,enemies,particles,message,finalTimer,toys});
   }

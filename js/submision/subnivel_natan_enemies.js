@@ -29,7 +29,10 @@ const SNEnemies = (() => {
       drawFn(ctx,e);
     } else {
       ctx.translate(sx+e.w/2, sy+e.h/2);
-      if(e.facing===-1) ctx.scale(-1,1);
+      // flipRight=true → sprite base mira izquierda, flip cuando facing=1
+      // (default) → sprite base mira derecha, flip cuando facing=-1
+      const shouldFlip = e.flipRight ? e.facing===1 : e.facing===-1;
+      if(shouldFlip) ctx.scale(-1,1);
       drawFn(ctx,e);
       if(e.state==='hurt'||e.state==='hit'){
         ctx.globalCompositeOperation='source-atop';
@@ -59,7 +62,7 @@ const SNEnemies = (() => {
       return {type:'heli_bajo',x,y,w:95,h:60,vx:-100,vy:0,facing:-1,
         hp:2,maxHp:2,alive:true,state:'fly',fi:0,ft:0,st:0,
         baseY:y,sinePhase:Math.random()*Math.PI*2,attackCooldown:2.0,score:180,
-        zone:'tierra'};
+        zone:'tierra',flipRight:true};
     }
     function update(e,dt,natan){
       if(!e.alive&&e.state!=='death')return;
@@ -122,7 +125,8 @@ const SNEnemies = (() => {
     function spawn(x,y){
       return {type:'helicoptero',x,y,w:110,h:70,vx:-90,vy:0,facing:-1,
         hp:4,maxHp:4,alive:true,state:'fly',fi:0,ft:0,st:0,
-        baseY:y,sinePhase:Math.random()*Math.PI*2,attackCooldown:3.0,searchTimer:0,score:300};
+        baseY:y,sinePhase:Math.random()*Math.PI*2,attackCooldown:3.0,searchTimer:0,score:300,
+        flipRight:true};
     }
     function update(e,dt,natan){
       if(!e.alive&&e.state!=='death')return;

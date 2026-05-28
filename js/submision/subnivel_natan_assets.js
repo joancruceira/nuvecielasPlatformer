@@ -20,6 +20,8 @@ const SubNivelNatanAssets = (() => {
     });
     // Fondo cielo
     _load('bg_cielo', C.ASSET_BASE + C.BACKGROUNDS.cielo);
+    // Veterinaria
+    _load('veterinaria', C.ASSET_BASE + 'veterinaria.png');
 
     const base = C.ASSET_BASE;
 

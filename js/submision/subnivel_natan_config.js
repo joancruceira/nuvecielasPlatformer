@@ -6,7 +6,9 @@ const SubNivelNatanConfig = (() => {
 
   const ASSET_BASE = 'img/level3/subnivel/';
 
-  const BG_WIDTHS  = [1685, 1672, 1721, 1706, 1621, 809, 810, 1673];
+  // Anchos DIBUJADOS reales a H=768 (img.naturalWidth * 768/img.naturalHeight)
+  // Necesario porque algunas imágenes tienen altura distinta y se escalan diferente
+  const BG_WIDTHS  = [1387, 1365, 1446, 1421, 2583, 1286, 1288, 1367];
   const BG_TOTAL_W = BG_WIDTHS.reduce((a,b)=>a+b, 0); // 11697
 
   const WORLD = {
@@ -25,7 +27,7 @@ const SubNivelNatanConfig = (() => {
   };
 
   const PLAYER = {
-    name:'SUPER NATAN', w:72, h:80,
+    name:'SUPER NATAN', w:94, h:104,
     startX:150, hp:5,
     speedX:230, flySpeedY:200,
     gravity:900, jumpVy:-480, maxFall:720,

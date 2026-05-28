@@ -63,61 +63,51 @@ const SubNivelNatanRenderer = (() => {
   function _drawBackgrounds(ctx, v) {
     const { W, H, camX, phase } = v;
 
-    if (phase === C.PHASE.VUELO || phase === C.PHASE.FINAL) {
+    if (phase === C.PHASE.FINAL) {
       _drawSky(ctx, v); return;
     }
 
-    // Cielo de fondo
-    ctx.fillStyle = '#87ceeb';
+    if (phase === C.PHASE.VUELO) {
+      // Transición gradual: skyAlpha va de 0→1 mientras Natan sube
+      const alpha = v.skyAlpha != null ? v.skyAlpha : 1;
+      if (alpha >= 1) { _drawSky(ctx, v); return; }
+      // Dibuja tierra debajo, cielo encima con alpha
+      _drawTierraSegments(ctx, v);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      _drawSky(ctx, v);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      return;
+    }
+
+    // Fase tierra: fondo normal
+    _drawTierraSegments(ctx, v);
+  }
+
+  function _drawTierraSegments(ctx, v) {
+    const { W, H, camX } = v;
+
+    // Color de fondo: tomamos el color del cielo de la última imagen para que no haya corte
+    ctx.fillStyle = '#3b6e9e';
     ctx.fillRect(0, 0, W, H);
 
-    // BUG 6 FIX: fade de 80px en los bordes para suavizar costuras entre segmentos
-    const FADE = 80;
-
+    // Posicionamos cada segmento acumulando el ancho REAL dibujado (escala por altura),
+    // no BG_WIDTHS (que son anchos de imagen sin escalar). Así no hay gaps.
+    let worldCursor = 0;
     C.BACKGROUND_SEGMENTS.forEach(seg => {
       const img = A.get(`bg_tierra_${seg.index}`);
-      if (!img) return;
-
-      const screenX = seg.worldX - camX;
-      if (screenX > W + FADE || screenX + seg.w < -FADE) return;
+      if (!img || !img.naturalHeight) return;
 
       const scale = H / img.naturalHeight;
-      const drawW = img.naturalWidth  * scale;
-      const drawH = H;
+      const drawW = img.naturalWidth * scale;
 
-      // Dibujar imagen normal
-      ctx.save();
-      ctx.drawImage(img, screenX, 0, drawW, drawH);
+      const screenX = worldCursor - camX;
+      worldCursor += drawW;
 
-      // Fade izquierdo (excepto el primer segmento)
-      if (seg.index > 0 && screenX > -FADE && screenX < FADE) {
-        const fadeW = Math.min(FADE, screenX + FADE);
-        if (fadeW > 0) {
-          const grd = ctx.createLinearGradient(screenX, 0, screenX + fadeW, 0);
-          grd.addColorStop(0, 'rgba(135,206,235,1)');
-          grd.addColorStop(1, 'rgba(135,206,235,0)');
-          ctx.fillStyle = grd;
-          ctx.fillRect(screenX, 0, fadeW, H);
-        }
-      }
+      if (screenX > W + 10 || screenX + drawW < -10) return;
 
-      // Fade derecho (excepto el último segmento)
-      if (seg.index < C.BACKGROUND_SEGMENTS.length - 1) {
-        const rightEdge = screenX + drawW;
-        if (rightEdge > W - FADE && rightEdge < W + FADE) {
-          const fadeStart = Math.max(0, rightEdge - FADE);
-          const fadeW2 = rightEdge - fadeStart;
-          if (fadeW2 > 0) {
-            const grd2 = ctx.createLinearGradient(fadeStart, 0, rightEdge, 0);
-            grd2.addColorStop(0, 'rgba(135,206,235,0)');
-            grd2.addColorStop(1, 'rgba(135,206,235,1)');
-            ctx.fillStyle = grd2;
-            ctx.fillRect(fadeStart, 0, fadeW2, H);
-          }
-        }
-      }
-
-      ctx.restore();
+      ctx.drawImage(img, screenX, 0, drawW, H);
     });
   }
 
@@ -294,52 +284,73 @@ const SubNivelNatanRenderer = (() => {
 
   // ── VETERINARIA ───────────────────────────────────────
   function _drawVeterinaria(ctx, v) {
-    const { camX, groundY, natan, time, H, phase } = v;
+    const { camX, groundY, natan, time, H, W, phase } = v;
     const vetScreenX = C.WORLD.vetX - camX;
-    if (vetScreenX > v.W + 20 || vetScreenX + 300 < -20) return;
+    if (vetScreenX > W + 20 || vetScreenX + 340 < -20) return;
 
     const surfaceY = groundY + natan.h;
+    const vw = 320, vh = 300;
     const x = vetScreenX;
-    const vw = 300, vh = 260;
     const vy = surfaceY - vh;
 
+    // Imagen PNG de la veterinaria
+    const img = A.get('veterinaria');
     ctx.save();
-    // Fachada
-    ctx.fillStyle = '#f8fafc';
-    _roundRect(ctx, x, vy, vw, vh, 6, true, false);
-    ctx.strokeStyle = '#334155'; ctx.lineWidth = 3;
-    _roundRect(ctx, x, vy, vw, vh, 6, false, true);
-    // Tejado
-    ctx.fillStyle = '#b45309';
-    ctx.beginPath();
-    ctx.moveTo(x - 15, vy); ctx.lineTo(x + vw/2, vy - 55); ctx.lineTo(x + vw + 15, vy);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
-    // Puerta
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(x + 115, vy + vh - 90, 70, 90);
-    ctx.strokeStyle = '#0369a1'; ctx.lineWidth = 2;
-    ctx.strokeRect(x + 115, vy + vh - 90, 70, 90);
-    // Ventanas
-    [[30, 40],[200, 40]].forEach(([wx, wy]) => {
-      ctx.fillStyle = '#bae6fd';
-      ctx.fillRect(x + wx, vy + wy, 55, 50);
-      ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
-      ctx.strokeRect(x + wx, vy + wy, 55, 50);
-    });
-    // Cartel
-    ctx.fillStyle = '#ef4444';
-    _roundRect(ctx, x + 15, vy - 10, vw - 30, 28, 4, true, false);
-    ctx.font = 'bold 16px Fredoka,system-ui';
-    ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
-    ctx.fillText('🐾 VETERINARIA NATA 🐾', x + vw / 2, vy + 12);
-    // Cleopatra en ventana
-    if (v.natan.x > C.WORLD.vetX - 800) {
+    if (img) {
+      // Fondo negro → transparent: la imagen tiene fondo negro, hacemos destination-out
+      // Simplemente la dibujamos — tiene fondo negro, usamos globalCompositeOperation
+      ctx.drawImage(img, x, vy, vw, vh);
+    } else {
+      // Fallback si aún no cargó
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(x, vy, vw, vh);
+      ctx.font = 'bold 16px system-ui';
+      ctx.fillStyle = '#334155';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐾 VETERINARIA', x + vw/2, vy + vh/2);
+    }
+
+    // Cleopatra asomándose cuando Natan se acerca
+    if (natan.x > C.WORLD.vetX - 800) {
       const bob = Math.sin(time * 5) * 4;
-      ctx.font = '28px serif';
-      ctx.fillText('🐱', x + 57, vy + 72 + bob);
+      ctx.font = '32px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐱', x + vw * 0.5, vy + vh * 0.38 + bob);
     }
     ctx.restore();
+
+    // ── FLECHA "sube aquí" al final de fase tierra ─────
+    if (phase === C.PHASE.TIERRA) {
+      const arrowX = vetScreenX - 80;
+      if (arrowX > -60 && arrowX < W + 60) {
+        const bob = Math.sin(time * 4) * 10;
+        const alpha = 0.6 + Math.sin(time * 4) * 0.4;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 3;
+        // Flecha hacia arriba
+        const ax = arrowX, ay = surfaceY - 80 + bob;
+        ctx.beginPath();
+        ctx.moveTo(ax,      ay);
+        ctx.lineTo(ax - 22, ay + 36);
+        ctx.lineTo(ax - 10, ay + 36);
+        ctx.lineTo(ax - 10, ay + 68);
+        ctx.lineTo(ax + 10, ay + 68);
+        ctx.lineTo(ax + 10, ay + 36);
+        ctx.lineTo(ax + 22, ay + 36);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Texto
+        ctx.globalAlpha = alpha;
+        ctx.font = 'bold 13px Fredoka,system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('¡Sube!', ax, ay + 86);
+        ctx.restore();
+      }
+    }
   }
 
   // ── ENEMIGOS ──────────────────────────────────────────
