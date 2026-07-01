@@ -121,6 +121,52 @@ const RendererTiles = (() => {
         break;
       }
 
+      case TILE.ICE: {
+        const grad = ctx.createLinearGradient(x, y, x, y + T);
+        grad.addColorStop(0, '#7dd3fc');
+        grad.addColorStop(0.7, '#38bdf8');
+        grad.addColorStop(1, '#0284c7');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, T, T);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillRect(x + 2, y + 2, T - 4, 3);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(x + 8, y + 6);
+        ctx.lineTo(x + T - 8, y + T - 8);
+        ctx.stroke();
+        break;
+      }
+
+      case TILE.ICE_SPIKES: {
+        ctx.fillStyle = '#bae6fd';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        const n = 3, sw = T / n;
+        for (let i = 0; i < n; i++) {
+          ctx.beginPath();
+          ctx.moveTo(x + i * sw, y + T);
+          ctx.lineTo(x + i * sw + sw / 2, y + T * 0.20);
+          ctx.lineTo(x + i * sw + sw, y + T);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        for (let i = 0; i < n; i++) {
+          ctx.beginPath();
+          ctx.moveTo(x + i * sw + sw / 2 - 2, y + T);
+          ctx.lineTo(x + i * sw + sw / 2, y + T * 0.4);
+          ctx.lineTo(x + i * sw + sw / 2 + 2, y + T);
+          ctx.closePath();
+          ctx.fill();
+        }
+        break;
+      }
+
       case TILE.PLATFORM: {
         const grad = ctx.createLinearGradient(x, y, x, y+14);
         grad.addColorStop(0, pal.platform); grad.addColorStop(1, 'transparent');

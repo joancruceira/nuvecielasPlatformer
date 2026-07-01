@@ -45,6 +45,7 @@ const Oruga = (() => {
       frameTick: 0,
       stateTimer: 0,
       attackCooldown: 0,
+      rageTimer: 0,
       patrolLeft, patrolRight,
       onGround: false,
       vy: 0,
@@ -61,6 +62,7 @@ const Oruga = (() => {
       return;
     }
 
+    if (e.rageTimer > 0) e.rageTimer -= dt;
     e.attackCooldown = Math.max(0, e.attackCooldown - dt);
     e.stateTimer    += dt;
 
@@ -71,14 +73,22 @@ const Oruga = (() => {
 
       case 'walk':
         // Patrulla o persigue
+        let isChasing = false;
         if(dist < AGGRO_RANGE) {
           e.vx = dx > 0 ? SPEED : -SPEED;
           e.facing = dx > 0 ? 1 : -1;
+          isChasing = true;
+          // Salta si el jugador está arriba
+          if (ps.y < e.y - 40 && e.onGround && Math.random() < 0.035) {
+            e.vy = -380;
+            e.onGround = false;
+          }
         } else {
           if(e.x <= e.patrolLeft)  { e.vx =  SPEED; e.facing =  1; }
           if(e.x >= e.patrolRight) { e.vx = -SPEED; e.facing = -1; }
         }
-        e.x += e.vx * dt;
+        const spdMult = (e.rageTimer > 0) ? 1.4 : 1.0;
+        e.x += e.vx * spdMult * dt;
         e.x  = Math.max(e.patrolLeft, Math.min(e.patrolRight, e.x));
 
         // Atacar si está cerca y el cooldown expiró
@@ -88,7 +98,8 @@ const Oruga = (() => {
 
       case 'attack':
         // Durante el ataque, avanza rápido hacia el jugador
-        e.x += (dx > 0 ? 1 : -1) * SPEED * 2.2 * dt;
+        const atkMult = (e.rageTimer > 0) ? 2.8 : 2.2;
+        e.x += (dx > 0 ? 1 : -1) * SPEED * atkMult * dt;
         if(e.stateTimer > 0.55) { e.state='walk'; e.stateTimer=0; e.attackCooldown=ATTACK_COOLDOWN; }
         _animCycle(e, dt, 4, 0.12);
         break;
@@ -118,7 +129,11 @@ const Oruga = (() => {
       e.state='death'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0; if(typeof AudioManager!=='undefined') AudioManager.sfx('death_enemy');
     } else {
       e.state='damage'; e.stateTimer=0; e.frameIdx=0; e.frameTick=0;
+      e.rageTimer = 2.5;
       e.vx = -e.vx;  // rebote
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
+      Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ef4444', 8);
+      Renderer.spawnText(e.x + e.w/2, e.y - 10, '🐛 😡', '#ef4444');
     }
   }
 
@@ -138,11 +153,12 @@ const Oruga = (() => {
     // facing = -1 (izquierda) → mirror, facing = 1 (derecha) → sin flip
     if(e.facing === -1) ctx.scale(-1, 1);
 
+    const isRaging = e.rageTimer > 0;
     if(im) {
       ctx.drawImage(im, -e.w/2, -e.h/2, e.w, e.h);
     } else {
       // Fallback
-      ctx.fillStyle = e.state==='damage'?'#fff':e.state==='death'?'#888':'#9333ea';
+      ctx.fillStyle = e.state==='damage'?'#fff':e.state==='death'?'#888':(isRaging?'#ef4444':'#9333ea');
       ctx.beginPath(); ctx.ellipse(0, 0, e.w/2, e.h/2, 0, 0, Math.PI*2); ctx.fill();
     }
 
@@ -150,6 +166,10 @@ const Oruga = (() => {
     if(e.state === 'damage') {
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+    } else if(isRaging) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(239,68,68,0.35)';
       ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
     }
 
@@ -162,7 +182,7 @@ const Oruga = (() => {
   function _drawHpBar(ctx, sx, sy, e) {
     const bw=e.w, bh=5, bx=sx, by=sy-8;
     ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx,by,bw,bh);
-    ctx.fillStyle='#4ade80'; ctx.fillRect(bx,by,bw*(e.hp/e.maxHp),bh);
+    ctx.fillStyle=e.rageTimer > 0 ? '#ef4444' : '#4ade80'; ctx.fillRect(bx,by,bw*(e.hp/e.maxHp),bh);
   }
 
   return { preload, spawn, update, hit, draw, isBoss, H };

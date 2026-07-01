@@ -51,8 +51,18 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  transition: opacity .4s ease;
 }
-.screen.active { display: flex; }
+.screen.active {
+  display: flex;
+  animation: screenFadeIn .45s ease forwards;
+}
+
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
 
 /* ═══ MENÚ — FLYER COMO FONDO ═══ */
 .menu-bg {
@@ -277,20 +287,23 @@ body {
   justify-content: center;
 }
 
-/* ═══ HOW TO PLAY ═══ */
+/* ═══ HOW TO PLAY — PREMIUM DESIGN ═══ */
 .how-content {
-  background: rgba(26,74,46,.92);
-  backdrop-filter: blur(16px);
-  border: 2px solid rgba(255,255,255,.15);
+  background: rgba(14, 40, 28, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255,255,255,.12);
   border-radius: var(--radius);
-  padding: 28px 20px;
-  max-width: 520px;
+  padding: 28px 24px;
+  max-width: 540px;
   width: 92vw;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   align-items: center;
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.06);
   max-height: 90dvh;
   overflow-y: auto;
 }
@@ -298,35 +311,85 @@ body {
 .how-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
 .how-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255,255,255,.85);
+  color: rgba(255,255,255,.88);
 }
 
+/* Teclas como badges de teclado físico */
 .how-key {
-  background: rgba(249,200,70,.22);
-  border: 1px solid rgba(249,200,70,.45);
-  color: var(--accent);
-  padding: 5px 8px;
-  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(60,60,80,0.85) 0%, rgba(35,35,50,0.95) 100%);
+  border: 1.5px solid rgba(255,255,255,.22);
+  border-bottom: 3px solid rgba(0,0,0,.4);
+  color: #fcd34d;
+  padding: 6px 10px;
+  border-radius: 7px;
   font-family: var(--font-title);
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
   min-width: 52px;
   text-align: center;
+  box-shadow:
+    0 2px 0 rgba(0,0,0,.3),
+    0 3px 8px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  transition: transform .1s, box-shadow .1s;
+}
+.how-key:hover {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,.3),
+    0 2px 4px rgba(0,0,0,.2),
+    inset 0 1px 0 rgba(255,255,255,.12);
 }
 
-.how-chars { width: 100%; display: flex; flex-direction: column; gap: 7px; }
-.how-chars h3 { font-family: var(--font-title); font-size: 16px; color: var(--green-pale); margin-bottom: 2px; }
-.how-ability { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.78); padding: 5px 8px; background: rgba(255,255,255,.06); border-radius: 8px; }
+.how-chars {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.how-chars h3 {
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--green-pale);
+  margin-bottom: 2px;
+  position: relative;
+  padding-left: 14px;
+}
+.how-chars h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.how-ability {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.82);
+  padding: 8px 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  transition: background .2s;
+}
+.how-ability:hover {
+  background: rgba(255,255,255,.1);
+}
 .how-ability strong { color: var(--accent); }
 
 /* ═══ GAME SCREEN ═══ */
@@ -348,37 +411,95 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* ═══ HUD ═══ */
+/* ═══ HUD — GLASSMORPHISM ═══ */
 .hud {
   position: absolute;
   top: 0; left: 0; right: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   /* Respetar notch en la parte superior */
-  padding: calc(var(--sat) + 6px) calc(var(--sar) + 14px) 6px calc(var(--sal) + 14px);
-  background: linear-gradient(180deg, rgba(0,0,0,.60) 0%, transparent 100%);
+  padding: calc(var(--sat) + 8px) calc(var(--sar) + 10px) 8px calc(var(--sal) + 10px);
   pointer-events: none;
+  gap: 8px;
 }
 
-.hud-left, .hud-right, .hud-center { display: flex; flex-direction: column; gap: 2px; }
+.hud-left, .hud-right, .hud-center { display: flex; flex-direction: column; gap: 4px; }
 .hud-center { align-items: center; }
 .hud-right  { align-items: flex-end; }
 
+/* Paneles glassmorphism individuales */
+.hud-panel {
+  background: rgba(10, 10, 30, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 6px 14px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  pointer-events: all;
+  animation: hudPanelSlideIn .5s cubic-bezier(.22,1,.36,1) both;
+}
+.hud-panel-lives { animation-delay: .05s; }
+.hud-panel-level { animation-delay: .1s; }
+.hud-panel-stars { animation-delay: .15s; }
+
+@keyframes hudPanelSlideIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Vidas ─── */
 .hud-lives {
   font-family: var(--font-title);
   font-size: clamp(16px, 4vw, 22px);
   color: #ff6b8a;
   letter-spacing: 3px;
   text-shadow: 0 2px 6px rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  gap: 0;
 }
+
+/* Cada corazón individual — para animar */
+.hud-heart {
+  display: inline-block;
+  transition: transform .2s, opacity .2s;
+}
+.hud-heart.empty {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+/* ── Heartbeat: latido cuando quedan pocas vidas ── */
+.hud-lives.low-hp .hud-heart:not(.empty) {
+  animation: heartbeat 0.7s ease-in-out infinite;
+}
+.hud-lives.critical-hp .hud-heart:not(.empty) {
+  animation: heartbeat 0.45s ease-in-out infinite;
+  color: #ff3356;
+  text-shadow: 0 0 10px rgba(255, 51, 86, 0.7);
+}
+
+@keyframes heartbeat {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.25); }
+  40%  { transform: scale(1); }
+  55%  { transform: scale(1.15); }
+  70%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
 .hud-char {
   font-size: 11px;
   font-weight: 800;
   color: rgba(255,255,255,.75);
   text-transform: uppercase;
   letter-spacing: 1px;
+  margin-top: 2px;
 }
 .hud-level {
   font-family: var(--font-title);
@@ -386,11 +507,40 @@ body {
   color: var(--accent);
   text-shadow: 0 2px 8px rgba(0,0,0,.6);
 }
+
+/* ─── Estrellas ─── */
 .hud-stars {
   font-family: var(--font-title);
   font-size: clamp(14px, 3.5vw, 18px);
   color: var(--accent);
   text-shadow: 0 2px 6px rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Ícono estrella que gira */
+.hud-star-icon {
+  display: inline-block;
+  animation: starSpin 3s linear infinite;
+  font-size: 1.15em;
+  filter: drop-shadow(0 0 4px rgba(249, 200, 70, 0.6));
+}
+
+@keyframes starSpin {
+  0%   { transform: rotateY(0deg);   filter: drop-shadow(0 0 4px rgba(249,200,70,.6)); }
+  50%  { transform: rotateY(180deg); filter: drop-shadow(0 0 10px rgba(249,200,70,1)); }
+  100% { transform: rotateY(360deg); filter: drop-shadow(0 0 4px rgba(249,200,70,.6)); }
+}
+
+/* Bounce cuando se recoge una estrella */
+.hud-stars.star-collect {
+  animation: starCollectPulse .4s ease;
+}
+@keyframes starCollectPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 /* ═══ MOBILE CONTROLS ═══ */
@@ -508,7 +658,7 @@ body {
 /* ═══ PAUSE BUTTON ═══ */
 #btnPause {
   position: absolute;
-  top: calc(var(--sat) + 18px); /* +10px extra para Android gesture zone */
+  top: calc(var(--sat) + 96px); /* debajo del cluster estrellas + audio, sin taparlos */
   right: calc(var(--sar) + 14px);
   z-index: 60;
   background: rgba(255,255,255,.20);
@@ -566,34 +716,99 @@ body {
 }
 #checkpointFlash.show { opacity: 1; }
 
-/* ═══ OVERLAY ═══ */
+/* ═══ OVERLAY — GLASSMORPHISM ═══ */
 .overlay-screen {
-  background: rgba(0,0,0,.65);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 200;
 }
 .overlay-screen[hidden] { display: none !important; }
-.overlay-screen.active  { display: flex; }
+.overlay-screen.active {
+  display: flex;
+  animation: overlayFadeIn .3s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
 .overlay-card {
-  background: rgba(26,74,46,.95);
-  border: 2px solid rgba(255,255,255,.18);
+  background: rgba(14, 40, 28, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255,255,255,.15);
   border-radius: var(--radius);
   padding: 36px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 12px 48px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.06);
   min-width: 280px;
   max-width: 90vw;
   text-align: center;
+  animation: overlayCardPop .35s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes overlayCardPop {
+  from { opacity: 0; transform: scale(.9) translateY(16px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .overlay-emoji  { font-size: 52px; line-height: 1; }
 .overlay-title  { font-family: var(--font-title); font-size: 32px; font-weight: 700; color: var(--white); }
 .overlay-sub    { font-size: 14px; font-weight: 700; color: rgba(255,255,255,.72); max-width: 260px; }
 .overlay-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 6px; }
+
+/* ═══ CELEBRACIÓN (victoria / nivel completado) ═══ */
+.overlay-card { position: relative; z-index: 2; }
+.overlay-count { color: #fcd34d; font-weight: 700; }
+
+.overlay-win, .overlay-clear {
+  border-color: rgba(249,200,70,.5);
+  box-shadow:
+    0 12px 48px rgba(0,0,0,.4),
+    0 0 46px rgba(249,200,70,.28),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+.overlay-win .overlay-emoji,
+.overlay-clear .overlay-emoji {
+  animation: overlayEmojiPop .6s cubic-bezier(.34,1.8,.5,1) both;
+}
+@keyframes overlayEmojiPop {
+  0%   { transform: scale(0)    rotate(-25deg); }
+  60%  { transform: scale(1.28) rotate(10deg); }
+  100% { transform: scale(1)    rotate(0); }
+}
+
+/* Confetti (se genera y limpia desde ui.js) */
+.overlay-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.overlay-confetti i {
+  position: absolute;
+  top: -8%;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confettiFall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+@keyframes confettiFall {
+  0%   { opacity: 0; transform: translateY(-12vh) rotate(0); }
+  12%  { opacity: 1; }
+  100% { opacity: .9; transform: translateY(112vh) translateX(calc(var(--dx,0) * 90px)) rotate(var(--rot,360deg)); }
+}
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 380px) {
@@ -814,6 +1029,52 @@ body {
 
 .map-back-btn { flex-shrink: 0; font-size: 15px; padding: 10px 24px; min-height: 44px; }
 
+/* ─── Mapa vivo ───────────────────────────────────────────────────────────── */
+/* Luciérnagas / chispas ambientales que respiran sobre el bosque */
+.map-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px   at 18% 35%, rgba(255,240,180,.9), transparent),
+    radial-gradient(1.5px 1.5px at 70% 28%, rgba(255,230,160,.7), transparent),
+    radial-gradient(2px 2px   at 42% 55%, rgba(255,245,200,.8), transparent),
+    radial-gradient(1.5px 1.5px at 85% 60%, rgba(255,235,170,.7), transparent),
+    radial-gradient(2px 2px   at 30% 72%, rgba(255,240,190,.8), transparent),
+    radial-gradient(1.5px 1.5px at 60% 82%, rgba(255,230,160,.6), transparent);
+  animation: mapSparkleDrift 9s ease-in-out infinite alternate;
+}
+@keyframes mapSparkleDrift {
+  0%   { opacity: .5;  transform: translate(0, 0); }
+  50%  { opacity: 1; }
+  100% { opacity: .6;  transform: translate(6px, -10px); }
+}
+
+/* Energía dorada que fluye por el camino ya recorrido */
+#mapPathUnlocked {
+  stroke-dasharray: 5 4;
+  animation: mapPathFlow .8s linear infinite;
+}
+@keyframes mapPathFlow { to { stroke-dashoffset: -9; } }
+
+/* Nodo "frontera" — el próximo a jugar: brilla y tiene un indicador */
+.map-node.frontier .map-node-icon { animation: mapNodePulse 1.4s ease-in-out infinite; }
+.map-node-here {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 0 0 8px var(--node-color, #fff);
+  animation: mapHereBounce 1s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes mapHereBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(5px); }
+}
+
 /* Landscape compacto */
 @media (orientation: landscape) and (max-height: 500px) {
   .map-title { font-size: 22px; }
@@ -862,4 +1123,161 @@ body {
   width: 36px; height: 36px;
   font-size: 16px;
   margin-left: 6px;
+}
+/* ═══════════════════════════════════════════════════════
+   CINEMÁTICAS
+═══════════════════════════════════════════════════════ */
+
+#screenCinematica {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cin-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cin-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 0.8s ease;
+}
+
+/* Gradiente oscuro en la parte inferior para el texto */
+.cin-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 40%,
+    rgba(0,0,0,0.55) 70%,
+    rgba(0,0,0,0.85) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Caja de texto */
+.cin-text-box {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 88vw);
+  background: rgba(10, 8, 30, 0.72);
+  border: 1.5px solid rgba(180, 140, 255, 0.35);
+  border-radius: 14px;
+  padding: 22px 30px 18px;
+  z-index: 2;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 32px rgba(120, 80, 255, 0.2);
+}
+
+.cin-text {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: clamp(15px, 2.2vw, 20px);
+  font-weight: 600;
+  color: #f0eaff;
+  line-height: 1.6;
+  margin: 0;
+  min-height: 2em;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  letter-spacing: 0.01em;
+}
+
+/* Cursor parpadeante */
+.cin-cursor {
+  display: inline-block;
+  color: #c084fc;
+  font-size: 13px;
+  margin-top: 8px;
+  animation: cinBlink 0.9s infinite;
+  transition: opacity 0.2s;
+}
+@keyframes cinBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Botones */
+.cin-controls {
+  position: absolute;
+  bottom: 18px;
+  right: 24px;
+  display: flex;
+  gap: 10px;
+  z-index: 3;
+}
+
+.cin-btn-next,
+.cin-btn-skip {
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.cin-btn-next {
+  background: #7c3aed;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(124,58,237,0.5);
+}
+.cin-btn-skip {
+  background: rgba(255,255,255,0.12);
+  color: #ccc;
+}
+.cin-btn-next:hover { transform: scale(1.06); }
+.cin-btn-skip:hover { opacity: 0.75; }
+
+/* Indicadores de escena */
+.cin-progress {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  z-index: 3;
+}
+.cin-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transition: background 0.3s;
+}
+.cin-dot.active {
+  background: #c084fc;
+  box-shadow: 0 0 6px #c084fc;
+}
+
+/* ─── Accesibilidad: movimiento reducido ──────────────────────────────────────
+   Neutraliza animaciones/transiciones decorativas de la UI (menú, HUD, mapa,
+   overlays) cuando el sistema pide menos movimiento. No afecta el render del
+   canvas del juego (eso es JS, no CSS). Las entradas se resuelven al instante
+   para que el contenido siga apareciendo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

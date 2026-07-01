@@ -22,7 +22,7 @@ const LevelMap = (() => {
       emoji: '🌿',
       color: '#4ade80',
       dark:  '#166534',
-      x: 12, y: 62,
+      x: 12, y: 64,
     },
     {
       idx:   1,
@@ -31,25 +31,34 @@ const LevelMap = (() => {
       emoji: '🏰',
       color: '#818cf8',
       dark:  '#3730a3',
-      x: 32, y: 38,
+      x: 30, y: 40,
     },
     {
       idx:   2,
-      name:  'Castillo de Ciela',
-      desc:  '¡Controlá la invasión de insectos marcianos!',
-      emoji: '🐛',
-      color: '#34d399',
-      dark:  '#065f46',
-      x: 56, y: 58,
+      name:  'Sendero Nocturno',
+      desc:  'Orugas, arbustos y el Ciempiés gigante. 🐛',
+      emoji: '🌙',
+      color: '#a78bfa',
+      dark:  '#4c1d95',
+      x: 50, y: 60,
     },
     {
       idx:   3,
-      name:  'Núcleo del Bosque',
-      desc:  '¡Derrotá a la Sombra de las Nuvecielas!',
-      emoji: '🌑',
-      color: '#f472b6',
-      dark:  '#831843',
-      x: 78, y: 34,
+      name:  'El Castillo de la Ciela',
+      desc:  '¡Vencé al Rey de Escarcha! ❄️',
+      emoji: '❄️',
+      color: '#67e8f9',
+      dark:  '#0e7490',
+      x: 70, y: 38,
+    },
+    {
+      idx:   4,
+      name:  'Atravesando el Lago',
+      desc:  'Nado libre entre medusas. 🪼',
+      emoji: '🌊',
+      color: '#38bdf8',
+      dark:  '#075985',
+      x: 88, y: 58,
     },
     // Submisión — nodo especial, no es un nivel regular
     // Aparece desbloqueado siempre, marcado visualmente distinto
@@ -60,7 +69,7 @@ const LevelMap = (() => {
       emoji: '🐱',
       color: '#fbbf24',
       dark:  '#92400e',
-      x: 44, y: 78,
+      x: 40, y: 84,
       special: true,
     },
   ];
@@ -101,7 +110,7 @@ const LevelMap = (() => {
     _el.id = 'screenMap';
     _el.className = 'screen';
     _el.innerHTML = `
-      <div class="map-bg"></div>
+      <div class="map-bg"><div class="map-sparkles" aria-hidden="true"></div></div>
       <div class="map-content">
         <div class="map-header">
           <h2 class="map-title">Bosque Mágico</h2>
@@ -111,12 +120,12 @@ const LevelMap = (() => {
           <svg class="map-path-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
             <!-- Path decorativo entre nodos -->
             <path id="mapPathLine"
-              d="M12,62 C20,62 24,38 32,38 C40,38 48,58 56,58 C64,58 70,34 78,34"
+              d="M12,64 C20,64 24,40 30,40 C38,40 44,60 50,60 C58,60 64,38 70,38 C78,38 82,58 88,58"
               fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2"
               stroke-dasharray="3,2"/>
             <!-- Segmentos desbloqueados (se colorean con JS) -->
             <path id="mapPathUnlocked"
-              d="M12,62 C20,62 24,38 32,38 C40,38 48,58 56,58 C64,58 70,34 78,34"
+              d="M12,64 C20,64 24,40 30,40 C38,40 44,60 50,60 C58,60 64,38 70,38 C78,38 82,58 88,58"
               fill="none" stroke="rgba(255,255,255,0)" stroke-width="1.8"/>
           </svg>
           <div class="map-nodes" id="mapNodes"></div>
@@ -156,19 +165,23 @@ const LevelMap = (() => {
       const isSpecial  = node.special === true;
       const isUnlocked = isSpecial || node.idx <= unlocked;
       const isSelected = _selectedLevel === node.idx;
+      // "Frontera" = el último nivel desbloqueado (a dónde ir ahora)
+      const isFrontier = isUnlocked && !isSpecial && node.idx === unlocked;
 
       const el = document.createElement('div');
       el.className = 'map-node' +
         (isUnlocked ? ' unlocked'  : ' locked') +
         (isSelected ? ' selected'  : '') +
-        (isSpecial  ? ' special'   : '');
+        (isSpecial  ? ' special'   : '') +
+        (isFrontier ? ' frontier'  : '');
       el.style.left = `${node.x}%`;
       el.style.top  = `${node.y}%`;
       el.style.setProperty('--node-color', node.color);
       el.style.setProperty('--node-dark',  node.dark);
 
       el.innerHTML = isUnlocked
-        ? `<div class="map-node-icon">${node.emoji}</div>
+        ? `${isFrontier ? '<div class="map-node-here" aria-hidden="true">▼</div>' : ''}
+           <div class="map-node-icon">${node.emoji}</div>
            <div class="map-node-stars">${isSpecial ? '' : _starsHtml(_getStars(node.idx))}</div>
            <div class="map-node-label">${isSpecial ? '!' : node.idx + 1}</div>`
         : `<div class="map-node-icon">🔒</div>
@@ -184,32 +197,59 @@ const LevelMap = (() => {
     _updatePath(unlocked);
   }
 
+  // Mapa nivel → clave de cinemática (se muestra solo la primera vez)
+  const LEVEL_CINEMATICA = {
+    0:     'prologo',       // Bosque Mágico
+    1:     'cin_nivel2',    // Castillo de Nuveciela
+    2:     'cin_nivel3',    // Sendero Nocturno
+    3:     'cin_nivel4',    // El Castillo de la Ciela
+    4:     'cin_nivel5',    // Atravesando el Lago
+    'sub': 'cin_sub',       // Misión Pablo
+  };
+
+  function _cinVista(key) {
+    try { return !!localStorage.getItem(`nuve_cin_${key}`); } catch(e) { return false; }
+  }
+  function _marcarCinVista(key) {
+    try { localStorage.setItem(`nuve_cin_${key}`, '1'); } catch(e) {}
+  }
+
   function _startSelected() {
-    if(_selectedLevel === null || !_selectedChar) return;
+    if (_selectedLevel === null || !_selectedChar) return;
 
-    // Nodo especial de submisión
-    if(_selectedLevel === 'sub'){
+    const cinKey = LEVEL_CINEMATICA[_selectedLevel];
+    const yaVista = !cinKey || _cinVista(cinKey);
+
+    const launch = () => {
+      // Nodo especial de submisión
+      if (_selectedLevel === 'sub') {
+        hide();
+        SubMision.start({}, {
+          onReturn: () => {
+            try { const ps = Player.getState(); if (ps) ps.lives = 5; UI && UI.updateHUD && UI.updateHUD(); } catch(e) {}
+            UI.showMap && UI.showMap();
+          }
+        });
+        return;
+      }
+      // Nivel normal
       hide();
-      SubMision.start({}, {
-        onReturn: () => {
-          try {
-            const ps = Player.getState();
-            if(ps) ps.lives = 5;
-            UI && UI.updateHUD && UI.updateHUD();
-          } catch(e) {}
-          UI.showMap && UI.showMap();
-        }
-      });
-      return;
-    }
+      UI.showGame();
+      Engine.startGame(_selectedChar, _selectedLevel);
+      UI.updateHUD();
+      const charData = Player.getChar();
+      if (charData) UI.showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3000);
+    };
 
-    // Nivel normal
-    hide();
-    UI.showGame();
-    Engine.startGame(_selectedChar, _selectedLevel);
-    UI.updateHUD();
-    const charData = Player.getChar();
-    if(charData) UI.showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3000);
+    if (!yaVista && cinKey && typeof Cinematica !== 'undefined' &&
+        Cinematica._hasCinematica && Cinematica._hasCinematica(cinKey)) {
+      Cinematica.play(cinKey, () => {
+        _marcarCinVista(cinKey);
+        launch();
+      });
+    } else {
+      launch();
+    }
   }
 
   function _starsHtml(n) {
@@ -219,9 +259,10 @@ const LevelMap = (() => {
   function _updatePath(unlocked) {
     // Segmentos del path SVG entre nodos 0→1→2→3
     const segments = [
-      'M12,62 C20,62 24,38 32,38',
-      'M32,38 C40,38 48,58 56,58',
-      'M56,58 C64,58 70,34 78,34',
+      'M12,64 C20,64 24,40 30,40',
+      'M30,40 C38,40 44,60 50,60',
+      'M50,60 C58,60 64,38 70,38',
+      'M70,38 C78,38 82,58 88,58',
     ];
     const pathEl = document.getElementById('mapPathUnlocked');
     if(!pathEl) return;
@@ -268,16 +309,6 @@ const LevelMap = (() => {
     detail.classList.remove('map-detail-in');
     void detail.offsetWidth;
     detail.classList.add('map-detail-in');
-  }
-
-  function _startSelected() {
-    if(_selectedLevel === null || !_selectedChar) return;
-    hide();
-    UI.showGame();
-    Engine.startGame(_selectedChar, _selectedLevel);
-    UI.updateHUD();
-    const charData = Player.getChar();
-    if(charData) UI.showAbilityBadge(`✨ ${charData.label}: ${charData.ability}`, 3000);
   }
 
   // ── API pública ──────────────────────────────────────

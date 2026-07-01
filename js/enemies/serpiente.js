@@ -35,6 +35,7 @@ const Serpiente = (() => {
       stunTimer:   0,
       frozenTimer: 0,
       attackTimer: 0,
+      rageTimer:   0,
       walkFrame:   0,
       walkTick:    0,
       alive:       true,
@@ -55,6 +56,8 @@ const Serpiente = (() => {
       _resolveFloor(e, map, rows, cols);
       return;
     }
+
+    if (e.rageTimer > 0) e.rageTimer -= dt;
 
     if (e.stunTimer > 0) {
       e.stunTimer -= dt;
@@ -86,14 +89,28 @@ const Serpiente = (() => {
     const distV = Math.abs(dy);
     if (e.attackTimer > 0) e.attackTimer -= dt;
     const sameLevel = distV < 144;
-    if (sameLevel && distH < ATTACK_RANGE) {
+    const isRaging = e.rageTimer > 0;
+    let isChasing = false;
+
+    if (isRaging) {
+      const spd = BASE_SPEED * 1.5;
+      e.vx = dx > 0 ? spd : -spd;
+      isChasing = true;
+    } else if (sameLevel && distH < ATTACK_RANGE) {
       e.vx = dx > 0 ? BASE_SPEED * 2.2 : -BASE_SPEED * 2.2;
       if (e.attackTimer <= 0) e.attackTimer = 0.4;
+      isChasing = true;
     } else if (sameLevel && distH < CHASE_RANGE) {
       const spd = BASE_SPEED * (1 + (1 - distH / CHASE_RANGE) * 0.6);
       e.vx = dx > 0 ? spd : -spd;
+      isChasing = true;
     }
-    if (Math.abs(e.vx) < 5) e.vx = BASE_SPEED * (e.facing || -1);
+
+    e.isChasing = isChasing;
+
+    if (!isChasing) {
+      if (Math.abs(e.vx) < 5) e.vx = BASE_SPEED * (e.facing || -1);
+    }
   }
 
   function _applyGravity(e, dt, map, rows, cols) {
@@ -125,7 +142,14 @@ const Serpiente = (() => {
       if (cR >= 0 && cR < cols) {
         for (let r = rTop; r <= rBot; r++) {
           const t = map[r]?.[cR];
-          if (t === TILE.GROUND || t === TILE.BLOCK) { e.x = cR * TS - e.w; e.vx = -Math.abs(e.vx); return; }
+          if (t === TILE.GROUND || t === TILE.BLOCK) {
+            if (e.isChasing && e.onGround) {
+              e.vy = -420;
+              e.onGround = false;
+              return;
+            }
+            e.x = cR * TS - e.w; e.vx = -Math.abs(e.vx); return;
+          }
         }
       }
     } else if (e.vx < 0) {
@@ -133,7 +157,14 @@ const Serpiente = (() => {
       if (cL >= 0 && cL < cols) {
         for (let r = rTop; r <= rBot; r++) {
           const t = map[r]?.[cL];
-          if (t === TILE.GROUND || t === TILE.BLOCK) { e.x = (cL + 1) * TS; e.vx = Math.abs(e.vx); return; }
+          if (t === TILE.GROUND || t === TILE.BLOCK) {
+            if (e.isChasing && e.onGround) {
+              e.vy = -420;
+              e.onGround = false;
+              return;
+            }
+            e.x = (cL + 1) * TS; e.vx = Math.abs(e.vx); return;
+          }
         }
       }
     }
@@ -180,7 +211,7 @@ const Serpiente = (() => {
     // El sprite de la serpiente mira a la izquierda por defecto
     if (facing === 1) ctx.scale(-1, 1);
 
-    ctx.globalAlpha = frozen ? 0.8 : stunTimer > 0 ? 0.65 : 1.0;
+    ctx.globalAlpha = frozen ? 0.8 : (stunTimer > 0 ? 0.65 : 1.0);
 
     if (img && img.complete && img.naturalWidth > 0) {
       // Aspect ratio del sprite recortado
@@ -199,14 +230,18 @@ const Serpiente = (() => {
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = 'rgba(255,60,60,0.42)';
         ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
+      } else if (e.rageTimer > 0) {
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = 'rgba(239,68,68,0.35)';
+        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
       }
     } else {
       // Fallback
-      ctx.fillStyle = frozen ? '#60a5fa' : '#22c55e';
+      ctx.fillStyle = frozen ? '#60a5fa' : (e.rageTimer > 0 ? '#ef4444' : '#22c55e');
       ctx.beginPath();
       ctx.ellipse(0, 0, w * 0.46, h * 0.38, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = frozen ? '#3b82f6' : '#15803d';
+      ctx.fillStyle = frozen ? '#3b82f6' : (e.rageTimer > 0 ? '#b91c1c' : '#15803d');
       ctx.beginPath();
       ctx.arc(w * 0.28, -h * 0.12, w * 0.18, 0, Math.PI * 2);
       ctx.fill();
@@ -220,12 +255,29 @@ const Serpiente = (() => {
       ctx.save();
       ctx.fillStyle = 'rgba(0,0,0,.45)';
       ctx.beginPath(); ctx.roundRect(bx, by, bw, 5, 2); ctx.fill();
-      ctx.fillStyle = frozen ? '#60a5fa' : '#22c55e';
+      ctx.fillStyle = frozen ? '#60a5fa' : (e.rageTimer > 0 ? '#ef4444' : '#22c55e');
       ctx.beginPath(); ctx.roundRect(bx, by, bw * ratio, 5, 2); ctx.fill();
       ctx.restore();
     }
   }
 
-  return { preload, create, update, draw };
+  function hit(e) {
+    if (!e.alive) return;
+    e.hp--;
+    if (e.hp <= 0) {
+      e.alive = false;
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('death_enemy');
+      Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#f9c846', 14);
+      Renderer.spawnText(e.x + e.w/2, e.y, '+150', '#f9c846');
+    } else {
+      e.rageTimer = 2.5;
+      e.stunTimer = 0.2;
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
+      Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ef4444', 8);
+      Renderer.spawnText(e.x + e.w/2, e.y - 10, '🐍 😡', '#ef4444');
+    }
+  }
+
+  return { preload, create, update, draw, hit };
 
 })();

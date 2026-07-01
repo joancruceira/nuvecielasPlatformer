@@ -8,7 +8,7 @@ const UI = (() => {
 
   let elMenu, elChar, elHow, elGame, elOverlay;
   let elHudLives, elHudStars, elHudLevel, elHudChar;
-  let elOverlayEmoji, elOverlayTitle, elOverlaySub, elOverlayActions;
+  let elOverlayEmoji, elOverlayTitle, elOverlaySub, elOverlayActions, elOverlayCard;
   let elAbilityBadge, elCheckpointFlash;
   let abilityBadgeTimer = null;
 
@@ -44,6 +44,7 @@ const UI = (() => {
     elOverlayTitle   = document.getElementById('overlayTitle');
     elOverlaySub     = document.getElementById('overlaySub');
     elOverlayActions = document.getElementById('overlayActions');
+    elOverlayCard    = document.getElementById('overlayCard');
 
     const abilityBadge = document.createElement('div');
     abilityBadge.id = 'abilityBadge';
@@ -91,6 +92,14 @@ const UI = (() => {
     }
     _setupAudioBtn('btnAudio');
     _setupAudioBtn('btnAudioGame');
+
+    // Reflejar el estado de mute persistido en los íconos al arrancar
+    if (typeof AudioManager !== 'undefined' && AudioManager.isMuted()) {
+      document.querySelectorAll('.audio-btn').forEach(b => {
+        b.textContent = '🔇';
+        b.classList.add('muted');
+      });
+    }
 
     buildCharGrid();
 
@@ -145,7 +154,6 @@ const UI = (() => {
 
   function startGame() {
     if (!selectedChar) return;
-    // En vez de ir directo al juego, mostrar el mapa de niveles
     showMap();
   }
 
@@ -155,11 +163,20 @@ const UI = (() => {
     LevelMap.show(selectedChar);
   }
 
-  function showOverlay(emoji, title, sub, actions) {
+  /**
+   * @param {object} [opts]
+   * @param {'win'|'clear'|'lose'|''} [opts.variant]  clase temática de la card
+   * @param {boolean} [opts.confetti]  lanza confetti (celebración)
+   * @param {number}  [opts.countTo]   si el sub incluye <span id="overlayCount">, cuenta hasta este número
+   */
+  function showOverlay(emoji, title, sub, actions, opts = {}) {
     elOverlayEmoji.textContent   = emoji;
     elOverlayTitle.textContent   = title;
-    elOverlaySub.textContent     = sub;
+    if (opts.countTo != null) elOverlaySub.innerHTML = sub;  // sub controlado (incluye <span>)
+    else                      elOverlaySub.textContent = sub;
     elOverlayActions.innerHTML   = '';
+
+    if (elOverlayCard) elOverlayCard.className = 'overlay-card' + (opts.variant ? ' overlay-' + opts.variant : '');
 
     actions.forEach(a => {
       const btn = document.createElement('button');
@@ -171,6 +188,57 @@ const UI = (() => {
 
     elOverlay.removeAttribute('hidden');
     elOverlay.classList.add('active');
+
+    // Re-disparar animaciones de entrada aunque el overlay ya existiera en el DOM
+    _retriggerAnim(elOverlayCard);
+    _retriggerAnim(elOverlayEmoji);
+
+    // Efectos de celebración
+    if (opts.confetti) _burstConfetti();
+    if (opts.countTo != null) {
+      const el = document.getElementById('overlayCount');
+      if (el) _countUp(el, opts.countTo, 900);
+    }
+  }
+
+  // Fuerza el reinicio de la animación CSS de un elemento (reflow)
+  function _retriggerAnim(el) {
+    if (!el) return;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+  }
+
+  // Conteo animado 0 → target (ease-out)
+  function _countUp(el, target, dur) {
+    const start = performance.now();
+    (function step(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(target * eased);
+      if (t < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    })(start);
+  }
+
+  // Ráfaga de confetti sobre el overlay (DOM, se limpia sola)
+  function _burstConfetti() {
+    if (!elOverlay) return;
+    const colors = ['#f9c846', '#ff6b9d', '#6be6c1', '#5b8af5', '#c26bff', '#ff9a3c', '#4ade80'];
+    const layer = document.createElement('div');
+    layer.className = 'overlay-confetti';
+    for (let i = 0; i < 28; i++) {
+      const p = document.createElement('i');
+      p.style.left = (Math.random() * 100).toFixed(1) + '%';
+      p.style.background = colors[i % colors.length];
+      p.style.setProperty('--dx', (Math.random() * 2 - 1).toFixed(2));
+      p.style.setProperty('--rot', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      p.style.animationDelay = (Math.random() * 0.25).toFixed(2) + 's';
+      p.style.animationDuration = (1.6 + Math.random() * 1.2).toFixed(2) + 's';
+      layer.appendChild(p);
+    }
+    elOverlay.appendChild(layer);
+    setTimeout(() => layer.remove(), 3000);
   }
 
   function hideOverlay() {
@@ -234,22 +302,55 @@ const UI = (() => {
   }
 
   // ──────────────────────────────────────────
-  //  HUD
+  //  HUD — con corazones individuales y animaciones
   // ──────────────────────────────────────────
+  let _prevStars = -1;
+
   function updateHUD() {
     const ps = Player.getState();
     const levelData = Engine.getLevelData();
 
     if (elHudLives) {
       const lives = Math.max(0, ps.lives);
-      const empty = Math.max(0, 5 - lives);
-      elHudLives.textContent = '♥'.repeat(lives) + '♡'.repeat(empty);
+      const maxLives = 5;
+
+      // Generar corazones como spans individuales
+      let heartsHTML = '';
+      for (let i = 0; i < maxLives; i++) {
+        if (i < lives) {
+          heartsHTML += '<span class="hud-heart">♥</span>';
+        } else {
+          heartsHTML += '<span class="hud-heart empty">♡</span>';
+        }
+      }
+      elHudLives.innerHTML = heartsHTML;
+
+      // Aplicar clases de heartbeat según vidas
+      elHudLives.classList.remove('low-hp', 'critical-hp');
+      if (lives <= 1) {
+        elHudLives.classList.add('critical-hp');
+      } else if (lives <= 2) {
+        elHudLives.classList.add('low-hp');
+      }
     }
-    if (elHudStars)  elHudStars.textContent  = ps.stars;
+
+    if (elHudStars) {
+      elHudStars.textContent = ps.stars;
+      // Animación de bounce al recoger estrella
+      if (_prevStars >= 0 && ps.stars > _prevStars) {
+        const starsContainer = elHudStars.closest('.hud-stars');
+        if (starsContainer) {
+          starsContainer.classList.remove('star-collect');
+          // Force reflow para reiniciar animación
+          void starsContainer.offsetWidth;
+          starsContainer.classList.add('star-collect');
+        }
+      }
+      _prevStars = ps.stars;
+    }
+
     if (elHudLevel && levelData) elHudLevel.textContent = `Nivel ${levelData.id} — ${levelData.name}`;
     if (elHudChar) {
-      // Mostrar el personaje seleccionado — puede no coincidir con Player.getChar()
-      // si el juego acaba de arrancar
       const ch = Player.getChar();
       elHudChar.textContent = ch?.label || '';
     }
@@ -285,7 +386,7 @@ const UI = (() => {
     }
     if (win) {
       showOverlay('🎉', '¡Felicitaciones!',
-        `Completaste el Bosque Mágico con ${stars} estrellas ⭐`,
+        `Completaste el Bosque Mágico con <span id="overlayCount" class="overlay-count">0</span> estrellas ⭐`,
         [
           {
             label: '▶ Jugar de nuevo', primary: true,
@@ -298,7 +399,8 @@ const UI = (() => {
             }
           },
           { label: '🏠 Menú principal', primary: false, onClick: () => { hideOverlay(); showMenu(); } },
-        ]
+        ],
+        { variant: 'win', confetti: true, countTo: stars }
       );
     } else {
       const currentLevel = Engine.getCurrentLevel();
@@ -330,7 +432,7 @@ const UI = (() => {
 
     const nextLevel = LEVELS[nextIdx];
     showOverlay('🌟', `¡Nivel ${nextIdx} completado!`,
-      `${nextLevel ? 'Siguiente: ' + nextLevel.name : '¡Todos los niveles completados!'} — ⭐ ${stars}`,
+      `${nextLevel ? 'Siguiente: ' + nextLevel.name : '¡Todos los niveles completados!'} — ⭐ <span id="overlayCount" class="overlay-count">0</span>`,
       [
         {
           label: nextLevel ? `🗺️ Ver mapa` : `🎉 Ver logros`,
@@ -341,7 +443,8 @@ const UI = (() => {
           }
         },
         { label: '🏠 Menú principal', primary: false, onClick: () => { hideOverlay(); showMenu(); } },
-      ]
+      ],
+      { variant: 'clear', confetti: true, countTo: stars }
     );
   }
 

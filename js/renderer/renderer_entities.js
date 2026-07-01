@@ -22,17 +22,24 @@ const RendererEntities = (() => {
 
     const img = images[charId];
     if (img && img.complete && img.naturalWidth > 0) {
+      // Dibujar respetando el aspect ratio del sprite (sin deformar) y un poco
+      // más grande, anclado a los pies. La hitbox física (w,h) NO cambia.
+      const ar = img.naturalWidth / img.naturalHeight;
+      const dh = h * 1.15;         // un poco más alto
+      const dw = dh * ar;          // ancho proporcional → no se deforma
+      const ox = (w - dw) / 2;     // centrado sobre la hitbox
+      const oy = h - dh;           // pies alineados con la base de la hitbox
       ctx.save();
       if (facing === -1) {
         ctx.translate(x+w, y); ctx.scale(-1, 1);
         if (sliding) { ctx.translate(0, h*0.35); ctx.rotate(-0.45); }
-        ctx.drawImage(img, 0, 0, w, h);
+        ctx.drawImage(img, ox, oy, dw, dh);
       } else {
         ctx.translate(x, y);
         if (sliding) {
           ctx.translate(w, h*0.35); ctx.scale(-1,1); ctx.rotate(-0.45); ctx.translate(-w, 0);
         }
-        ctx.drawImage(img, 0, 0, w, h);
+        ctx.drawImage(img, ox, oy, dw, dh);
       }
       ctx.restore();
     } else {

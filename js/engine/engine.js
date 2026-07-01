@@ -355,6 +355,10 @@ const Engine = (() => {
         p.active = false;
         Renderer.spawnParticles(p.x, p.y, p.color, 10);
 
+        if (typeof Enemies.hitByProjectile === 'function' && Enemies.hitByProjectile(e, p.kind, p.color)) {
+          break;
+        }
+
         if (p.kind === 'ice') {
           const isBoss = e.type === 'boss' || e.type === 'fantasma';
           if (isBoss) {
@@ -452,8 +456,6 @@ const Engine = (() => {
 
   function _launchSubMisionNatan(ps) {
     if (typeof SubMisionNatan === 'undefined') return;
-    // NO detener EngineState.running — el loop sigue para que
-    // EngineRender.frame() pueda delegar a SubMisionNatan.update()
     SubMisionNatan.start(
       { camX: cam.x, camY: cam.y, levelIdx: currentLevelIdx },
       {
@@ -461,6 +463,24 @@ const Engine = (() => {
           lastTs = 0;
           Player.activateImmunity(3.0);
           UI.showAbilityBadge('🦸 ¡SuperNatan pasó por acá!', 3000);
+        },
+        onGameOver: () => {
+          // Natan perdió todas las vidas → volver al nivel 3 en la puerta de la cueva
+          lastTs = 0;
+          currentLevelIdx = 2;
+          _loadLevel(2);
+          // Posicionar jugador cerca de la puerta de la cueva
+          const doors = (typeof Cueva !== 'undefined') ? Cueva.getDoors() : [];
+          const ps2 = Player.getState();
+          if (doors.length > 0) {
+            const door = doors[0];
+            ps2.x = door.x + 20;
+            ps2.y = door.y + 20;
+            ps2.vx = 0; ps2.vy = 0;
+            ps2.dead = false;
+          }
+          Player.activateImmunity(3.0);
+          UI.showAbilityBadge('💀 Natan cayó... volvé a intentarlo', 3500);
         },
       }
     );

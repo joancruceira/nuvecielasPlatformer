@@ -86,8 +86,9 @@
         <h3>Los niveles</h3>
         <div class="how-ability"><strong>🌿 Nivel 1 — Bosque Mágico</strong> — Caminadores y voladores</div>
         <div class="how-ability"><strong>🏰 Nivel 2 — Castillo de Nuveciela</strong> — Fantasmas y serpientes</div>
-        <div class="how-ability"><strong>🌙 Nivel 3 — Sendero Nocturno</strong> — Orugas 🐛, arbustos ⚡, murciélagos 🦇 y el Boss Ciempiés</div>
-        <div class="how-ability"><strong>👤 Nivel 4 — Núcleo del Bosque</strong> — El jefe final te espera</div>
+        <div class="how-ability"><strong>🌙 Nivel 3 — Sendero Nocturno</strong> — Orugas 🐛, arbustos ⚡, murciélagos 🦇 y Ciempiés Boss</div>
+        <div class="how-ability"><strong>❄️ Nivel 4 — Castillo de la Ciela</strong> — Caballeros 🛡️, Gárgolas 🦇, Gotas 💧 y Rey de Escarcha 👑</div>
+        <div class="how-ability"><strong>🌊 Nivel 5 — Atravesando el Lago</strong> — Nado libre subacuático 🏊‍♂️ y medusas</div>
       </div>
       <button class="btn-main" id="btnHowBack">← Entendido</button>
     </div>
@@ -97,17 +98,25 @@
        PANTALLA: JUEGO
   ══════════════════════════════════════ -->
   <div id="screenGame" class="screen">
-    <!-- HUD -->
+    <!-- HUD — Glassmorphism panels -->
     <div class="hud" id="hud">
       <div class="hud-left">
-        <div class="hud-lives" id="hudLives">♥♥♥♥♥</div>
-        <div class="hud-char" id="hudChar">Nuveciela</div>
+        <div class="hud-panel hud-panel-lives">
+          <div class="hud-lives" id="hudLives">
+            <span class="hud-heart">♥</span><span class="hud-heart">♥</span><span class="hud-heart">♥</span><span class="hud-heart">♥</span><span class="hud-heart">♥</span>
+          </div>
+          <div class="hud-char" id="hudChar">Nuveciela</div>
+        </div>
       </div>
       <div class="hud-center">
-        <div class="hud-level" id="hudLevel">Nivel 1 — Pradera Encantada</div>
+        <div class="hud-panel hud-panel-level">
+          <div class="hud-level" id="hudLevel">Nivel 1 — Pradera Encantada</div>
+        </div>
       </div>
       <div class="hud-right">
-        <div class="hud-stars">⭐ <span id="hudStars">0</span></div>
+        <div class="hud-panel hud-panel-stars">
+          <div class="hud-stars"><span class="hud-star-icon">⭐</span> <span id="hudStars">0</span></div>
+        </div>
         <button class="audio-btn audio-btn-hud" id="btnAudioGame" title="Música on/off">🔊</button>
       </div>
     </div>
@@ -151,6 +160,7 @@
   <script src="js/level2.js"></script>
   <script src="js/level3.js"></script>
   <script src="js/level4.js"></script>
+  <script src="js/level5.js"></script>
   <script src="js/levels.js"></script>
 
   <!-- Asset loader — debe ir antes que renderer y enemies -->
@@ -180,6 +190,8 @@
   <script src="js/enemies/murcielago.js"></script>
   <script src="js/enemies/cienpies.js"></script>
   <script src="js/enemies/enemies_level3.js"></script>
+  <!-- Enemigos nivel 4 -->
+  <script src="js/enemies/enemies_level4.js"></script>
   <!-- Coordinador general -->
   <script src="js/enemies/enemies.js"></script>
 
@@ -211,6 +223,9 @@
   <script src="js/engine/engine_input.js"></script>
   <script src="js/engine/engine_render.js"></script>
   <script src="js/engine/engine.js"></script>
+
+  <!-- Cinemáticas -->
+  <script src="js/cinematica.js"></script>
 
   <!-- UI y arranque -->
   <script src="js/levelmap.js"></script>

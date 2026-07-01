@@ -7,9 +7,11 @@ const AudioManager = (() => {
   // ── Música por nivel ──────────────────────────────────
   const TRACKS = {
     menu: 'audio/nuvecielas_portada.mp3',
-    0:    'audio/CANCION_NUVE.mp3',
+    0:    'audio/cancion_nuve.mp3',         // FIX: el archivo real es minúsculas (servidores case-sensitive)
     1:    'audio/castillo_nuveciela.mp3',
     2:    'audio/sendero_nocturno.mp3',
+    3:    'audio/castillo_nuveciela.mp3',   // Castillo de la Ciela — reutiliza tema de castillo (track propio = asset futuro)
+    4:    'audio/cancion_nuve.mp3',         // Atravesando el Lago — reutiliza tema suave (track propio = asset futuro)
   };
 
   // ── Efectos de sonido ─────────────────────────────────
@@ -61,20 +63,40 @@ const AudioManager = (() => {
   let _unlocked    = false;  // el navegador ya permitió audio
   let _volume      = 0.50;
   let _sfxVolume   = 0.75;
-  let _muted       = false;
+  let _muted       = (() => { try { return localStorage.getItem('nuve_muted') === '1'; } catch (e) { return false; } })();
   let _fadeTick    = null;
 
   // Al primer toque/tecla, desbloquear y arrancar el track pendiente
   function _onUnlock() {
+    if (_unlocked) return;
     _unlocked = true;
+    _ensureSfx();
+
+    // Intentar resumir un AudioContext suspendido (mobile browsers)
+    try {
+      const testCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (testCtx.state === 'suspended') testCtx.resume().catch(() => {});
+      // Cerrar el contexto de prueba para no desperdiciar recursos
+      setTimeout(() => testCtx.close().catch(() => {}), 100);
+    } catch(e) {}
+
     if (_pendingKey !== null) {
       const key = _pendingKey;
       _pendingKey = null;
       _startTrack(key);
     }
+
+    // Limpiar todos los listeners de desbloqueo
+    _unlockEvents.forEach(evt => {
+      window.removeEventListener(evt, _onUnlock, true);
+    });
   }
-  window.addEventListener('pointerdown', _onUnlock, { once: true });
-  window.addEventListener('keydown',     _onUnlock, { once: true });
+
+  // Registrar en múltiples eventos para máxima compatibilidad
+  const _unlockEvents = ['pointerdown', 'keydown', 'click', 'touchend', 'touchstart', 'mousedown'];
+  _unlockEvents.forEach(evt => {
+    window.addEventListener(evt, _onUnlock, { once: false, capture: true });
+  });
 
   function _fadeOut(el, cb) {
     if (!el) { cb && cb(); return; }
@@ -153,10 +175,13 @@ const AudioManager = (() => {
 
   function toggleMute() {
     _muted = !_muted;
+    try { localStorage.setItem('nuve_muted', _muted ? '1' : '0'); } catch (e) {}
     if (_current) _current.volume = _muted ? 0 : _volume;
     return _muted;
   }
 
-  return { play, playMenu, stop, pause, resume, setVolume, toggleMute, sfx };
+  function isMuted() { return _muted; }
+
+  return { play, playMenu, stop, pause, resume, setVolume, toggleMute, isMuted, sfx };
 
 })();

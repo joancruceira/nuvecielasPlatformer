@@ -19,6 +19,7 @@ const LEVELS = [
   { ...Level2.data },
   { ...Level3.data },
   { ...Level4.data },
+  { ...Level5.data },
 ];
 
 function initLevels() {
@@ -26,4 +27,5 @@ function initLevels() {
   LEVELS[1].map = Level2.buildMap();
   LEVELS[2].map = Level3.buildMap();
   LEVELS[3].map = Level4.buildMap();
+  LEVELS[4].map = Level5.buildMap();
 }

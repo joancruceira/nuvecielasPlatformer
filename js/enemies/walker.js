@@ -32,10 +32,11 @@ const Walker = (() => {
       vx:          -BASE_SPEED,
       vy:          0,
       facing:      -1,
-      hp:          1, maxHp: 1,
+      hp:          2, maxHp: 2,
       stunTimer:   0,
       attackTimer: 0,
       frozenTimer: 0,
+      rageTimer:   0,
       alive:       true,
       onGround:    false,
     };
@@ -61,6 +62,8 @@ const Walker = (() => {
       if (e.x + e.w > cols * TS) { e.x = cols * TS - e.w; }
       return;
     }
+
+    if (e.rageTimer > 0) e.rageTimer -= dt;
 
     // Stun: frenar; al salir retomar patrulla con vx base
     if (e.stunTimer > 0) {
@@ -105,16 +108,29 @@ const Walker = (() => {
     // Solo perseguir si el jugador está en el mismo plano vertical (±3 tiles)
     // Evita que el walker persiga al jugador cuando está sobre él y caiga al vacío
     const sameLevel = distV < 144;
+    const isRaging = e.rageTimer > 0;
+    let isChasing = false;
 
-    if (sameLevel && distH < ATTACK_RANGE) {
+    if (isRaging) {
+      const spd = BASE_SPEED * 1.5;
+      e.vx = dx > 0 ? spd : -spd;
+      isChasing = true;
+    } else if (sameLevel && distH < ATTACK_RANGE) {
       e.vx = dx > 0 ? BASE_SPEED * 2.0 : -BASE_SPEED * 2.0;
       if (e.attackTimer <= 0) e.attackTimer = 0.35;
+      isChasing = true;
     } else if (sameLevel && distH < CHASE_RANGE) {
       const spd = BASE_SPEED * (1 + (1 - distH / CHASE_RANGE) * 0.7);
       e.vx = dx > 0 ? spd : -spd;
+      isChasing = true;
     }
+
+    e.isChasing = isChasing;
+
     // Fuera de rango o jugador muy arriba: patrulla normal
-    if (Math.abs(e.vx) < 5) e.vx = BASE_SPEED * (e.facing || -1);
+    if (!isChasing) {
+      if (Math.abs(e.vx) < 5) e.vx = BASE_SPEED * (e.facing || -1);
+    }
   }
 
   // Colisión horizontal: separar en derecha e izquierda para evitar doble inversión
@@ -128,6 +144,11 @@ const Walker = (() => {
         for (let r = rTop; r <= rBot; r++) {
           const t = map[r]?.[cRight];
           if (t === TILE.GROUND || t === TILE.BLOCK) {
+            if (e.isChasing && e.onGround) {
+              e.vy = -420;
+              e.onGround = false;
+              return;
+            }
             e.x  = cRight * TS - e.w;
             e.vx = -Math.abs(e.vx);
             return;
@@ -140,6 +161,11 @@ const Walker = (() => {
         for (let r = rTop; r <= rBot; r++) {
           const t = map[r]?.[cLeft];
           if (t === TILE.GROUND || t === TILE.BLOCK) {
+            if (e.isChasing && e.onGround) {
+              e.vy = -420;
+              e.onGround = false;
+              return;
+            }
             e.x  = (cLeft + 1) * TS;
             e.vx =  Math.abs(e.vx);
             return;
@@ -226,9 +252,13 @@ const Walker = (() => {
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = 'rgba(255,60,60,0.45)';
         ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
+      } else if (e.rageTimer > 0) {
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = 'rgba(239,68,68,0.35)';
+        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
       }
     } else {
-      ctx.fillStyle = stunTimer > 0 ? '#888' : '#e85d7a';
+      ctx.fillStyle = stunTimer > 0 ? '#888' : (e.rageTimer > 0 ? '#dc2626' : '#e85d7a');
       ctx.beginPath();
       ctx.ellipse(0, 0, w * 0.42, h * 0.38, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -236,6 +266,23 @@ const Walker = (() => {
     ctx.restore();
   }
 
-  return { preload, create, update, draw };
+  function hit(e) {
+    if (!e.alive) return;
+    e.hp--;
+    if (e.hp <= 0) {
+      e.alive = false;
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('death_enemy');
+      Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#f9c846', 14);
+      Renderer.spawnText(e.x + e.w/2, e.y, '+100', '#f9c846');
+    } else {
+      e.rageTimer = 2.5;
+      e.stunTimer = 0.2;
+      if (typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
+      Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ef4444', 8);
+      Renderer.spawnText(e.x + e.w/2, e.y - 10, '😡 ¡Furia!', '#ef4444');
+    }
+  }
+
+  return { preload, create, update, draw, hit };
 
 })();

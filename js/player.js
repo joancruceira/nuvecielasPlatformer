@@ -34,6 +34,7 @@ const Player = (() => {
     projectiles:[],     projectileCooldown:0,
     immuneTimer:0,
     maxLives: 5,
+    onIce: false,
   };
 
   // ── Getters ──────────────────────────────────────────
@@ -63,6 +64,7 @@ const Player = (() => {
     state.fireballs=[]; state.fireballCooldown=0;
     state.projectiles=[]; state.projectileCooldown=0;
     state.immuneTimer=0;
+    state.onIce=false;
   }
 
   function respawn() {
@@ -76,6 +78,7 @@ const Player = (() => {
     state.flying=false; state.floatUsed=false;
     state.fireballs=[]; state.fireballCooldown=0;
     state.projectiles=[]; state.projectileCooldown=0;
+    state.onIce=false;
   }
 
   // ═══════════════════════════════════════════════════
@@ -110,8 +113,11 @@ const Player = (() => {
       state.invTimer -= dt;
       if (state.invTimer <= 0) { state.invTimer=0; state.invincible=false; }
     }
-    if (state.slideTimer > 0) state.slideTimer -= dt;
-    else state.sliding = false;
+    if (state.slideTimer > 0) {
+      state.slideTimer -= state.onIce ? dt * 0.6 : dt;
+    } else {
+      state.sliding = false;
+    }
 
     if (state.fireballCooldown   > 0) state.fireballCooldown   -= dt;
     if (state.projectileCooldown > 0) state.projectileCooldown -= dt;
@@ -123,11 +129,20 @@ const Player = (() => {
 
   // ── Movimiento horizontal ────────────────────────────
   function _updateMovement(dt, input, ch) {
+    const isWater = typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4;
     if (state.sliding) {
-      state.vx = state.facing * ch.slideSpeed;
+      state.vx = state.facing * (state.onIce ? ch.slideSpeed * 1.15 : ch.slideSpeed);
     } else {
-      const targetVx = input.right ? ch.speed : input.left ? -ch.speed : 0;
-      const acc = state.grounded ? 18 : 10;
+      let targetVx = input.right ? ch.speed : input.left ? -ch.speed : 0;
+      if (isWater) targetVx *= 0.65; // Arrastre horizontal en agua
+      
+      let acc = state.grounded ? 18 : 10;
+      if (isWater) {
+        acc = 6.0; // Desaceleración/Aceleración por flotabilidad
+      } else if (state.grounded && state.onIce) {
+        // En hielo aceleramos y cambiamos de dirección más lento, y patinamos mucho más al frenar
+        acc = targetVx === 0 ? 1.5 : 3.0;
+      }
       state.vx += (targetVx - state.vx) * acc * dt;
       if (Math.abs(state.vx) < 1) state.vx = 0;
     }
@@ -139,8 +154,14 @@ const Player = (() => {
   function _updateGravity(dt, input, ch) {
     let gravity = ch.gravity;
 
+    // Nivel 5: Gravedad de agua reducida
+    const isWater = typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4;
+    if (isWater) {
+      gravity = 320;
+    }
+
     // Flotación (Lunaria y cualquier char con canFloat)
-    if (ch.canFloat && !state.grounded && input.jumpHeld
+    if (!isWater && ch.canFloat && !state.grounded && input.jumpHeld
         && state.vy > 0 && !state.floatUsed) {
       state.floating   = true;
       state.floatTimer += dt;
@@ -157,9 +178,10 @@ const Player = (() => {
     }
 
     // Caída rápida al soltar el salto
-    if (!input.jumpHeld && state.vy < 0) gravity *= 1.5;
+    if (!isWater && !input.jumpHeld && state.vy < 0) gravity *= 1.5;
 
-    state.vy = Math.min(state.vy + gravity * dt, 900);
+    const maxFallSpeed = isWater ? 250 : 900; // Caer más lento en agua
+    state.vy = Math.min(state.vy + gravity * dt, maxFallSpeed);
   }
 
   // ── Habilidades por frame (vuelo, etc.) ──────────────
@@ -196,6 +218,7 @@ const Player = (() => {
   // ═══════════════════════════════════════════════════
   function _resolveCollisions(map) {
     if (!map) return;
+    state.onIce = false; // Resetear al inicio del frame
     const rows=map.length, cols=map[0].length;
     const left=state.x, right=state.x+state.w;
     const top=state.y, bottom=state.y+state.h;
@@ -209,7 +232,7 @@ const Player = (() => {
     for (let r=r0; r<=r1; r++) {
       for (let c=c0; c<=c1; c++) {
         const tile = map[r][c];
-        const isSolid    = tile===TILE.GROUND || tile===TILE.BLOCK;
+        const isSolid    = tile===TILE.GROUND || tile===TILE.BLOCK || tile===TILE.ICE;
         const isPlatform = tile===TILE.PLATFORM;
         if (!isSolid && !isPlatform) continue;
 
@@ -221,8 +244,10 @@ const Player = (() => {
             right>tileLeft+2 && left<tileRight-2) {
           if (isPlatform && bottom - state.vy*0.02 <= tileTop+12) {
             state.y=tileTop-state.h; state.vy=0; state.grounded=true;
+            if (tile === TILE.ICE) state.onIce = true;
           } else if (isSolid) {
             state.y=tileTop-state.h; state.vy=0; state.grounded=true;
+            if (tile === TILE.ICE) state.onIce = true;
           }
         }
         // Desde abajo (techo) — solo sólidos
@@ -262,7 +287,7 @@ const Player = (() => {
     const cs1=Math.min(cols-1, Math.floor((state.x+state.w-1) / TS));
     for (let r=rs0; r<=rs1; r++) {
       for (let c=cs0; c<=cs1; c++) {
-        if (map[r][c]===TILE.SPIKES) { takeDamage(); return; }
+        if (map[r][c]===TILE.SPIKES || map[r][c]===TILE.ICE_SPIKES) { takeDamage(); return; }
       }
     }
   }
@@ -272,6 +297,18 @@ const Player = (() => {
   // ═══════════════════════════════════════════════════
   function tryJump() {
     if (state.dead || state.sliding) return;
+
+    // Nivel 5: Nadar infinitamente con fuerza reducida
+    if (typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4) {
+      state.vy = -300;
+      state.grounded = false;
+      state.jumping = true;
+      if (typeof Renderer !== 'undefined') {
+        Renderer.spawnParticles(state.x + state.w/2, state.y + state.h, '#7dd3fc', 5);
+      }
+      return;
+    }
+
     const ch = getChar();
     if (state.grounded) {
       state.vy=ch.jumpForce; state.grounded=false; state.jumping=true;

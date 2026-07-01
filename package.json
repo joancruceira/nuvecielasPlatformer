@@ -1,0 +1,13 @@
+{
+  "name": "nuvecielas-platformer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nuvecielas — Bosque Mágico (platformer HTML5/Canvas, vanilla JS)",
+  "scripts": {
+    "dev": "npx --yes http-server . -c-1 -p 8080 -o",
+    "start": "npx --yes http-server . -c-1 -p 8080 -o"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

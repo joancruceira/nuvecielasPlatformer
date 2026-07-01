@@ -26,6 +26,13 @@ const TILE = {
   ARBUSTO:   21,
   MURCIELAGO:22,
   CIENPIES:  23,
+  // Nivel 4 — El Castillo de la Ciela
+  ICE:             30,
+  ICE_SPIKES:      31,
+  CABALLERO_HELADO:32,
+  GARGO_HIELO:     33,
+  GOTA_VIVIENTE:   34,
+  REY_ESCARCHA:    35,
 };
 
 const TILE_SIZE = 48; // px
@@ -88,4 +95,14 @@ const MapBuilder = {
   arbusto(map,x,y=12){ map[y][x] = TILE.ARBUSTO;    },
   murcielago(map,x,y=7){ map[y][x]=TILE.MURCIELAGO; },
   cienpies(map,x,y=12){ map[y][x]=TILE.CIENPIES;    },
+  ice(map, x, len, y=13) {
+    for (let i=0; i<len; i++) map[y][x+i] = TILE.ICE;
+  },
+  iceSpikes(map, x, len, y=13) {
+    for (let i=0; i<len; i++) map[y][x+i] = TILE.ICE_SPIKES;
+  },
+  caballeroHelado(map, x, y=12) { map[y][x] = TILE.CABALLERO_HELADO; },
+  gargolaHielo(map, x, y=7)     { map[y][x] = TILE.GARGO_HIELO; },
+  gotaViviente(map, x, y=12)    { map[y][x] = TILE.GOTA_VIVIENTE; },
+  reyEscarcha(map, x, y=12)     { map[y][x] = TILE.REY_ESCARCHA; },
 };
