@@ -15,6 +15,7 @@
 //    level.crystals     → cristales canvas (legacy)
 //    level.bgTrees      → árboles canvas (legacy)
 //    level.glowing      → halos de colores
+//    level.castleCiela  → img/level4/fondo_level4.png + nevada (overlay)
 // ═══════════════════════════════════════════════════════
 
 const RendererBg = (() => {
@@ -36,6 +37,10 @@ const RendererBg = (() => {
   ['sendero0','sendero1','sendero2'].forEach(name => {
     const img = new Image(); img.src = `img/${name}.png`; senderoFrames.push(img);
   });
+
+  // ── Fondo del Castillo de la Ciela (nivel 4) ─────────
+  const castleCielaImg = new Image();
+  castleCielaImg.src = 'img/level4/fondo_level4.png';
 
   // ── Castillo portal (aparece al matar al boss) ────────
   const castlePortalImg = new Image();
@@ -87,6 +92,7 @@ const RendererBg = (() => {
     else if (level.crystals) _overlayConfig = { type: 'crystals' };
     else if (level.bgTrees)  _overlayConfig = { type: 'trees', dark: level.dark };
     else if (level.senderoNocturno) _overlayConfig = { type: 'sendero' };
+    else if (level.castleCiela) _overlayConfig = { type: 'castleCiela' };
 
     // Fondos parallax
     if (level.bosqueMagico)    _drawBosqueBg(camX, ts);
@@ -94,6 +100,7 @@ const RendererBg = (() => {
     if (level.senderoNocturno) _drawSenderoBg(camX, ts);
     if (level.crystals)        _drawCrystalsBg(camX, ts);
     if (level.glowing)         _drawGlowBg(camX, ts);
+    if (level.castleCiela)     _drawCastleCielaBg(camX, ts);
 
     // Portal del castillo
     _drawCastlePortal(ts, camX);
@@ -110,6 +117,7 @@ const RendererBg = (() => {
       case 'sendero':  _drawSenderoOverlay(camX, ts);  break;
       case 'crystals': _drawCandelabras(camX, camY, ts); break;
       case 'trees':    _drawCanvasTrees(camX, ts, _overlayConfig.dark); break;
+      case 'castleCiela': _drawSnowOverlay(camX, ts); break;
     }
   }
 
@@ -342,6 +350,51 @@ const RendererBg = (() => {
     }
     ctx.restore();
   }
+  // ─────────────────────────────────────────────────────
+  //  CASTILLO DE LA CIELA — fondo (nivel 4)
+  //  Una sola imagen ancha, parallax lento (interior de castillo:
+  //  se percibe muy grande y lejano detrás del jugador).
+  // ─────────────────────────────────────────────────────
+  function _drawCastleCielaBg(camX, ts) {
+    const { ctx, W, H } = R;
+    const img = castleCielaImg;
+    if (!img.complete || !img.naturalWidth) return;
+    const ar  = img.naturalWidth / img.naturalHeight;
+    const dh  = H * 1.05;
+    const dw  = Math.max(W + 200, dh * ar);
+    const dy  = H - dh;
+    const off = ((camX * 0.05) % dw + dw) % dw;
+    ctx.save();
+    ctx.drawImage(img, -off,      dy, dw, dh);
+    ctx.drawImage(img, -off + dw, dy, dw, dh);
+    ctx.restore();
+  }
+
+  // Nevada suave — overlay encima del tilemap (copos cayendo, screen-space
+  // con un toque de parallax para dar profundidad).
+  function _drawSnowOverlay(camX, ts) {
+    const { ctx, W, H } = R;
+    ctx.save();
+    for (let i = 0; i < 34; i++) {
+      const seedX     = (i * 0.6180339887) % 1;              // distribución uniforme (razón áurea)
+      const speedUnit = ((i * 37) % 100) / 100;               // 0..1 determinístico
+      const size      = 1.4 + ((i * 53) % 100) / 100 * 2.2;   // 1.4–3.6 px
+      const sway      = 8 + (i % 5) * 5;
+      const fallSpeed = 24 + speedUnit * 34;                  // px/seg
+
+      const wx = ((seedX * (W + 60) - camX * 0.015) % (W + 60) + (W + 60)) % (W + 60) - 30
+                 + Math.sin(ts / 1000 + i) * sway;
+      const wy = ((ts / 1000 * fallSpeed + i * 53) % (H + 40)) - 20;
+
+      ctx.globalAlpha = 0.30 + speedUnit * 0.45;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(wx, wy, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function _drawCrystalsBg(camX, ts) {
     const { ctx, W, H } = R;
     const px = (camX * 0.15) % 180;

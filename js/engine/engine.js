@@ -100,7 +100,8 @@ const Engine = (() => {
     _loadLevel(levelIdx);
 
     const prevStars = levelIdx > 0 ? Player.getState().stars : 0;
-    const prevLives = levelIdx > 0 ? Player.getState().lives : 5;
+    let prevLives = levelIdx > 0 ? Player.getState().lives : 5;
+    if (prevLives <= 0) prevLives = 5; // Reset to 5 lives if dead
     Player.init(charId, 2*TS, (13-2)*TS);
     if (levelIdx > 0) {
       Player.getState().stars = prevStars;
@@ -494,8 +495,8 @@ const Engine = (() => {
       const dy = ps.y+ps.h/2 - t.y;
       if (Math.hypot(dx,dy) < TS) {
         t.used = true;
-        Player.activateImmunity(5.0);
-        UI.showAbilityBadge('🌳 ¡Inmunidad 5 segundos!', 2800);
+        Player.activateImmunity(10.0);
+        UI.showAbilityBadge('🌳 ¡Inmunidad 10 segundos!', 2800);
       }
     }
   }

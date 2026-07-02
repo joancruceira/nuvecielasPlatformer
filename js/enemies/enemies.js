@@ -237,9 +237,10 @@ const Enemies = (() => {
     const overlapY=(ps.y+ps.h)>e.y&&ps.y<(e.y+e.h);
     if (!overlapX||!overlapY) return;
     const isBossType=e.type==='boss'||e.type==='fantasma';
+    const hasSuperImmunity = (ps.immuneTimer || 0) > 0;
     const stomping=ps.vy>=0&&(ps.y+ps.h)<(e.y+(isBossType?40:28))&&!ps.wasGrounded;
     const frozen=(e.frozenTimer||0)>0;
-    if (stomping||(frozen&&!isBossType)){hitEnemy(e);onPlayerHit&&onPlayerHit('stomp',e);}
+    if (stomping||(frozen&&!isBossType)||(hasSuperImmunity&&!isBossType)){hitEnemy(e);onPlayerHit&&onPlayerHit('stomp',e);}
     else if (!ps.invincible) onPlayerHit&&onPlayerHit('damage',e);
   }
 
@@ -345,6 +346,10 @@ const Enemies = (() => {
   }
 
   function hitByProjectile(e, kind, color) {
+    if (typeof EnemiesLevel3 !== 'undefined' &&
+        ['oruga','arbusto','murcielago','cienpies'].includes(e.type)) {
+      return EnemiesLevel3.hitByProjectile(e, kind, color);
+    }
     if (typeof EnemiesLevel4 !== 'undefined' &&
         ['caballero','gargola','gota','rey_escarcha'].includes(e.type)) {
       return EnemiesLevel4.hitByProjectile(e, kind, color);

@@ -85,11 +85,14 @@ const Arbusto = (() => {
       s.vy += 180 * dt;   // leve gravedad
       s.life -= dt;
       if(s.life <= 0) { e.sparks.splice(i,1); continue; }
+      
       // Colisión con jugador
       if(_sparkTouchesPlayer(s, ps)) {
         e.sparks.splice(i,1);
-        // El daño al jugador lo gestiona enemies.js vía hitPlayer
-        s.hitPlayer = true;
+        // Daño inmediato al jugador invocando el callback registrado por enemies_level3.js
+        if(typeof e._onSparkHit === 'function') {
+          e._onSparkHit();
+        }
       }
     }
   }

@@ -7,15 +7,75 @@ const EnemiesLevel4 = (() => {
   let _enemies = [];
   let _ts = 0;
 
-  const IMAGES = {};
+  // ── Sprite Animation System ──────────────────────────
+  // Loads individual PNG frames and cycles through them at a given FPS.
+  // Usage: SpriteAnim.get(key, frameDt) returns the correct HTMLImageElement.
+  const SpriteAnim = (() => {
+    const _sheets = {};  // key -> { frames:[], loaded, fps }
+    const _timers  = {}; // key_instanceId -> accumulator
+
+    function define(key, paths, fps) {
+      const frames = paths.map(src => {
+        const img = new Image();
+        img.src = src;
+        return img;
+      });
+      _sheets[key] = { frames, fps: fps || 10 };
+    }
+
+    // Returns current frame image for a given animation key.
+    // `phase` = a monotonically increasing seconds value (unique per enemy).
+    function frame(key, phase) {
+      const sheet = _sheets[key];
+      if (!sheet || sheet.frames.length === 0) return null;
+      const idx = Math.floor(phase * sheet.fps) % sheet.frames.length;
+      return sheet.frames[idx];
+    }
+
+    // Returns a specific frame index clamped to last frame (useful for death/attack hold).
+    function frameAt(key, idx) {
+      const sheet = _sheets[key];
+      if (!sheet || sheet.frames.length === 0) return null;
+      const i = Math.min(Math.max(0, idx), sheet.frames.length - 1);
+      return sheet.frames[i];
+    }
+
+    function count(key) {
+      return _sheets[key] ? _sheets[key].frames.length : 0;
+    }
+
+    return { define, frame, frameAt, count };
+  })();
+
+  // ── Sprite Definitions ───────────────────────────────
+  // Each enemy gets its own animation keys. The `_ts` accumulator is used
+  // as the global phase; each enemy uses its own internal `animTimer` for
+  // state-specific animations that reset on state change.
 
   function preload() {
-    const names = ['caballero', 'gargola', 'gota', 'rey_escarcha'];
-    names.forEach(n => {
-      const img = new Image();
-      img.src = `img/level4/${n}.png`;
-      IMAGES[n] = img;
-    });
+    const P = 'img/level4/';
+
+    // ── Guardia (Caballero Helado) ──
+    SpriteAnim.define('guardia_idle',     [P+'guardia_idle0.png'],                                    8);
+    SpriteAnim.define('guardia_walk',     [P+'guardia_walk0.png', P+'guardia_walk1.png', P+'guardia_walk2.png'], 10);
+    SpriteAnim.define('guardia_defense',  [P+'guardia_defense0.png', P+'guardia_defense1.png', P+'guardia_defense2.png', P+'guardia_defense3.png'], 10);
+    SpriteAnim.define('guardia_attacked', [P+'guardia_attacked0.png', P+'guardia_attacked1.png', P+'guardia_attacked2.png', P+'guardia_attacked3.png'], 10);
+
+    // ── Gárgola ──
+    SpriteAnim.define('gargola_idle',   [P+'gargola_idle0.png', P+'gargola_idle1.png', P+'gargola_idle2.png', P+'gargola_idle3.png', P+'gargola_idle4.png'], 8);
+    SpriteAnim.define('gargola_fly',    [P+'gargola_fly0.png',  P+'gargola_fly1.png',  P+'gargola_fly2.png',  P+'gargola_fly3.png',  P+'gargola_fly4.png'],  12);
+    SpriteAnim.define('gargola_frozen', [P+'gargola_frozen0.png',P+'gargola_frozen1.png',P+'gargola_frozen2.png',P+'gargola_frozen3.png',P+'gargola_frozen4.png'], 8);
+
+    // ── Gota Viviente ──
+    SpriteAnim.define('gota_walk',   [P+'gota_walk0.png',  P+'gota_walk1.png',  P+'gota_walk2.png',  P+'gota_walk3.png',  P+'gota_walk4.png',  P+'gota_walk5.png'],   10);
+    SpriteAnim.define('gota_frozen', [P+'gota_frozen0.png',P+'gota_frozen1.png',P+'gota_frozen2.png',P+'gota_frozen3.png',P+'gota_frozen4.png',P+'gota_frozen5.png'], 8);
+
+    // ── Boss: Rey de Escarcha ──
+    SpriteAnim.define('boss_idle',    [P+'boss_idle0.png'],                                                                                                            6);
+    SpriteAnim.define('boss_walk',    [P+'boss_walk0.png',   P+'boss_walk1.png',   P+'boss_walk2.png',   P+'boss_walk3.png'],                                          10);
+    SpriteAnim.define('boss_jump',    [P+'boss_jump0.png',   P+'boss_jump1.png'],                                                                                      8);
+    SpriteAnim.define('boss_attack',  [P+'boss_attack0.png', P+'boss_attack1.png', P+'boss_attack2.png', P+'boss_attack3.png', P+'boss_attack4.png'],                  10);
+    SpriteAnim.define('boss_frozen',  [P+'boss_frozen0.png', P+'boss_frozen1.png', P+'boss_frozen2.png'],                                                              8);
   }
 
   // ── Spawn ─────────────────────────────────────────────
@@ -80,10 +140,13 @@ const EnemiesLevel4 = (() => {
       facing: -1,
       hp: 2, maxHp: 2,
       alive: true,
-      state: 'sleep', // sleep | active | falling_block | death
+      state: 'sleep', // sleep | active | perched | falling_block | death
       stateTimer: 0,
       frozenTimer: 0,
       attackCooldown: 1.5,
+      hoverTimer: 2.5,      // tiempo volando antes de posarse a descansar
+      perchTimer: 0,        // tiempo restante posada (quieta y vulnerable)
+      perchGroundY: null,
       icicles: [],
     };
   }
@@ -321,6 +384,7 @@ const EnemiesLevel4 = (() => {
       if (dist < 260) {
         e.state = 'active';
         e.stateTimer = 0;
+        e.hoverTimer = 2.5;
         if (typeof Renderer !== 'undefined') {
           Renderer.spawnText(e.x + e.w/2, e.y - 10, '❗', '#ef4444');
         }
@@ -340,7 +404,53 @@ const EnemiesLevel4 = (() => {
         e.attackCooldown = 2.0;
         e.icicles.push({ x: e.x + e.w/2, y: e.y + e.h, vy: 100 });
       }
+
+      // Cada pocos segundos se posa a descansar: queda quieta y expuesta
+      // (sin esto, una gárgola siempre en vuelo errático es casi imposible
+      // de golpear con pisotón, y muy difícil incluso con proyectil).
+      e.hoverTimer -= dt;
+      if (e.hoverTimer <= 0) {
+        const groundY = _findGroundBelow(map, e.x + e.w/2, e.y);
+        e.state = 'perched';
+        e.stateTimer = 0;
+        e.perchTimer = 2.0;
+        e.perchGroundY = groundY; // null → se queda quieta en el aire (sin piso cerca, p.ej. sobre un foso)
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnText(e.x + e.w/2, e.y - 10, '💤', '#94a3b8');
+        }
+      }
+    } else if (e.state === 'perched') {
+      // Posada (o inmóvil en el aire si no hay piso cerca): quieta y vulnerable.
+      if (e.perchGroundY != null) {
+        const groundY = e.perchGroundY - e.h;
+        e.y += (groundY - e.y) * 5 * dt;
+      }
+      e.perchTimer -= dt;
+      if (e.perchTimer <= 0) {
+        e.state = 'active';
+        e.hoverTimer = 3.0 + Math.random() * 1.5;
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 6);
+        }
+      }
     }
+  }
+
+  // Busca el tile sólido más cercano hacia abajo desde (cx, fromY).
+  // Devuelve la Y (px) del tope de ese tile, o null si no hay piso cerca
+  // (p.ej. la gárgola está volando sobre un foso de pinchos).
+  function _findGroundBelow(map, cx, fromY, maxDropPx = 420) {
+    const TS = 48;
+    const c = Math.max(0, Math.min(map[0].length - 1, Math.floor(cx / TS)));
+    const rStart = Math.max(0, Math.floor(fromY / TS));
+    const rEnd = Math.min(map.length - 1, rStart + Math.ceil(maxDropPx / TS));
+    for (let r = rStart; r <= rEnd; r++) {
+      const t = map[r]?.[c];
+      if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.ICE || t === TILE.PLATFORM) {
+        return r * TS;
+      }
+    }
+    return null;
   }
 
   // ── Lógica Gota Viviente ──────────────────────────────
@@ -601,14 +711,24 @@ const EnemiesLevel4 = (() => {
   }
 
   function _checkPlayerCollisions(e, ps, onPlayerHit) {
-    if (!e.alive || e.state === 'death' || e.state === 'frozen_block' || ps.invincible) return;
+    const isTemporaryInvincible = ps.invincible && !((ps.immuneTimer || 0) > 0);
+    if (!e.alive || e.state === 'death' || e.state === 'frozen_block' || isTemporaryInvincible) return;
 
     // Colisión de hitbox
     const overlapX = (ps.x + ps.w - 4) > e.x && ps.x < (e.x + e.w - 4);
     const overlapY = (ps.y + ps.h) > e.y && ps.y < (e.y + e.h);
 
     if (overlapX && overlapY) {
-      const isStomping = ps.vy >= 0 && (ps.y + ps.h) < (e.y + (e.type === 'rey_escarcha' ? 50 : 25)) && !ps.wasGrounded;
+      const isBoss = e.type === 'rey_escarcha';
+      const hasSuperImmunity = (ps.immuneTimer || 0) > 0;
+
+      if (hasSuperImmunity && !isBoss) {
+        hitEnemy(e);
+        onPlayerHit && onPlayerHit('stomp', e);
+        return;
+      }
+
+      const isStomping = ps.vy >= 0 && (ps.y + ps.h) < (e.y + (isBoss ? 50 : 25)) && !ps.wasGrounded;
 
       if (isStomping) {
         if (e.type === 'gota') {
@@ -676,7 +796,8 @@ const EnemiesLevel4 = (() => {
           Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#94a3b8', 12);
         }
       } else {
-        e.state = 'active'; // Se despierta al golpearla
+        e.state = 'active'; // Se despierta al golpearla (o sale volando si estaba posada)
+        e.hoverTimer = 2.5;
         if (typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
       }
     }
@@ -800,69 +921,46 @@ const EnemiesLevel4 = (() => {
     }
   }
 
-  // ── Render Caballero Helado ───────────────────────────
+  // ── Render Guardia (Caballero Helado) — Sprite Animation ──
   function _drawCaballero(ctx, e, x, y) {
-    ctx.save();
-    ctx.translate(x + e.w/2, y + e.h/2);
-
-    if (e.facing === 1) ctx.scale(-1, 1);
-
-    const frozen = e.frozenTimer > 0;
+    // Select animation key based on state
+    const frozen    = e.frozenTimer > 0;
     const hitShield = e.shieldHitTimer > 0;
 
-    const img = IMAGES['caballero'];
+    let animKey;
+    if (frozen) {
+      animKey = 'guardia_defense'; // use defense frames as frozen stand
+    } else if (e.state === 'damage') {
+      animKey = 'guardia_attacked';
+    } else if (e.shieldActive) {
+      animKey = 'guardia_defense';
+    } else {
+      // Idle when stopped, walk when moving
+      animKey = (Math.abs(e.vx) > 5) ? 'guardia_walk' : 'guardia_idle';
+    }
+
+    // Use stateTimer as per-enemy animation phase so animations reset on state change
+    const phase = (e._animPhase = (e._animPhase || 0) + 0); // initialise once
+    const img = SpriteAnim.frame(animKey, _ts);
+
+    ctx.save();
+    ctx.translate(x + e.w/2, y + e.h/2);
+    // Sprites face RIGHT by default; flip when moving/facing LEFT
+    if (e.facing === -1) ctx.scale(-1, 1);
+
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
-      if (frozen) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
-        ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-      } else if (hitShield) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-      }
-    } else {
-      ctx.fillStyle = frozen ? '#60a5fa' : e.state === 'death' ? '#64748b' : '#334155';
-      ctx.beginPath();
-      ctx.roundRect(-16, -26, 32, 52, 6);
-      ctx.fill();
+    }
 
-      ctx.fillStyle = frozen ? '#93c5fd' : '#475569';
-      ctx.beginPath();
-      ctx.arc(0, -22, 12, Math.PI, 0);
-      ctx.fill();
-
-      ctx.fillStyle = frozen ? '#bae6fd' : '#38bdf8';
-      ctx.fillRect(-6, -22, 12, 4);
-
-      if (e.shieldActive || frozen) {
-        ctx.fillStyle = hitShield ? '#ffffff' : (frozen ? 'rgba(125, 211, 252, 0.9)' : 'rgba(56, 189, 248, 0.85)');
-        ctx.strokeStyle = '#bae6fd';
-        ctx.lineWidth = 2.5;
-
-        ctx.beginPath();
-        ctx.moveTo(-24, -20);
-        ctx.lineTo(-6, -20);
-        ctx.lineTo(-6, 22);
-        ctx.lineTo(-15, 32);
-        ctx.lineTo(-24, 22);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillRect(-20, -14, 3, 28);
-      } else {
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
-        ctx.fillRect(-18, -10, 8, 30);
-      }
-
-      if (frozen) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(191, 219, 254, 0.45)';
-        ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-      }
+    // Frozen overlay
+    if (frozen) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.40)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+    } else if (hitShield) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
     }
 
     ctx.restore();
@@ -870,8 +968,9 @@ const EnemiesLevel4 = (() => {
     if (e.alive && e.hp < e.maxHp) _drawHpBar(ctx, x, y, e);
   }
 
-  // ── Render Gárgola ────────────────────────────────────
+  // ── Render Gárgola — Sprite Animation ────────────────
   function _drawGargola(ctx, e, x, y) {
+    // Draw icicles (world-space, canvas primitives — unchanged)
     ctx.save();
     ctx.fillStyle = '#bae6fd';
     ctx.strokeStyle = '#38bdf8';
@@ -889,193 +988,88 @@ const EnemiesLevel4 = (() => {
     }
     ctx.restore();
 
+    // Select animation key
+    const frozen     = e.frozenTimer > 0;
+    const isSleeping = e.state === 'sleep';
+    const isFalling  = e.state === 'falling_block';
+    const isPerched  = e.state === 'perched';
+
+    let animKey;
+    if (frozen || isFalling) {
+      animKey = 'gargola_frozen';
+    } else if (isSleeping || isPerched) {
+      animKey = 'gargola_idle';
+    } else {
+      animKey = 'gargola_fly';
+    }
+
+    const img = SpriteAnim.frame(animKey, _ts);
+
     ctx.save();
     ctx.translate(x + e.w/2, y + e.h/2);
-
+    // Sprites face LEFT by default; flip when facing RIGHT
     if (e.facing === 1) ctx.scale(-1, 1);
 
-    const frozen = e.frozenTimer > 0;
-    const isSleeping = e.state === 'sleep';
+    if (isSleeping) ctx.globalAlpha = 0.75;
+    if (isFalling)  ctx.globalAlpha = 0.85;
 
-    const img = IMAGES['gargola'];
     if (img && img.complete && img.naturalWidth > 0) {
-      if (e.state === 'falling_block') {
-        ctx.fillStyle = 'rgba(125, 211, 252, 0.75)';
-        ctx.strokeStyle = '#bae6fd';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(-e.w/2 + 2, -e.h/2 + 2, e.w - 4, e.h - 4, 8);
-        ctx.fill();
-        ctx.stroke();
+      ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
+    }
 
-        ctx.save();
-        ctx.globalAlpha = 0.5;
-        ctx.drawImage(img, -e.w/2 + 6, -e.h/2 + 6, e.w - 12, e.h - 12);
-        ctx.restore();
-      } else {
-        if (isSleeping) {
-          ctx.save();
-          ctx.globalAlpha = 0.7;
-          ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
-          ctx.globalCompositeOperation = 'source-atop';
-          ctx.fillStyle = 'rgba(100, 116, 139, 0.4)';
-          ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
-          if (frozen) {
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
-            ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-          }
-        }
-      }
-    } else {
-      if (e.state === 'falling_block') {
-        ctx.fillStyle = 'rgba(125, 211, 252, 0.75)';
-        ctx.strokeStyle = '#bae6fd';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(-e.w/2 + 2, -e.h/2 + 2, e.w - 4, e.h - 4, 8);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-        ctx.beginPath();
-        ctx.arc(0, -4, 14, 0, Math.PI*2);
-        ctx.fill();
-        ctx.restore();
-        return;
-      }
-
-      ctx.fillStyle = isSleeping ? '#475569' : (frozen ? '#60a5fa' : '#475569');
-      ctx.beginPath();
-      if (isSleeping) {
-        ctx.ellipse(-12, 4, 10, 22, Math.PI*0.1, 0, Math.PI*2);
-        ctx.ellipse(12, 4, 10, 22, -Math.PI*0.1, 0, Math.PI*2);
-      } else {
-        ctx.ellipse(-20, -10, 16, 8, -Math.PI*0.2, 0, Math.PI*2);
-        ctx.ellipse(12, -4, 8, 14, Math.PI*0.1, 0, Math.PI*2);
-      }
-      ctx.fill();
-
-      ctx.fillStyle = isSleeping ? '#64748b' : (frozen ? '#93c5fd' : '#64748b');
-      ctx.beginPath();
-      ctx.arc(0, 4, 16, 0, Math.PI*2);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(0, -14, 10, 0, Math.PI*2);
-      ctx.fill();
-
-      ctx.fillStyle = frozen ? '#60a5fa' : '#334155';
-      ctx.beginPath();
-      ctx.moveTo(-6, -20); ctx.lineTo(-14, -30); ctx.lineTo(-2, -22);
-      ctx.moveTo(6, -20); ctx.lineTo(14, -30); ctx.lineTo(2, -22);
-      ctx.fill();
-
-      ctx.fillStyle = isSleeping ? '#334155' : (frozen ? '#bae6fd' : '#38bdf8');
-      ctx.beginPath();
-      ctx.arc(-4, -14, 2.5, 0, Math.PI*2);
-      ctx.arc(4, -14, 2.5, 0, Math.PI*2);
-      ctx.fill();
-
-      if (frozen) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(191, 219, 254, 0.45)';
-        ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
-      }
+    // Frozen / falling overlay tint
+    if (frozen || isFalling) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.40)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+    } else if (isSleeping) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.35)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+    } else if (isPerched) {
+      // Posada: destello dorado pulsante = "vulnerable, atacala ahora"
+      ctx.globalCompositeOperation = 'source-atop';
+      const pulse = 0.25 + Math.sin(_ts / 130) * 0.18;
+      ctx.fillStyle = `rgba(253, 224, 71, ${pulse})`;
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
     }
 
     ctx.restore();
   }
 
-  // ── Render Gota Viviente / Bloque ─────────────────────
+  // ── Render Gota Viviente / Bloque — Sprite Animation ──
   function _drawGota(ctx, e, x, y) {
+    const isFrozen = e.state === 'frozen_block';
+    const animKey  = isFrozen ? 'gota_frozen' : 'gota_walk';
+    const img = SpriteAnim.frame(animKey, _ts);
+
     ctx.save();
     ctx.translate(x + e.w/2, y + e.h/2);
+    // Sprites face LEFT by default; flip when facing RIGHT
+    if (e.facing === 1) ctx.scale(-1, 1);
 
-    const img = IMAGES['gota'];
     if (img && img.complete && img.naturalWidth > 0) {
-      if (e.state === 'frozen_block') {
-        ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.roundRect(-e.w/2 + 2, -e.h/2 + 2, e.w - 4, e.h - 4, 6);
-        ctx.fill();
-        ctx.stroke();
+      ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
+    }
 
-        ctx.save();
-        ctx.globalAlpha = 0.55;
-        ctx.drawImage(img, -e.w/2 + 4, -e.h/2 + 4, e.w - 8, e.h - 8);
-        ctx.restore();
-
-        const timerPct = e.frozenTimer / 4.0;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fillRect(-e.w/2 + 6, e.h/2 - 10, (e.w - 12) * timerPct, 3);
-      } else {
-        const squeeze = Math.sin(_ts * 10) * 0.06;
-        ctx.scale(1 + squeeze, 1 - squeeze);
-        ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
-      }
-    } else {
-      if (e.state === 'frozen_block') {
-        ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.roundRect(-e.w/2 + 2, -e.h/2 + 2, e.w - 4, e.h - 4, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2.0;
-        ctx.beginPath();
-        ctx.moveTo(-12, -10);
-        ctx.lineTo(8, 12);
-        ctx.moveTo(-4, -14);
-        ctx.lineTo(-14, -4);
-        ctx.moveTo(14, 6);
-        ctx.lineTo(6, 14);
-        ctx.stroke();
-
-        const timerPct = e.frozenTimer / 4.0;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fillRect(-e.w/2 + 6, e.h/2 - 10, (e.w - 12) * timerPct, 3);
-
-        ctx.restore();
-        return;
-      }
-
-      const squeeze = Math.sin(_ts * 10) * 0.08;
-      ctx.scale(1 + squeeze, 1 - squeeze);
-
-      const grad = ctx.createRadialGradient(0, 4, 2, 0, 4, 20);
-      grad.addColorStop(0, '#7dd3fc');
-      grad.addColorStop(1, '#0284c7');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(0, -20);
-      ctx.bezierCurveTo(15, -6, 18, 18, 0, 18);
-      ctx.bezierCurveTo(-18, 18, -15, -6, 0, -20);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(-6, -4, 4, 8, Math.PI*0.15, 0, Math.PI*2);
-      ctx.fill();
+    // Frozen overlay + timer bar
+    if (isFrozen) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.40)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+      ctx.globalCompositeOperation = 'source-over';
+      // Remaining freeze timer bar (white, bottom of sprite)
+      const timerPct = Math.max(0, e.frozenTimer / 4.0);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.fillRect(-e.w/2 + 4, e.h/2 - 8, (e.w - 8) * timerPct, 3);
     }
 
     ctx.restore();
   }
 
-  // ── Render Boss: Rey de Escarcha ──────────────────────
+  // ── Render Boss: Rey de Escarcha — Sprite Animation ──
   function _drawReyEscarcha(ctx, e, x, y) {
-    const ts = _ts;
-
+    // ── Draw icicle projectiles (canvas primitives, unchanged) ──
     ctx.save();
     ctx.fillStyle = '#bae6fd';
     ctx.strokeStyle = '#38bdf8';
@@ -1093,6 +1087,7 @@ const EnemiesLevel4 = (() => {
     }
     ctx.restore();
 
+    // ── Draw ice-wave particles (canvas primitives, unchanged) ──
     ctx.save();
     ctx.fillStyle = '#38bdf8';
     ctx.strokeStyle = '#bae6fd';
@@ -1102,7 +1097,6 @@ const EnemiesLevel4 = (() => {
       const py = p.y - (e.y - y);
       const hPct = Math.min(1.0, (2.5 - p.life) * 4);
       const peakH = 45 * hPct;
-
       ctx.beginPath();
       ctx.moveTo(px - 14, py);
       ctx.lineTo(px, py - peakH);
@@ -1113,6 +1107,7 @@ const EnemiesLevel4 = (() => {
     }
     ctx.restore();
 
+    // ── Draw blizzard wind streaks (canvas primitives, unchanged) ──
     if (e.blizzardActive) {
       ctx.save();
       ctx.strokeStyle = 'rgba(186, 230, 253, 0.4)';
@@ -1128,86 +1123,66 @@ const EnemiesLevel4 = (() => {
       ctx.restore();
     }
 
+    // ── Select boss animation key based on state ──
+    const isStun   = e.state === 'stun';
+    const isDeath  = e.state === 'death';
+    const isAttack = e.state === 'attack_wave' || e.state === 'attack_blizzard';
+    const isFrozen = e.frozenTimer > 0;
+
+    let animKey;
+    if (isFrozen || isStun) {
+      animKey = 'boss_frozen';
+    } else if (isDeath) {
+      animKey = 'boss_frozen'; // use frozen frames for death fade
+    } else if (isAttack) {
+      animKey = 'boss_attack';
+    } else if (Math.abs(e.vx) > 10) {
+      animKey = 'boss_walk';
+    } else {
+      animKey = 'boss_idle';
+    }
+
+    const img = SpriteAnim.frame(animKey, _ts);
+
+    // ── Draw boss sprite ──
     ctx.save();
     ctx.translate(x + e.w/2, y + e.h/2);
+    // Screen-shake when stunned
+    if (isStun) ctx.translate((Math.random() - 0.5) * 6, 0);
+    // Sprites face LEFT by default; flip when facing RIGHT
+    if (e.facing === 1) ctx.scale(-1, 1);
 
-    const isStun = e.state === 'stun';
-    const shakeX = isStun ? (Math.random() - 0.5) * 6 : 0;
-    ctx.translate(shakeX, 0);
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, -e.w/2, -e.h/2, e.w, e.h);
+    }
 
+    // Stun / frozen overlay tint
+    if (isFrozen || isStun) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+    }
+
+    // Orbiting ice-shard particles (canvas — decorative, kept for premium feel)
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = 'rgba(125, 211, 252, 0.8)';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     const numShards = 5;
     for (let j = 0; j < numShards; j++) {
-      const angle = (ts * 1.2) + (j * (Math.PI * 2 / numShards));
-      const dist = 75 + Math.sin(ts * 3 + j) * 8;
+      const angle = (_ts * 1.2) + (j * (Math.PI * 2 / numShards));
+      const dist  = 60 + Math.sin(_ts * 3 + j) * 8;
       const sx = Math.cos(angle) * dist;
       const sy = Math.sin(angle) * dist - 15;
-
       ctx.beginPath();
-      ctx.moveTo(sx, sy - 8);
-      ctx.lineTo(sx + 8, sy);
-      ctx.lineTo(sx, sy + 8);
-      ctx.lineTo(sx - 8, sy);
+      ctx.moveTo(sx, sy - 7);
+      ctx.lineTo(sx + 7, sy);
+      ctx.lineTo(sx, sy + 7);
+      ctx.lineTo(sx - 7, sy);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
     }
-
-    ctx.fillStyle = isStun ? '#475569' : '#1e3a8a';
-    ctx.beginPath();
-    ctx.moveTo(-40, -20);
-    ctx.lineTo(40, -20);
-    ctx.lineTo(48, 56);
-    ctx.lineTo(-48, 56);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = isStun ? '#64748b' : '#1e293b';
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.roundRect(-30, -32, 60, 80, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = isStun ? '#475569' : 'rgba(56, 189, 248, ' + (0.55 + Math.sin(ts*5)*0.2) + ')';
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = '#475569';
-    ctx.beginPath();
-    ctx.arc(-36, -30, 16, 0, Math.PI*2);
-    ctx.arc(36, -30, 16, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = isStun ? '#475569' : '#0f172a';
-    ctx.beginPath();
-    ctx.arc(0, -48, 18, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = isStun ? '#cbd5e1' : '#38bdf8';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-20, -56);
-    ctx.lineTo(-14, -74);
-    ctx.lineTo(-6, -60);
-    ctx.lineTo(0, -82);
-    ctx.lineTo(6, -60);
-    ctx.lineTo(14, -74);
-    ctx.lineTo(20, -56);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = isStun ? '#475569' : (e.state.startsWith('attack') ? '#ef4444' : '#67e8f9');
-    ctx.beginPath();
-    ctx.arc(-7, -46, 3.5, 0, Math.PI*2);
-    ctx.arc(7, -46, 3.5, 0, Math.PI*2);
-    ctx.fill();
 
     ctx.restore();
 

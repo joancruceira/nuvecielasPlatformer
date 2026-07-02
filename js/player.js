@@ -111,7 +111,10 @@ const Player = (() => {
   function _updateTimers(dt) {
     if (state.invTimer > 0) {
       state.invTimer -= dt;
-      if (state.invTimer <= 0) { state.invTimer=0; state.invincible=false; }
+      if (state.invTimer <= 0) { 
+        state.invTimer=0; 
+        if (!(state.immuneTimer > 0)) state.invincible=false; 
+      }
     }
     if (state.slideTimer > 0) {
       state.slideTimer -= state.onIce ? dt * 0.6 : dt;
@@ -123,7 +126,10 @@ const Player = (() => {
     if (state.projectileCooldown > 0) state.projectileCooldown -= dt;
     if (state.immuneTimer > 0) {
       state.immuneTimer -= dt;
-      if (state.immuneTimer <= 0) { state.immuneTimer=0; state.invincible=false; }
+      if (state.immuneTimer <= 0) { 
+        state.immuneTimer=0; 
+        if (!(state.invTimer > 0)) state.invincible=false; 
+      }
     }
   }
 
