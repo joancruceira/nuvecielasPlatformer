@@ -11,7 +11,9 @@
 const Arbusto = (() => {
 
   const W = 56, H = 56;
-  const SHOOT_INTERVAL = 2.2;
+  // Ajuste de balance (feedback de jugadoras): más tiempo entre disparo y
+  // disparo para dar una ventana clara de reacción/ataque. Antes 2.2s.
+  const SHOOT_INTERVAL = 3.4;
   const SPARK_SPEED    = 280;
   const TOUCH_RANGE    = 50;
 

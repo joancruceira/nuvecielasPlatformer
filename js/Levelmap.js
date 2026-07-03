@@ -253,7 +253,8 @@ const LevelMap = (() => {
   }
 
   function _starsHtml(n) {
-    return '⭐'.repeat(n) + (n < 3 ? '☆'.repeat(3-n) : '');
+    // Solo gráfico: una estrella + el número atrapado (no una estrella por cada una).
+    return n > 0 ? `⭐ ${n}` : '';
   }
 
   function _updatePath(unlocked) {

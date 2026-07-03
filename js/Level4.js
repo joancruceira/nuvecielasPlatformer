@@ -113,6 +113,9 @@ const Level4 = {
     // Gotas del salón: patrullan el hielo (congelarlas = bloques empujables)
     gota(45); gota(63); gota(78);
 
+    // Árbol Mágico — respiro antes de encarar al Guardián (ajuste de balance).
+    map[12][82] = TILE.MAGIC_TREE;
+
     // El Guardián custodia la salida (lento: esquivable, atacable o pilar)
     caballero(88);
     st(81, 11); st(85, 11);
@@ -126,6 +129,11 @@ const Level4 = {
     //   caen congeladas, y la sala secreta del ático.
     // ══════════════════════════════════════════════════════
     g(101, 58);                      // piso de la biblioteca x101-158
+
+    // Árbol Mágico — justo antes del primer tramo con gárgolas (ajuste de
+    // balance: la Biblioteca es la primera gran concentración de gárgolas
+    // y antes no tenía ningún árbol cerca).
+    map[12][102] = TILE.MAGIC_TREE;
 
     // Estanterías escalonadas (subida en zigzag, pasos de ≤3)
     p(104, 3, 10);
@@ -156,6 +164,9 @@ const Level4 = {
 
     gota(144);
     map[12][145] = TILE.CHECKPOINT;  // ✅ CHECKPOINT 2
+
+    // Árbol Mágico — junto al checkpoint, antes del gran foso con gárgolas.
+    map[12][146] = TILE.MAGIC_TREE;
 
     // El gran foso de la biblioteca: plataformas (requerido) o
     // gárgolas congeladas que caen y rompen los pinchos (creativo)
@@ -214,6 +225,11 @@ const Level4 = {
     // Descenso (ruta normal): baja al piso y enfrenta la guardia
     p(226, 3, 7);
     p(230, 2, 9);
+
+    // Árbol Mágico — justo antes de la guardia del descansillo (ajuste de
+    // balance: da un respiro antes de encarar Guardián + 2 gotas seguidas).
+    map[8][230] = TILE.MAGIC_TREE;
+
     caballero(238);                  // el Guardián del descansillo
     gota(234); gota(246);
 
@@ -231,6 +247,16 @@ const Level4 = {
     //   pilares de hielo. Silencio. El cofre. La puerta del trono.
     // ══════════════════════════════════════════════════════
     g(253, 24);                      // x253-276
+
+    // SECRETO #6 · El Súper Árbol Mágico (único en todo el nivel).
+    // Escondido en un desvío corto hacia arriba, ANTES del corredor de los
+    // congelados y fuera del camino principal: se ve si mirás para arriba,
+    // pero nada obliga a subir. Premio grande justo antes del Rey Escarcha.
+    p(253, 2, 10);                   // 1er escalón (13→10, salto+doble salto)
+    st(253, 9);                      // pista: una estrella asoma arriba
+    p(253, 3, 6);                    // 2do escalón (10→6, salto+doble salto)
+    st(255, 6);
+    map[5][254] = TILE.SUPER_MAGIC_TREE;
 
     // Techo bajo del pasillo (opresión suave)
     for (let x = 256; x <= 272; x++) blk(x, 5);
@@ -250,6 +276,10 @@ const Level4 = {
     //   escalón si las congelás) y una gárgola que puede caer.
     // ══════════════════════════════════════════════════════
     g(277, 33);                      // x277-309
+
+    // Árbol Mágico — a la entrada de la arena, para encarar al Rey con
+    // recursos (ajuste de balance; el Súper Árbol de la antesala es opcional).
+    map[12][279] = TILE.MAGIC_TREE;
 
     // Muro derecho: cierra la arena
     for (let y = 1; y < 13; y++) blk(308, y);

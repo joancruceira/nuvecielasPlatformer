@@ -35,6 +35,11 @@ const Player = (() => {
     immuneTimer:0,
     maxLives: 5,
     onIce: false,
+    // Súper Árbol Mágico (ajuste de balance): tamaño +50% visual (jugador y
+    // disparos) + daño extra al Rey Escarcha, mientras superTimer > 0.
+    // sizeMult NUNCA toca w/h (hitbox) — es puramente visual/render.
+    superTimer: 0,
+    sizeMult: 1,
   };
 
   // ── Getters ──────────────────────────────────────────
@@ -65,6 +70,7 @@ const Player = (() => {
     state.projectiles=[]; state.projectileCooldown=0;
     state.immuneTimer=0;
     state.onIce=false;
+    state.superTimer=0; state.sizeMult=1;
   }
 
   function respawn() {
@@ -79,6 +85,7 @@ const Player = (() => {
     state.fireballs=[]; state.fireballCooldown=0;
     state.projectiles=[]; state.projectileCooldown=0;
     state.onIce=false;
+    state.superTimer=0; state.sizeMult=1;
   }
 
   // ═══════════════════════════════════════════════════
@@ -126,11 +133,18 @@ const Player = (() => {
     if (state.projectileCooldown > 0) state.projectileCooldown -= dt;
     if (state.immuneTimer > 0) {
       state.immuneTimer -= dt;
-      if (state.immuneTimer <= 0) { 
-        state.immuneTimer=0; 
-        if (!(state.invTimer > 0)) state.invincible=false; 
+      if (state.immuneTimer <= 0) {
+        state.immuneTimer=0;
+        if (!(state.invTimer > 0)) state.invincible=false;
       }
     }
+
+    // Súper Árbol Mágico — cuenta regresiva + tamaño (crece rápido, vuelve
+    // suave). sizeMult es solo visual: no toca w/h ni el radio de colisión
+    // de los disparos.
+    if (state.superTimer > 0) state.superTimer = Math.max(0, state.superTimer - dt);
+    const targetSize = state.superTimer > 0 ? 1.5 : 1;
+    state.sizeMult += (targetSize - state.sizeMult) * Math.min(1, dt * 6);
   }
 
   // ── Movimiento horizontal ────────────────────────────
@@ -376,6 +390,18 @@ const Player = (() => {
     Renderer.spawnText(state.x+state.w/2, state.y-20, '🌳 ¡Inmune 5s!', '#4ade80');
   }
 
+  // Súper Árbol Mágico — secreto raro y poderoso (ajuste de balance).
+  function activateSuperMode(duration = 25.0) {
+    state.superTimer = duration;
+    // Mismo efecto que el árbol normal: inmune + daña enemigos al tocarlos.
+    state.immuneTimer = duration; state.invincible = true;
+    if (typeof AudioManager !== 'undefined') AudioManager.sfx('get_tree');
+    Renderer.flash('rgba(196,132,252,.55)', 0.8);
+    const rainbow = ['#f97316','#f9c846','#4ade80','#38bdf8','#a78bfa','#f472b6'];
+    for (const c of rainbow) Renderer.spawnParticles(state.x+state.w/2, state.y, c, 8);
+    Renderer.spawnText(state.x+state.w/2, state.y-24, '🌈 ¡SÚPER MODO!', '#f9c846');
+  }
+
   // ═══════════════════════════════════════════════════
   //  PROYECTILES — sistema genérico
   //
@@ -513,7 +539,7 @@ const Player = (() => {
     CHARACTERS,
     init, update, respawn,
     tryJump, trySlide, tryGroundPound, tryFireball, tryProjectile,
-    takeDamage, collectStar, activateCheckpoint, activateImmunity,
+    takeDamage, collectStar, activateCheckpoint, activateImmunity, activateSuperMode,
     getState, getChar, getCharacters, getBounds, getFireballs, getProjectiles,
   };
 

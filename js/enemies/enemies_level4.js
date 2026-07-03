@@ -288,7 +288,14 @@ const EnemiesLevel4 = (() => {
     if (!e.alive && e.state !== 'death') return;
     if (e.state === 'death') {
       e.stateTimer += dt;
-      if (e.stateTimer > 0.5) e.alive = false;
+      if (e.stateTimer > 0.5) {
+        e.alive = false;
+        e.state = 'gone'; // el bucle lo elimina y drawAll deja de dibujarlo
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 14);
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ffffff', 8);
+        }
+      }
       return;
     }
 
@@ -316,7 +323,14 @@ const EnemiesLevel4 = (() => {
     if (!e.alive && e.state !== 'death') return;
     if (e.state === 'death') {
       e.stateTimer += dt;
-      if (e.stateTimer > 0.5) e.alive = false;
+      if (e.stateTimer > 0.5) {
+        e.alive = false;
+        e.state = 'gone'; // el bucle lo elimina y drawAll deja de dibujarlo
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 14);
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ffffff', 8);
+        }
+      }
       return;
     }
 
@@ -458,7 +472,14 @@ const EnemiesLevel4 = (() => {
     if (!e.alive && e.state !== 'death') return;
     if (e.state === 'death') {
       e.stateTimer += dt;
-      if (e.stateTimer > 0.5) e.alive = false;
+      if (e.stateTimer > 0.5) {
+        e.alive = false;
+        e.state = 'gone'; // el bucle lo elimina y drawAll deja de dibujarlo
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 14);
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#ffffff', 8);
+        }
+      }
       return;
     }
 
@@ -481,6 +502,11 @@ const EnemiesLevel4 = (() => {
       e.stateTimer += dt;
       if (e.stateTimer > 1.5) {
         e.alive = false;
+        e.state = 'gone'; // desaparece con un estallido de hielo + dorado
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 34);
+          Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#f9c846', 22);
+        }
         window.dispatchEvent(new CustomEvent('bossDefeated'));
       }
       return;
@@ -765,6 +791,16 @@ const EnemiesLevel4 = (() => {
     }
   }
 
+  // Daño al Rey Escarcha por golpe — se triplica mientras el Súper Árbol
+  // Mágico está activo (ajuste de balance). Solo aplica mientras dura el
+  // efecto; fuera de él, el daño es siempre el normal (1).
+  function _bossDamage() {
+    const superActive = (typeof Player !== 'undefined' && Player.getState)
+      ? Player.getState().superTimer > 0
+      : false;
+    return superActive ? 3 : 1;
+  }
+
   function hitEnemy(e) {
     if (!e.alive || e.state === 'death') return;
 
@@ -802,13 +838,14 @@ const EnemiesLevel4 = (() => {
       }
     }
     else if (e.type === 'rey_escarcha') {
-      e.hp--;
+      const dmg = _bossDamage();
+      e.hp = Math.max(0, e.hp - dmg);
       e.state = 'stun';
       e.stateTimer = 1.0; // Aturdido corto por golpe directo
       if (typeof AudioManager !== 'undefined') AudioManager.sfx('hit_boss');
       if (typeof Renderer !== 'undefined') {
-        Renderer.spawnParticles(e.x + e.w/2, e.y + 40, '#ef4444', 16);
-        Renderer.spawnText(e.x + e.w/2, e.y, '-1 HP', '#ef4444');
+        Renderer.spawnParticles(e.x + e.w/2, e.y + 40, dmg > 1 ? '#f9c846' : '#ef4444', dmg > 1 ? 28 : 16);
+        Renderer.spawnText(e.x + e.w/2, e.y, dmg > 1 ? `🌈 -${dmg} HP` : '-1 HP', dmg > 1 ? '#f9c846' : '#ef4444');
       }
 
       if (e.hp <= 0) {
@@ -875,9 +912,10 @@ const EnemiesLevel4 = (() => {
       if (pKind === 'ice') {
         e.state = 'stun';
         e.stateTimer = 1.2;
-        e.hp = Math.max(0, e.hp - 1);
+        const dmg = _bossDamage();
+        e.hp = Math.max(0, e.hp - dmg);
         if (typeof Renderer !== 'undefined') {
-          Renderer.spawnText(e.x + e.w/2, e.y - 15, '❄️ -1 HP (Freno)', '#7dd3fc');
+          Renderer.spawnText(e.x + e.w/2, e.y - 15, dmg > 1 ? `🌈❄️ -${dmg} HP` : '❄️ -1 HP (Freno)', '#7dd3fc');
         }
       } else {
         hitEnemy(e);

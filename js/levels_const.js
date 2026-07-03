@@ -33,6 +33,7 @@ const TILE = {
   GARGO_HIELO:     33,
   GOTA_VIVIENTE:   34,
   REY_ESCARCHA:    35,
+  SUPER_MAGIC_TREE:36, // Súper Árbol Mágico — secreto raro (ajuste de balance)
 };
 
 const TILE_SIZE = 48; // px

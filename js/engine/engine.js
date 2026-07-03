@@ -174,7 +174,11 @@ const Engine = (() => {
           map[r][c] = TILE.AIR;
         }
         if (map[r][c] === TILE.MAGIC_TREE) {
-          magicTrees.push({ x:c*TS+TS/2, y:r*TS+TS/2, col:c, row:r, used:false });
+          magicTrees.push({ x:c*TS+TS/2, y:r*TS+TS/2, col:c, row:r, used:false, special:false });
+          map[r][c] = TILE.AIR;
+        }
+        if (map[r][c] === TILE.SUPER_MAGIC_TREE) {
+          magicTrees.push({ x:c*TS+TS/2, y:r*TS+TS/2, col:c, row:r, used:false, special:true });
           map[r][c] = TILE.AIR;
         }
         if (map[r][c] === TILE.PORTAL) {
@@ -495,8 +499,13 @@ const Engine = (() => {
       const dy = ps.y+ps.h/2 - t.y;
       if (Math.hypot(dx,dy) < TS) {
         t.used = true;
-        Player.activateImmunity(10.0);
-        UI.showAbilityBadge('🌳 ¡Inmunidad 10 segundos!', 2800);
+        if (t.special) {
+          Player.activateSuperMode(25.0);
+          UI.showAbilityBadge('🌈 ¡SÚPER ÁRBOL MÁGICO! 25s', 3200);
+        } else {
+          Player.activateImmunity(10.0);
+          UI.showAbilityBadge('🌳 ¡Inmunidad 10 segundos!', 2800);
+        }
       }
     }
   }
