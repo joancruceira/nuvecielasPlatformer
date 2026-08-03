@@ -19,6 +19,22 @@ const Level5 = {
     glowing:   true,
     bossName:  null,
     bossEmoji: null,
+
+    // Nivel sin boss: el portal se abre al cargar, no al derrotar a nadie.
+    // Sin esto el portal quedaba active:false para siempre (los portales sólo
+    // se activaban en _handleBossDefeated) y el nivel era imposible de terminar.
+    winCondition: 'reachPortal',
+
+    // Física subacuática — la lee player.js vía Engine.getLevelData().physics
+    physics: {
+      swim:     true,
+      gravity:  320,   // vs 1380 en tierra
+      maxFall:  250,   // vs 900
+      hDrag:    0.65,  // arrastre horizontal
+      accel:    6.0,   // aceleración por flotabilidad
+      strokeVy: -300,  // impulso de cada brazada
+    },
+
     map: null,
   },
 

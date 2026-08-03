@@ -198,6 +198,13 @@ const EnemiesLevel3 = (() => {
   function getBoss()     { return _enemies.find(e => e.type==='cienpies'); }
   function allDefeated() { return _enemies.every(e => !e.alive); }
 
+  // Vaciar el sistema al salir del nivel 3.
+  // Sin esto, los enemigos vivos del nivel 3 quedaban en el array y
+  // Enemies.getEnemies() —que despacha por "¿qué array tiene elementos?"—
+  // seguía devolviéndolos en los niveles 4 y 5, dejando al nivel 4 sin
+  // enemigos propios y sin boss (y por lo tanto sin portal).
+  function reset() { _enemies = []; _ts = 0; }
+
   function stunNearby(cx, cy, radius) {
     for(const e of _enemies) {
       if(!e.alive) continue;
@@ -217,7 +224,7 @@ const EnemiesLevel3 = (() => {
     }
   }
 
-  return { preload, spawnFromMap, update, drawAll, hitEnemy, hitByProjectile,
+  return { preload, reset, spawnFromMap, update, drawAll, hitEnemy, hitByProjectile,
            getEnemies, getBoss, allDefeated, stunNearby };
 
 })();

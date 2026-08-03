@@ -75,11 +75,13 @@ const Engine = (() => {
   function startGame(charId, levelIdx = 0) {
     if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
 
-    let started = false;
+    let started  = false;
+    let guardId  = null;
 
     function doStart() {
       if(started) return;
       started = true;
+      if (guardId !== null) { clearTimeout(guardId); guardId = null; }
       LoadingScreen.hide();
       _startGameInternal(charId, levelIdx);
     }
@@ -91,11 +93,25 @@ const Engine = (() => {
       doStart
     );
 
-    // Timeout de seguridad — si los assets tardan más de 8s, arrancar igual
-    setTimeout(doStart, 8000);
+    // Timeout de seguridad — si los assets tardan más de 8s, arrancar igual.
+    // Se cancela al arrancar: si no, quedaba pendiente y disparaba durante
+    // la carga siguiente cuando el jugador reiniciaba rápido el nivel.
+    guardId = setTimeout(doStart, 8000);
+  }
+
+  // Cortar cualquier submisión en curso, sin disparar sus callbacks.
+  // Es obligatorio antes de parar el motor o de cargar otro nivel: mientras
+  // una submisión siga "activa", _loop no vuelve a llamar a _update() y el
+  // nivel queda congelado para siempre (jugador inmóvil, enemigos quietos).
+  function _abortSubLevels() {
+    if (SubMision.isActive()) SubMision.stop();
+    if (typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive() && SubMisionNatan.abort) {
+      SubMisionNatan.abort();
+    }
   }
 
   function _startGameInternal(charId, levelIdx) {
+    _abortSubLevels();
     currentLevelIdx = levelIdx;
     _loadLevel(levelIdx);
 
@@ -137,16 +153,32 @@ const Engine = (() => {
     Enemies.init();
     Enemies.spawnFromMap(map, idx);
     Renderer.resetCastle();
-    GiftBox.init();  GiftBox.spawnFromMap(map);  GiftBox.preload();
+    Renderer.clearFx();   // los FX pendientes son del nivel anterior
+
+    // Resetear TODAS las mecánicas en cada nivel, no sólo la del nivel entrante.
+    // draw()/update() de MagicDoor y Cueva se llaman en todos los niveles, así que
+    // sin este reset la puerta del nivel 2 seguía dibujándose flotando en los
+    // niveles 3, 4 y 5, y el fondo arcoíris quedaba activo para siempre.
+    GiftBox.init();
+    if (typeof MagicDoor !== 'undefined') MagicDoor.init();
+    if (typeof Cueva     !== 'undefined') Cueva.init();
+
+    GiftBox.spawnFromMap(map); GiftBox.preload();
     // Nivel 2: puerta mágica (Pablo) — Nivel 3: cueva (SuperNatan)
     if (idx === 1 && typeof MagicDoor !== 'undefined') {
-      MagicDoor.init(); MagicDoor.spawnFromMap(map); MagicDoor.preload();
+      MagicDoor.spawnFromMap(map); MagicDoor.preload();
     }
     if (idx === 2 && typeof Cueva !== 'undefined') {
-      Cueva.init(); Cueva.spawnFromMap(map, TS); Cueva.preload();
+      Cueva.spawnFromMap(map, TS); Cueva.preload();
     }
     _extractCollectibles();
     _extractSpecials();
+
+    // Niveles sin boss declaran winCondition:'reachPortal' → el portal nace abierto.
+    if (levelData.winCondition === 'reachPortal') {
+      for (const p of portals) p.active = true;
+    }
+
     cam.x = 0; cam.y = 0; cam.targetX = 0; cam.targetY = 0;
   }
 
@@ -197,9 +229,15 @@ const Engine = (() => {
     const dt = Math.min(rawDt, 0.05);
 
     const natanActive = typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive();
-    if (!SubMision.isActive() && !natanActive && !EngineState.paused) _update(dt);
+    const inSubLevel  = SubMision.isActive() || natanActive;
 
-    EngineRender.frame(timestamp, dt, { map, levelData, cam, collectibles, checkpoints, portals, magicTrees });
+    if (!inSubLevel && !EngineState.paused) _update(dt);
+
+    // SubMision.update() y SubMisionNatan.update() son update+draw, no sólo draw.
+    // Con dt=0 en pausa, las submisiones quedan realmente congeladas detrás del
+    // overlay en vez de seguir simulando física, enemigos y daño.
+    const frameDt = EngineState.paused ? 0 : dt;
+    EngineRender.frame(timestamp, frameDt, { map, levelData, cam, collectibles, checkpoints, portals, magicTrees });
     rafId = requestAnimationFrame(_loop);
   }
 
@@ -225,7 +263,7 @@ const Engine = (() => {
     _checkCollectibles(ps);
     _checkCheckpoints(ps);
     _checkPortal(ps);
-    _checkSubMisionEntry(ps);
+    _checkSubMisionEntry(ps, dt);
     _checkMagicTrees(ps);
     _checkPlayerProjectiles();
 
@@ -266,7 +304,14 @@ const Engine = (() => {
   function _handleEnemyCollision(type, enemy) {
     const ps = Player.getState();
     if (type === 'stomp') {
-      ps.vy = -400; ps.grounded = false; UI.updateHUD();
+      // Rebote variable: manteniendo salto rebotás más alto. Es lo que permite
+      // encadenar pisotones y convierte a los enemigos en algo divertido en
+      // lugar de un obstáculo. El pisotón además devuelve el doble salto.
+      ps.vy = input.jumpHeld ? -560 : -380;
+      ps.grounded = false;
+      ps.doubleJumped = false;
+      ps.canDoubleJump = true;
+      UI.updateHUD();
     } else if (type === 'damage') {
       Player.takeDamage(enemy ? enemy.x + (enemy.w||0)/2 : null);
       UI.updateHUD();
@@ -286,9 +331,10 @@ const Engine = (() => {
     if (currentLevelIdx === 0) {
       Renderer.showCastle();
       setTimeout(() => {
+        // Coordenadas de MUNDO: RendererFx resta la cámara al dibujar.
         for (const p of portals) {
-          Renderer.spawnParticles(p.x-cam.x, p.y-cam.y, '#dc2626', 40);
-          Renderer.spawnParticles(p.x-cam.x, p.y-cam.y, '#ef4444', 30);
+          Renderer.spawnParticles(p.x, p.y, '#dc2626', 40);
+          Renderer.spawnParticles(p.x, p.y, '#ef4444', 30);
           Renderer.flash('rgba(139,0,0,0.45)', 0.9);
         }
       }, 200);
@@ -407,7 +453,18 @@ const Engine = (() => {
            py+pr > e.y && py-pr < e.y+e.h;
   }
 
-  function _checkSubMisionEntry(ps) {
+  // Bloqueo de re-entrada tras volver de una submisión.
+  //
+  // El jugador vuelve exactamente a la puerta por la que entró, así que si
+  // `input.down` sigue activo al regresar, _checkSubMisionEntry dispara de
+  // nuevo en el primer frame y el jugador queda atrapado entrando y saliendo.
+  // Pasa sobre todo con SuperNatan: adentro se usa ↓ para descender, y el
+  // listener de teclado del engine sigue vivo durante el subnivel.
+  let subMisionLockout = 0;
+  const SUBMISION_LOCKOUT = 0.75; // segundos
+
+  function _checkSubMisionEntry(ps, dt) {
+    if (subMisionLockout > 0) { subMisionLockout -= dt; return; }
     if (!input.down) return;
     if (ps.invincible) return;
     if (Math.abs(ps.vx) > 200 || ps.vy < -100) return;
@@ -442,6 +499,16 @@ const Engine = (() => {
     }
   }
 
+  // Estado común al volver de cualquier submisión.
+  // El jugador reaparece en la misma puerta por la que entró (su posición nunca
+  // se toca), así que hay que soltar el input y bloquear la re-entrada.
+  function _onReturnFromSubMision() {
+    lastTs = 0;
+    EngineInput.reset();               // suelta ↓ y limpia el buffer de saltos
+    subMisionLockout = SUBMISION_LOCKOUT;
+    Renderer.clearFx();                // FX pendientes en coordenadas de la submisión
+  }
+
   function _launchSubMision(ps) {
     const savedState = {
       camX: cam.x, camY: cam.y,
@@ -449,8 +516,10 @@ const Engine = (() => {
       stars: ps.stars, lives: ps.lives,
       charId: ps.charId,
     };
+    Renderer.clearFx();
     SubMision.start(savedState, {
       onReturn: () => {
+        _onReturnFromSubMision();
         const ps = Player.getState();
         ps.lives = ps.maxLives || 5;
         UI.updateHUD();
@@ -461,17 +530,18 @@ const Engine = (() => {
 
   function _launchSubMisionNatan(ps) {
     if (typeof SubMisionNatan === 'undefined') return;
+    Renderer.clearFx();
     SubMisionNatan.start(
       { camX: cam.x, camY: cam.y, levelIdx: currentLevelIdx },
       {
         onReturn: () => {
-          lastTs = 0;
+          _onReturnFromSubMision();
           Player.activateImmunity(3.0);
           UI.showAbilityBadge('🦸 ¡SuperNatan pasó por acá!', 3000);
         },
         onGameOver: () => {
           // Natan perdió todas las vidas → volver al nivel 3 en la puerta de la cueva
-          lastTs = 0;
+          _onReturnFromSubMision();
           currentLevelIdx = 2;
           _loadLevel(2);
           // Posicionar jugador cerca de la puerta de la cueva
@@ -528,14 +598,46 @@ const Engine = (() => {
   function stop() {
     EngineState.running = false;
     if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    _abortSubLevels();
     EngineInput.reset();
+    Renderer.clearFx();
   }
 
   function getCurrentLevel() { return currentLevelIdx; }
   function getLevelData()    { return levelData; }
 
+  // ── SUBMISIÓN STANDALONE (entrada desde el mapa de niveles) ──
+  //
+  // La entrada canónica a la submisión de Pablo es la puerta mágica del
+  // nivel 2. El nodo "¡Misión urgente!" del mapa es una entrada alternativa
+  // que llamaba SubMision.start() sin canvas visible y sin game loop:
+  // SubMision.update() sólo se invoca desde Engine._loop, así que la pantalla
+  // quedaba negra y congelada. Esto arranca el loop mínimo que necesita.
+  function startSubMision(onDone) {
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+
+    EngineState.running = true;
+    EngineState.paused  = false;
+    lastTs = 0;
+    EngineInput.reset();
+    Renderer.resize();
+    Renderer.clearFx();
+
+    SubMision.start({}, {
+      onReturn: () => {
+        EngineState.running = false;
+        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+        EngineInput.reset();
+        Renderer.clearFx();
+        onDone && onDone();
+      },
+    });
+
+    rafId = requestAnimationFrame(_loop);
+  }
+
   return {
-    init, startGame, loadLevel: _loadLevel, stop,
+    init, startGame, startSubMision, loadLevel: _loadLevel, stop,
     pause, resume, isPaused, isRunning,
     getCurrentLevel, getLevelData,
   };

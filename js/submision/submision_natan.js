@@ -117,7 +117,13 @@ const SubMisionNatan = (() => {
     if(e.key==='ArrowDown'||e.key==='s') keys.down=true;
     if(e.key==='ArrowUp'  ||e.key==='w'){if(!keys.up)_tryJump();keys.up=true;}
     if(e.key==='z'||e.key==='Z'||e.key===' ') _tryJump();
-    if(e.key==='Escape') _finish();
+    if(e.key==='Escape'){
+      // Cortar la propagación: si el evento sigue hasta el listener de window
+      // del engine, éste ve el subnivel ya cerrado y abre el menú de pausa.
+      // Salir del subnivel y quedar en pausa a la vez es desconcertante.
+      e.stopPropagation();
+      _finish();
+    }
   }
   function _onKU(e){
     if(e.key==='ArrowLeft' ||e.key==='a') keys.left=false;
@@ -461,8 +467,8 @@ const SubMisionNatan = (() => {
   }
 
   // ── Finalizar ─────────────────────────────────────────
-  function _finish(gameOver=false){
-    if(!active)return; active=false;
+  function _teardown(){
+    active=false;
     document.removeEventListener('keydown',_onKD);
     document.removeEventListener('keyup',  _onKU);
     btnHandlers.forEach((h,id)=>{
@@ -473,11 +479,22 @@ const SubMisionNatan = (() => {
     });
     btnHandlers.clear();
     rays.length=enemies.length=particles.length=0;
+    Object.keys(keys).forEach(k=>keys[k]=false);
     if(_hudEl) _hudEl.style.visibility='';
     _hudEl=null;
+  }
+
+  function _finish(gameOver=false){
+    if(!active)return;
+    _teardown();
     if(gameOver) onGameOver();
     else onReturn();
   }
 
-  return {start,isActive,update,handleKey};
+  // Cierre forzado sin disparar callbacks: lo usa el Engine al parar o al
+  // cargar otro nivel. Sin esto el subnivel quedaba "activo" para siempre y
+  // el game loop nunca volvía a llamar a _update() del nivel principal.
+  function abort(){ if(active) _teardown(); }
+
+  return {start,isActive,update,handleKey,abort};
 })();

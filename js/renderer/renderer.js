@@ -65,12 +65,17 @@ const Renderer = (() => {
   const drawMagicTrees     = (trees, camX, camY, ts)          => RendererEntities.drawMagicTrees(trees, camX, camY, ts);
 
   // FX
+  // OJO: spawnParticles/spawnText reciben coordenadas de MUNDO.
+  // El engine llama setFxCamera() una vez por frame y RendererFx
+  // resta la cámara al dibujar.
+  const setFxCamera             = (camX, camY)           => RendererFx.setCamera(camX, camY);
   const spawnParticles          = (x, y, color, count)  => RendererFx.spawnParticles(x, y, color, count);
   const updateAndDrawParticles  = (dt)                   => RendererFx.updateAndDrawParticles(dt);
   const flash                   = (color, strength)      => RendererFx.flash(color, strength);
-  const drawFlash               = ()                     => RendererFx.drawFlash();
+  const drawFlash               = (dt)                   => RendererFx.drawFlash(dt);
   const spawnText               = (x, y, text, color)   => RendererFx.spawnText(x, y, text, color);
   const drawFloatingTexts       = (dt)                   => RendererFx.drawFloatingTexts(dt);
+  const clearFx                 = ()                     => RendererFx.clear();
 
   return {
     init, resize, getSize, getCtx, clear,
@@ -78,6 +83,7 @@ const Renderer = (() => {
     showCastle, hideCastle, resetCastle,
     drawTilemap, drawStarAnimated, getTilePalette,
     drawPlayer, drawEnemy, drawProjectiles, drawFireballs, drawMagicTrees,
+    setFxCamera, clearFx,
     spawnParticles, updateAndDrawParticles,
     flash, drawFlash,
     spawnText, drawFloatingTexts,
