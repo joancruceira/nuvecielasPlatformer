@@ -8,6 +8,7 @@
     "start": "npx --yes http-server . -c-1 -p 8080 -o"
   },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "sharp": "^0.35.3"
   }
 }

@@ -5,8 +5,8 @@
 //  Con 5 disparos se abre (puerta0→puerta1 + portal).
 //  El jugador entra con ↓ → lanza SubMisionNatan.
 //
-//  Sprites: img/level3/puerta0.png (sellada)
-//            img/level3/puerta1.png (abierta con portal)
+//  Sprites: img/level3/subnivel/puerta0.png (sellada)
+//            img/level3/subnivel/puerta1.png (abierta con portal)
 // ═══════════════════════════════════════════════════════
 
 const Cueva = (() => {

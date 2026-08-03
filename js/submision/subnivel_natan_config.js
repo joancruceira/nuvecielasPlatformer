@@ -34,10 +34,12 @@ const SubNivelNatanConfig = (() => {
     fireCooldown:0.55, invincibleTime:1.8,
   };
 
+  // Los fondos sin transparencia van en JPEG (pesaban ~2.7 MB cada uno en PNG).
+  // fondo4/5/6 tienen alpha y siguen en PNG.
   const BACKGROUNDS = {
-    tierra:['fondo0.png','fondo1.png','fondo2.png','fondo3.png',
-            'fondo4.png','fondo5.png','fondo6.png','fondo7.png'],
-    cielo:'fondo_aire.png',
+    tierra:['fondo0.jpg','fondo1.jpg','fondo2.jpg','fondo3.jpg',
+            'fondo4.png','fondo5.png','fondo6.png','fondo7.jpg'],
+    cielo:'fondo_aire.jpg',
   };
 
   const BACKGROUND_SEGMENTS = (() => {

@@ -31,7 +31,7 @@ const Level4 = {
     bgTrees:   false,
     dark:      false,
     glowing:   false,
-    castleCiela: true,   // fondo img/level4/fondo_level4.png + nevada
+    castleCiela: true,   // fondo img/level4/fondo_level4.jpg + nevada
     bossName:  'Rey de Escarcha',
     bossEmoji: '👑',
     map: null,

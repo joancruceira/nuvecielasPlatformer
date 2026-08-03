@@ -15,7 +15,7 @@
 //    level.crystals     → cristales canvas (legacy)
 //    level.bgTrees      → árboles canvas (legacy)
 //    level.glowing      → halos de colores
-//    level.castleCiela  → img/level4/fondo_level4.png + nevada (overlay)
+//    level.castleCiela  → img/level4/fondo_level4.jpg + nevada (overlay)
 // ═══════════════════════════════════════════════════════
 
 const RendererBg = (() => {
@@ -40,7 +40,7 @@ const RendererBg = (() => {
 
   // ── Fondo del Castillo de la Ciela (nivel 4) ─────────
   const castleCielaImg = new Image();
-  castleCielaImg.src = 'img/level4/fondo_level4.png';
+  castleCielaImg.src = 'img/level4/fondo_level4.jpg';
 
   // ── Castillo portal (aparece al matar al boss) ────────
   const castlePortalImg = new Image();
