@@ -89,7 +89,13 @@ const EngineRender = (() => {
     const images  = UI.getImages();
     const visible = !ps.invincible || Math.floor(timestamp / 90) % 2 === 0;
     if (visible) {
-      Renderer.drawPlayer({ ...ps, x: ps.x - cam.x, y: ps.y - cam.y }, images, timestamp);
+      // Redondear la posición de pantalla: con la cámara ya en enteros, esto
+      // deja al jugador alineado al píxel contra los tiles y elimina el
+      // temblor de subpíxel al caminar.
+      Renderer.drawPlayer(
+        { ...ps, x: Math.round(ps.x - cam.x), y: Math.round(ps.y - cam.y) },
+        images, timestamp
+      );
     }
 
     // ── Proyectiles y fireballs ───────────────────────────

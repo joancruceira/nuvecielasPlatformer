@@ -30,8 +30,7 @@ const EngineActions = {
 
 const Engine = (() => {
 
-  const TS      = 48;
-  const CAM_LERP = 8;
+  const TS = 48;
 
   let lastTs  = 0;
   let rafId   = null;
@@ -40,7 +39,9 @@ const Engine = (() => {
   let levelData       = null;
   let map             = null;
 
-  const cam = { x:0, y:0, targetX:0, targetY:0 };
+  // La cámara vive en EngineCamera; `cam` son sus valores de render
+  // (enteros, con shake ya aplicado). Ver js/engine/engine_camera.js
+  const cam = EngineCamera.cam;
 
   let collectibles = [];
   let magicTrees   = [];
@@ -130,6 +131,15 @@ const Engine = (() => {
     EngineInput.reset();
 
     const ps = Player.getState();
+
+    // Encuadrar al jugador desde el primer frame (si no, la cámara arrancaba
+    // en 0,0 y viajaba hasta él a la vista del jugador)
+    {
+      const { W, H } = Renderer.getSize();
+      EngineCamera.snapTo(ps, W, H, map[0].length * TS, map.length * TS);
+      _lastPlayerX = ps.x; _lastPlayerY = ps.y;
+    }
+
     ps.fireballCooldown   = 0;
     ps.projectileCooldown = 0;
     ps.immuneTimer        = 0;
@@ -179,7 +189,7 @@ const Engine = (() => {
       for (const p of portals) p.active = true;
     }
 
-    cam.x = 0; cam.y = 0; cam.targetX = 0; cam.targetY = 0;
+    EngineCamera.reset();
   }
 
   function _extractCollectibles() {
@@ -287,17 +297,22 @@ const Engine = (() => {
   }
 
   // ── CÁMARA ─────────────────────────────────────────────
+  // Si el jugador aparece de golpe en otro sitio (respawn en checkpoint,
+  // vuelta de una submisión, carga de nivel) la cámara debe SALTAR, no
+  // recorrer medio nivel interpolando.
+  let _lastPlayerX = 0, _lastPlayerY = 0;
+  const TELEPORT_PX = 260;
+
   function _updateCamera(dt, ps) {
     const { W, H } = Renderer.getSize();
-    if (!W || !H) return;
-    const mapW = map[0].length * TS;
-    const mapH = map.length    * TS;
-    cam.targetX = ps.x + ps.w/2 - W*0.42;
-    cam.targetY = ps.y + ps.h/2 - H*0.55;
-    cam.x += (cam.targetX - cam.x) * CAM_LERP * dt;
-    cam.y += (cam.targetY - cam.y) * CAM_LERP * dt;
-    cam.x = Math.max(0, Math.min(cam.x, Math.max(0, mapW-W)));
-    cam.y = Math.max(0, Math.min(cam.y, Math.max(0, mapH-H)));
+    const mapW = map[0].length * TS, mapH = map.length * TS;
+
+    const salto = Math.abs(ps.x - _lastPlayerX) > TELEPORT_PX ||
+                  Math.abs(ps.y - _lastPlayerY) > TELEPORT_PX;
+    _lastPlayerX = ps.x; _lastPlayerY = ps.y;
+
+    if (salto) EngineCamera.snapTo(ps, W, H, mapW, mapH);
+    else       EngineCamera.update(dt, ps, W, H, mapW, mapH);
   }
 
   // ── COLISIONES ─────────────────────────────────────────
@@ -311,19 +326,25 @@ const Engine = (() => {
       ps.grounded = false;
       ps.doubleJumped = false;
       ps.canDoubleJump = true;
+      EngineCamera.shake(5, 0.12);
       UI.updateHUD();
     } else if (type === 'damage') {
       Player.takeDamage(enemy ? enemy.x + (enemy.w||0)/2 : null);
+      EngineCamera.shake(8, 0.24);
       UI.updateHUD();
     }
   }
 
   function _handlePlayerLand(type, cx, cy, radius) {
-    if (type === 'groundPound') Enemies.stunNearby(cx, cy, radius);
+    if (type === 'groundPound') {
+      Enemies.stunNearby(cx, cy, radius);
+      EngineCamera.shake(11, 0.28);
+    }
   }
 
   function _handleBossDefeated() {
     for (const p of portals) p.active = true;
+    EngineCamera.shake(18, 0.65);
     Renderer.flash('#f9c846', 0.75);
     const ps = Player.getState();
     Renderer.spawnText(ps.x+ps.w/2, ps.y-30, '¡JEFE DERROTADO!', '#f9c846');
