@@ -27,32 +27,52 @@ const AudioManager = (() => {
     flag_point:   'audio/flag_point.m4a',
   };
 
-  // Pool de efectos.
+  // ── Efectos: Web Audio, no elementos <audio> ──────────
   //
-  // Antes sfx() hacía `new Audio(src)` en CADA llamada: recoger veinte
-  // estrellas creaba veinte elementos <audio> que el GC recogía tarde, y el
-  // _sfxCache precargado no se usaba nunca para reproducir. Ahora cada efecto
-  // tiene unas pocas voces que se reciclan por turnos, así que sigue pudiendo
-  // solaparse consigo mismo sin crear objetos dentro del juego.
-  const VOCES_POR_SFX = 4;
-  const _sfxCache = {};   // key → { voces:[Audio], siguiente:int }
+  // Historia de este bloque, porque importa:
+  //   1) Al principio sfx() hacía `new Audio(src)` en CADA llamada. Veinte
+  //      estrellas = veinte elementos que el GC recogía tarde.
+  //   2) Lo cambié por un pool de 4 voces por efecto. Peor: pasó de 11 a 38
+  //      elementos <audio>, TODOS creados de golpe en el primer toque, justo
+  //      cuando arranca la música. Eso satura el pipeline de medios del
+  //      navegador y produce cortes audibles.
+  //   3) Esto: un solo AudioContext y un AudioBuffer decodificado por efecto.
+  //      Cero elementos <audio>, cero contención de decodificadores, latencia
+  //      mínima y polifonía ilimitada. Es como se hace el audio de un juego.
+  //
+  // Si el navegador no tiene Web Audio, cae al método viejo.
 
-  function _preloadSfx() {
+  let _ctx        = null;   // AudioContext compartido (música incluida)
+  const _buffers  = {};     // key → AudioBuffer
+  let _sfxReady   = false;
+
+  function _getCtx() {
+    if (_ctx) return _ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { _ctx = new AC(); } catch (e) { _ctx = null; }
+    return _ctx;
+  }
+
+  async function _preloadSfx() {
+    const ctx = _getCtx();
+    if (!ctx) return;
+    // En serie a propósito: nueve descargas de pocos KB no justifican
+    // saturar la red ni el decodificador mientras arranca la música.
     for (const [key, src] of Object.entries(SFX)) {
-      const voces = [];
-      for (let i = 0; i < VOCES_POR_SFX; i++) {
-        const a = new Audio(src);
-        a.preload = 'auto';
-        voces.push(a);
-      }
-      _sfxCache[key] = { voces, siguiente: 0 };
+      try {
+        const datos = await (await fetch(src)).arrayBuffer();
+        _buffers[key] = await ctx.decodeAudioData(datos);
+      } catch (e) { /* si uno falla, el resto sigue */ }
     }
   }
+
   // Cargar al primer gesto del usuario (evita bloqueo autoplay)
-  let _sfxReady = false;
   function _ensureSfx() {
     if (_sfxReady) return;
     _sfxReady = true;
+    const ctx = _getCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
     _preloadSfx();
   }
   window.addEventListener('pointerdown', _ensureSfx, { once: true });
@@ -60,13 +80,26 @@ const AudioManager = (() => {
 
   // ── Reproducir efecto ─────────────────────────────────
   function sfx(key) {
-    if (_muted) return;                 // no gastar decodificación si está silenciado
-    const slot = _sfxCache[key];
-    if (!slot) return;                  // todavía no se desbloqueó el audio
-    const a = slot.voces[slot.siguiente];
-    slot.siguiente = (slot.siguiente + 1) % slot.voces.length;
+    if (_muted) return;
+    const ctx = _ctx;
+    const buf = _buffers[key];
+
+    if (ctx && buf) {
+      // BufferSource es de un solo uso y el navegador lo libera al terminar.
+      const fuente = ctx.createBufferSource();
+      const gan    = ctx.createGain();
+      fuente.buffer = buf;
+      gan.gain.value = _sfxVolume;
+      fuente.connect(gan).connect(ctx.destination);
+      fuente.start();
+      return;
+    }
+
+    // Respaldo para navegadores sin Web Audio
+    const src = SFX[key];
+    if (!src) return;
+    const a = new Audio(src);
     a.volume = _sfxVolume;
-    try { a.currentTime = 0; } catch (e) {}
     a.play().catch(() => {});
   }
 
@@ -85,13 +118,12 @@ const AudioManager = (() => {
     _unlocked = true;
     _ensureSfx();
 
-    // Intentar resumir un AudioContext suspendido (mobile browsers)
-    try {
-      const testCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (testCtx.state === 'suspended') testCtx.resume().catch(() => {});
-      // Cerrar el contexto de prueba para no desperdiciar recursos
-      setTimeout(() => testCtx.close().catch(() => {}), 100);
-    } catch(e) {}
+    // Resumir el AudioContext compartido (los navegadores móviles lo crean
+    // suspendido). Antes acá se creaba un contexto de PRUEBA sólo para
+    // resumirlo y cerrarlo 100 ms después: no servía de nada, porque el que
+    // hacía falta resumir era el que realmente reproduce.
+    const ctx = _getCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
 
     if (_pendingKey !== null) {
       const key = _pendingKey;
