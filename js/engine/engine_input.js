@@ -222,6 +222,23 @@ const EngineInput = (() => {
     }
   }
 
+  // ── Ciclo de vida en móvil ────────────────────────────
+  // Bloquear el teléfono, atender una llamada o cambiar de app dejaba el juego
+  // corriendo: volvías y te habían matado, o la música seguía sonando de fondo.
+  // Ahora se pausa solo y suelta todas las teclas (que si no quedan "pegadas").
+  function _setupLifecycle() {
+    const pausarSiHaceFalta = () => {
+      if (!document.hidden) return;
+      reset();
+      if (EngineState.running && !EngineState.paused) EngineActions.togglePause();
+      else if (typeof AudioManager !== 'undefined') AudioManager.pause();
+    };
+    document.addEventListener('visibilitychange', pausarSiHaceFalta);
+    window.addEventListener('pagehide', pausarSiHaceFalta);
+    // Perder el foco (notificación, barra de tareas) también suelta las teclas
+    window.addEventListener('blur', () => reset());
+  }
+
   // ── API pública ───────────────────────────────────────
   function setup(inputRef) {
     _input = inputRef;
@@ -229,6 +246,7 @@ const EngineInput = (() => {
     _setupMobileControls();
     _setupCanvasTouch();
     _setupOrientationHandler();
+    _setupLifecycle();
   }
 
   function reset() {

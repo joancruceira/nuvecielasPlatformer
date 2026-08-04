@@ -22,12 +22,45 @@ const Renderer = (() => {
     resize();
   }
 
+  // Mínimo de mundo que queremos ver, en tiles. Por debajo de esto el juego
+  // se vuelve injusto: los enemigos entran en cuadro sin tiempo de reacción y
+  // no ves ni la plataforma de arriba ni el foso de abajo.
+  const MIN_TILES_ANCHO = 17;
+  const MIN_TILES_ALTO  = 12.5;
+  const TS_REF          = 48;
+  const DPR_MAX         = 2;   // más de 2x no se nota y cuesta el doble de fill-rate
+
   function resize() {
     if (!R.canvas) return;
-    R.W = R.canvas.offsetWidth  || R.canvas.clientWidth  || window.innerWidth;
-    R.H = R.canvas.offsetHeight || R.canvas.clientHeight || window.innerHeight;
-    if (R.W > 0) R.canvas.width  = R.W;
-    if (R.H > 0) R.canvas.height = R.H;
+    const cssW = R.canvas.offsetWidth  || R.canvas.clientWidth  || window.innerWidth;
+    const cssH = R.canvas.offsetHeight || R.canvas.clientHeight || window.innerHeight;
+    if (cssW <= 0 || cssH <= 0) return;
+
+    // ── Densidad de píxeles ──
+    // El buffer valía lo mismo que el tamaño CSS, así que en un teléfono de
+    // DPR 2-3 el juego se dibujaba a 1x y lo escalaba el navegador: todo
+    // borroso. Ahora el buffer va a resolución real de dispositivo.
+    R.dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
+
+    // ── Zoom ──
+    // El mundo se dibujaba 1 px = 1 px de pantalla. En un teléfono apaisado de
+    // 375 px de alto eso son 7.8 tiles de un mapa de 16: no veías media
+    // pantalla de nivel. Ahora, si la pantalla es chica, se aleja la cámara
+    // hasta mostrar el mínimo jugable. En desktop el zoom queda en 1.
+    R.zoom = Math.min(1,
+      cssW / (MIN_TILES_ANCHO * TS_REF),
+      cssH / (MIN_TILES_ALTO  * TS_REF));
+
+    R.canvas.width  = Math.round(cssW * R.dpr);
+    R.canvas.height = Math.round(cssH * R.dpr);
+
+    // W/H son el viewport en UNIDADES DE MUNDO: cámara, culling y fondos
+    // siguen razonando igual que antes sin enterarse del zoom ni del dpr.
+    R.W = cssW / R.zoom;
+    R.H = cssH / R.zoom;
+
+    _aplicarTransform();
+
     // Invalidar cache de gradientes al cambiar tamaño
     try {
       if (typeof RendererBg !== 'undefined' && RendererBg._invalidateCache)
@@ -35,11 +68,22 @@ const Renderer = (() => {
     } catch(e) {}
   }
 
+  function _aplicarTransform() {
+    const k = R.dpr * R.zoom;
+    R.ctx.setTransform(k, 0, 0, k, 0, 0);
+  }
+
   function getSize() { return { W: R.W, H: R.H }; }
   function getCtx()  { return R.ctx; }
+  function getZoom() { return R.zoom; }
 
   function clear() {
-    if (R.W > 0 && R.H > 0) R.ctx.clearRect(0, 0, R.W, R.H);
+    if (!(R.W > 0 && R.H > 0)) return;
+    // Limpiar el buffer COMPLETO en píxeles de dispositivo, no en unidades de
+    // mundo: si no, con zoom < 1 quedaría una franja sin borrar.
+    R.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    R.ctx.clearRect(0, 0, R.canvas.width, R.canvas.height);
+    _aplicarTransform();
   }
 
   // ── API pública — delega a los módulos ────────────────
@@ -78,7 +122,7 @@ const Renderer = (() => {
   const clearFx                 = ()                     => RendererFx.clear();
 
   return {
-    init, resize, getSize, getCtx, clear,
+    init, resize, getSize, getCtx, getZoom, clear,
     drawBackground, drawBgTreesOverlay, drawBgTrees,
     showCastle, hideCastle, resetCastle,
     drawTilemap, drawStarAnimated, getTilePalette,

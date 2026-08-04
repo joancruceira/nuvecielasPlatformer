@@ -15,18 +15,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   UI.init();
 
-  // Sincronizar tamaño del canvas con el viewport
-  function resizeCanvas() {
-    const W = canvas.offsetWidth  || window.innerWidth;
-    const H = canvas.offsetHeight || window.innerHeight;
-    if (W > 0 && H > 0) {
-      canvas.width  = W;
-      canvas.height = H;
-      Renderer.resize();
-    }
-  }
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas(); // ajustar por si el CSS ya tiene el tamaño
+  // Sincronizar el canvas con el viewport.
+  // El tamaño del buffer lo decide Renderer.resize() —que aplica densidad de
+  // píxeles y zoom—; acá sólo hay que avisarle. Antes esto escribía
+  // canvas.width/height a mano y pisaba ese cálculo.
+  window.addEventListener('resize', () => Renderer.resize());
+  Renderer.resize();
 
   console.log('🌿 Nuvecielas Platformer — Motor listo.');
   console.log('Teclas: ← → mover | ↑ / Z / Espacio saltar | ↓ agacharse/deslizar | P / Esc pausa');

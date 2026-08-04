@@ -122,6 +122,12 @@ const EngineCamera = (() => {
     // Una sacudida nueva no corta a una más fuerte que siga viva
     if (_shakeTime > 0 && mag < _shakeMag * (_shakeTime / _shakeDur)) return;
     _shakeMag = mag; _shakeTime = dur; _shakeDur = dur;
+
+    // En el teléfono, el golpe además se siente. La duración sale de la
+    // intensidad del shake, así que pisar un enemigo (5) hace un toquecito
+    // y el jefe derrotado (18) una vibración clara. Sin API disponible o en
+    // desktop, esto no hace nada.
+    if (navigator.vibrate) navigator.vibrate(Math.round(6 + mag * 1.6));
   }
 
   function _updateShake(dt) {
