@@ -302,21 +302,42 @@ const SubEntities = (() => {
 
     boss.stateTimer += dt;
     const dur = boss.bossPhase===3 ? 0.7 : boss.bossPhase===2 ? 1.2 : 1.8;
-    if(boss.stateTimer >= dur){
+    if(boss.stateTimer >= dur && boss.state !== 'windup'){
       boss.stateTimer = 0;
       const r = Math.random();
-      if     (boss.bossPhase >= 3) boss.state = r<0.70 ? 'charge' : 'chase';
-      else if(boss.bossPhase >= 2) boss.state = r<0.55 ? 'charge' : r<0.90 ? 'chase' : 'patrol';
-      else                          boss.state = r<0.65 ? 'chase'  : r<0.90 ? 'patrol' : 'charge';
+      if     (boss.bossPhase >= 3) boss.state = r<0.70 ? 'windup' : 'chase';
+      else if(boss.bossPhase >= 2) boss.state = r<0.55 ? 'windup' : r<0.90 ? 'chase' : 'patrol';
+      // Fase 1: la embestida salía sólo el 10% de las veces y el jefe se leía
+      // como pasivo. Con 25% aparece lo bastante como para que aprendas a
+      // reconocer el aviso, sin castigar todavía.
+      else                          boss.state = r<0.55 ? 'chase'  : r<0.75 ? 'patrol' : 'windup';
     }
 
-    if     (boss.state==='patrol') boss.vx = dx>0 ?  spd*0.50 : -spd*0.50;
+    // ── Embestida telegrafiada ────────────────────────
+    // Antes 'charge' salía sin aviso: era daño aleatorio, no algo que
+    // pudieras leer y esquivar. Ahora frena, se planta y recién ahí carga.
+    if(boss.state === 'windup'){
+      boss.vx = 0;
+      boss.chargeDir = dx > 0 ? 1 : -1;
+      boss.facing    = boss.chargeDir;
+      if(boss.stateTimer > (boss.bossPhase===3 ? 0.35 : 0.55)){
+        boss.state = 'charge'; boss.stateTimer = 0;
+        Renderer.spawnText && Renderer.spawnText(
+          boss.x - S.cam.x + boss.w/2, boss.y - S.cam.y - 10, '¡!', '#ef4444');
+      }
+    }
+    else if(boss.state==='patrol') boss.vx = dx>0 ?  spd*0.50 : -spd*0.50;
     else if(boss.state==='chase')  boss.vx = dx>0 ?  spd      : -spd;
-    else if(boss.state==='charge') boss.vx = dx>0 ?  spd*2.5  : -spd*2.5;
+    else if(boss.state==='charge'){
+      // La embestida mantiene su dirección: si te corrés, falla y se pasa
+      // de largo. Eso es lo que la vuelve esquivable en lugar de teledirigida.
+      boss.vx = boss.chargeDir * spd * 2.6;
+      if(boss.stateTimer > 0.9){ boss.state = 'chase'; boss.stateTimer = 0; }
+    }
 
     boss.x += boss.vx * dt;
     _clampBoss();
-    boss.facing = boss.vx >= 0 ? 1 : -1;
+    boss.facing = boss.vx >= 0 ? 1 : (boss.vx < 0 ? -1 : boss.facing);
 
     const animSpd = boss.bossPhase===3 ? 0.10 : boss.bossPhase===2 ? 0.16 : 0.22;
     boss.frameTick += dt;
@@ -334,16 +355,36 @@ const SubEntities = (() => {
       // Rebote del boss — se aleja independientemente del invTimer
       boss.vx = boss.x < ps.x ? -spd*0.8 : spd*0.8;
       boss.x += boss.vx * dt * 8;   // empujón inmediato
-      boss.state = 'patrol';         // resetea a patrol para recalcular
-      boss.stateTimer = 0;
+      // Cortar SÓLO la embestida, que ya impactó. El wind-up no se toca: si
+      // también se abortaba, el jefe no podía telegrafiar nada mientras te
+      // tuviera encima —que es la mayor parte de la pelea— y se leía como
+      // pasivo. Tampoco se resetea stateTimer: hacerlo en cada frame de
+      // contacto lo dejaba encerrado en 'chase' para siempre.
+      if(boss.state === 'charge') boss.state = 'chase';
       _clampBoss();
     }
   }
 
+  // Correa, no jaula.
+  //
+  // Antes esto clavaba al boss entre patrolLeft y patrolRight pasara lo que
+  // pasara: bastaba con pararse un paso afuera de esa caja de 544 px para que
+  // no pudiera tocarte nunca —y como no tiene ataque a distancia, lo fusilabas
+  // gratis desde afuera—. Medido: perseguía hasta el borde y se quedaba
+  // oscilando ahí el resto de la pelea.
+  //
+  // Ahora, mientras persigue o embiste puede salirse de su zona para
+  // alcanzarte; sólo la respeta cuando está patrullando.
+  const BOSS_CORREA = 420;   // px que puede excederse persiguiendo
+
   function _clampBoss() {
     const b = S.boss;
-    if(b.x < b.patrolLeft)      { b.x = b.patrolLeft;      b.vx =  Math.abs(b.vx); }
-    if(b.x+b.w > b.patrolRight) { b.x = b.patrolRight-b.w; b.vx = -Math.abs(b.vx); }
+    const persiguiendo = b.state === 'chase' || b.state === 'charge' || b.state === 'windup';
+    const margen = persiguiendo ? BOSS_CORREA : 0;
+    const izq = b.patrolLeft  - margen;
+    const der = b.patrolRight + margen;
+    if(b.x < izq)       { b.x = izq;       b.vx =  Math.abs(b.vx); }
+    if(b.x+b.w > der)   { b.x = der-b.w;   b.vx = -Math.abs(b.vx); }
   }
 
   // ── UPDATE GLOBAL ─────────────────────────────────────

@@ -9,7 +9,12 @@ const SubNivelNatanConfig = (() => {
   // Anchos DIBUJADOS reales a H=768 (img.naturalWidth * 768/img.naturalHeight)
   // Necesario porque algunas imágenes tienen altura distinta y se escalan diferente
   const BG_WIDTHS  = [1387, 1365, 1446, 1421, 2583, 1286, 1288, 1367];
-  const BG_TOTAL_W = BG_WIDTHS.reduce((a,b)=>a+b, 0); // 11697
+  const BG_TOTAL_W = BG_WIDTHS.reduce((a,b)=>a+b, 0); // 12143
+
+  // Ruido determinístico. Las alturas de los juguetes usaban Math.random() en
+  // tiempo de módulo: el nivel cambiaba en cada recarga, así que era imposible
+  // balancearlo o reproducir un problema.
+  function _rnd(i) { const s = Math.sin(i * 12.9898) * 43758.5453; return s - Math.floor(s); }
 
   const WORLD = {
     width:             BG_TOTAL_W + 4000,
@@ -81,7 +86,7 @@ const SubNivelNatanConfig = (() => {
     const xsTierra=[350,750,1100,1450,1900,2350,2800,3300,3900,4500,
                     5100,5700,6400,7100,7800,8500,9200,9900,10500,11000];
     xsTierra.forEach((x,i)=>{
-      list.push({id:`t${i}`,x,yPct:0.55+Math.random()*0.18,
+      list.push({id:`t${i}`,x,yPct:0.55+_rnd(i)*0.18,
                  icon:tipos[i%tipos.length],zone:'tierra',collected:false,score:50});
     });
     // Algunos en plataformas (más altos)
@@ -92,45 +97,89 @@ const SubNivelNatanConfig = (() => {
     // Vuelo: flotando por el cielo
     const xsVuelo=[200,600,1000,1400,1800,2200,2800,3100];
     xsVuelo.forEach((xOff,i)=>{
-      list.push({id:`v${i}`,x:BG_TOTAL_W+xOff,yPct:0.20+Math.random()*0.45,
+      list.push({id:`v${i}`,x:BG_TOTAL_W+xOff,yPct:0.20+_rnd(i+100)*0.45,
                  icon:tipos[(i+5)%tipos.length],zone:'vuelo',collected:false,score:150});
     });
     return list;
   })();
 
-  // ── Spawns terrestres — toda la fase tierra ───────────
-  // ~24 enemigos en 11697px de recorrido
+  // ── Spawns terrestres — fase tierra (0 → 12143 px) ────
+  //
+  // El reparto anterior era un metrónomo: ladrón→oficinista→perrero en bucle,
+  // uno cada 553±68 px de punta a punta. Sin introducción, sin clusters y sin
+  // respiros: 12.000 px de la misma frase repetida veinte veces.
+  //
+  // Ahora hay una curva. Cada tipo se presenta SOLO antes de mezclarse, los
+  // grupos se alternan con huecos vacíos de verdad (el respiro es parte del
+  // ritmo, no tiempo muerto), y la tensión sube hacia el final.
+  //
+  //  A 0-2200     presentación: cada enemigo aislado y legible
+  //  B 2200-4800  desarrollo: primeras parejas + primer helicóptero
+  //  C 4800-7200  combinación: cluster de tres, respiro largo, aire+suelo
+  //  D 7200-9600  presión: grupos más apretados
+  //  E 9600-11400 clímax terrestre
+  //  F 11400-12143 valle vacío: respiro antes de despegar
   const GROUND_SPAWNS = [
-    {id:'g01',type:'ladron',     x:700  },{id:'g02',type:'oficinista',x:1100 },
-    {id:'g03',type:'perrero',    x:1600 },{id:'g04',type:'ladron',    x:2100 },
-    {id:'g05',type:'oficinista', x:2600 },{id:'g06',type:'perrero',   x:3100 },
-    {id:'g07',type:'ladron',     x:3700 },{id:'g08',type:'oficinista',x:4300 },
-    {id:'g09',type:'perrero',    x:4900 },{id:'g10',type:'ladron',    x:5500 },
-    {id:'g11',type:'oficinista', x:6100 },{id:'g12',type:'perrero',   x:6700 },
-    {id:'g13',type:'ladron',     x:7300 },{id:'g14',type:'oficinista',x:7900 },
-    {id:'g15',type:'perrero',    x:8500 },{id:'g16',type:'ladron',    x:9100 },
-    {id:'g17',type:'oficinista', x:9700 },{id:'g18',type:'perrero',   x:10300},
-    {id:'g19',type:'ladron',     x:10800},{id:'g20',type:'oficinista',x:11200},
-    // Helicópteros bajos que atacan en fase tierra
-    {id:'ga1',type:'heli_bajo', x:1800, yPct:0.52},
-    {id:'ga2',type:'heli_bajo', x:3500, yPct:0.49},
-    {id:'ga3',type:'heli_bajo', x:5200, yPct:0.52},
-    {id:'ga4',type:'heli_bajo', x:7000, yPct:0.49},
-    {id:'ga5',type:'heli_bajo', x:9000, yPct:0.52},
-    {id:'ga6',type:'heli_bajo', x:11000,yPct:0.49},
+    // ── A · presentación ──
+    {id:'g01', type:'ladron',     x:900  },                    // el primero, solo
+    {id:'g02', type:'oficinista', x:1750 },                    // tipo nuevo, aislado
+
+    // ── B · desarrollo ──
+    {id:'g03', type:'perrero',    x:2500 },                    // tipo nuevo, aislado
+    {id:'g04', type:'ladron',     x:3250 },
+    {id:'g05', type:'ladron',     x:3480 },                    // primera pareja
+    {id:'ga1', type:'heli_bajo',  x:3900, yPct:0.50},          // primer aéreo
+    {id:'g06', type:'oficinista', x:4550 },
+
+    // ── C · combinación ──
+    {id:'g07', type:'ladron',     x:5150 },
+    {id:'g08', type:'perrero',    x:5380 },
+    {id:'g09', type:'oficinista', x:5600 },                    // cluster de tres
+    //            (hueco de 1200 px — respiro deliberado)
+    {id:'ga2', type:'heli_bajo',  x:6800, yPct:0.47},
+    {id:'g10', type:'perrero',    x:7050 },                    // aire + suelo a la vez
+
+    // ── D · presión ──
+    {id:'g11', type:'ladron',     x:7800 },
+    {id:'g12', type:'oficinista', x:8000 },
+    {id:'ga3', type:'heli_bajo',  x:8350, yPct:0.52},
+    {id:'g13', type:'perrero',    x:8900 },
+    {id:'g14', type:'ladron',     x:9100 },
+    {id:'g15', type:'ladron',     x:9300 },
+
+    // ── E · clímax terrestre ──
+    {id:'ga4', type:'heli_bajo',  x:9900, yPct:0.48},
+    {id:'g16', type:'oficinista', x:10200},
+    {id:'g17', type:'perrero',    x:10420},
+    {id:'g18', type:'ladron',     x:10640},
+    {id:'g19', type:'perrero',    x:11050},
+    {id:'g20', type:'oficinista', x:11280},
+    {id:'ga5', type:'heli_bajo',  x:11400, yPct:0.50},
+
+    // ── F · valle: nada entre 11400 y el despegue ──
   ];
 
-  // ── Spawns aéreos — fase vuelo ────────────────────────
+  // ── Spawns aéreos — fase vuelo (12143 → 15643 px) ─────
+  //
+  // Antes eran 9 helicópteros repartidos uniformemente cada ~375 px: la fase
+  // de vuelo quedaba un 56% más densa que la de tierra justo donde el jugador
+  // es más frágil, y sin ninguna estructura.
+  //
+  // Ahora son tres oleadas separadas por cielo despejado. Dentro de cada
+  // oleada las alturas se abren para obligar a elegir por dónde pasar.
   const AIR_SPAWNS = [
-    {id:'a01',type:'helicoptero', x:BG_TOTAL_W+300,  yPct:0.20},
-    {id:'a02',type:'helicoptero', x:BG_TOTAL_W+700,  yPct:0.30},
-    {id:'a03',type:'helicoptero', x:BG_TOTAL_W+1100, yPct:0.15},
-    {id:'a04',type:'helicoptero', x:BG_TOTAL_W+1400, yPct:0.35},
-    {id:'a05',type:'helicoptero', x:BG_TOTAL_W+1800, yPct:0.22},
-    {id:'a06',type:'helicoptero', x:BG_TOTAL_W+2200, yPct:0.18},
-    {id:'a07',type:'helicoptero', x:BG_TOTAL_W+2600, yPct:0.32},
-    {id:'a08',type:'helicoptero', x:BG_TOTAL_W+3000, yPct:0.25},
-    {id:'a09',type:'helicoptero', x:BG_TOTAL_W+3300, yPct:0.14},
+    // Oleada 1 — dos, alturas separadas: se aprende a esquivar
+    {id:'a01', type:'helicoptero', x:BG_TOTAL_W+500,  yPct:0.22},
+    {id:'a02', type:'helicoptero', x:BG_TOTAL_W+780,  yPct:0.38},
+    //            (cielo despejado)
+    // Oleada 2 — tres en abanico
+    {id:'a03', type:'helicoptero', x:BG_TOTAL_W+1650, yPct:0.16},
+    {id:'a04', type:'helicoptero', x:BG_TOTAL_W+1870, yPct:0.30},
+    {id:'a05', type:'helicoptero', x:BG_TOTAL_W+2090, yPct:0.44},
+    //            (cielo despejado)
+    // Oleada 3 — el muro final antes de la veterinaria
+    {id:'a06', type:'helicoptero', x:BG_TOTAL_W+2950, yPct:0.20},
+    {id:'a07', type:'helicoptero', x:BG_TOTAL_W+3120, yPct:0.34},
   ];
 
   return {

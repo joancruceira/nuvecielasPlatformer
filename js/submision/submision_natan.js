@@ -388,10 +388,16 @@ const SubMisionNatan = (() => {
   function _updateEnemies(dt){
     for(let i=enemies.length-1;i>=0;i--){
       const e=enemies[i];
-      if(phase===C.PHASE.VUELO&&e.zone===C.PHASE.TIERRA&&e.type!=='avion_bajo'){enemies.splice(i,1);continue;}
+      // Los que vuelan siguen existiendo en la fase de vuelo y NO se pegan al
+      // suelo. Antes esto se preguntaba con `e.type!=='avion_bajo'`, un tipo
+      // que no existe en ningún lado: el tipo real es 'heli_bajo'. Resultado:
+      // los helicópteros se clavaban al piso (142 px por debajo de su altura)
+      // peleando contra su propia onda senoidal —de ahí el temblor— y además
+      // desaparecían justo al empezar a volar.
+      if(phase===C.PHASE.VUELO&&e.zone===C.PHASE.TIERRA&&!e.flying){enemies.splice(i,1);continue;}
       if(!e.alive||e.state==='gone'||e.y>H+200){enemies.splice(i,1);continue;}
       SNEnemies.updateEnemy(e,dt,N);
-      if(e.zone===C.PHASE.TIERRA&&e.type!=='avion_bajo'){
+      if(e.zone===C.PHASE.TIERRA&&!e.flying){
         const eg=groundY-(e.h-N.h);
         if(e.y>=eg){e.y=eg;e.vy=0;e.onGround=true;}else e.onGround=false;
       }
