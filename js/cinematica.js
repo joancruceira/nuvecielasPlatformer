@@ -203,6 +203,7 @@ const Cinematica = (() => {
       el.style.opacity       = '';
       el.style.transition    = '';
       el.style.pointerEvents = '';
+      document.body.classList.remove('cinematica-activa');
     }, 520);
   }
 
@@ -218,6 +219,12 @@ const Cinematica = (() => {
     _scenes = data.escenas;
     _currentScene = 0;
     _textIndex = 0;
+
+    // Marcar que hay cinemática en pantalla. El aviso de "girá el teléfono"
+    // vive dentro de #screenGame, y como _end() dispara el callback que lanza
+    // el nivel ANTES de terminar su fundido de 520 ms, durante ese rato el
+    // aviso aparecía encima de la cinemática.
+    document.body.classList.add('cinematica-activa');
 
     const el = document.getElementById('screenCinematica');
     // Gestión manual — no depende de .active

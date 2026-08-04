@@ -25,8 +25,13 @@ const Renderer = (() => {
   // Mínimo de mundo que queremos ver, en tiles. Por debajo de esto el juego
   // se vuelve injusto: los enemigos entran en cuadro sin tiempo de reacción y
   // no ves ni la plataforma de arriba ni el foso de abajo.
-  const MIN_TILES_ANCHO = 17;
-  const MIN_TILES_ALTO  = 12.5;
+  // Bajados de 17x12.5 a 13x9.5: con 12.5 tiles de alto, en un teléfono de
+  // 365 px el personaje quedaba de 35 px y "se veía muy chiquito". Y el ancho
+  // de 17 no servía de nada si lo que se ve es diminuto. Además el HUD y los
+  // controles tapan ~189 de esos 365 px, así que la franja de juego real es
+  // la mitad de lo que decía la cuenta.
+  const MIN_TILES_ANCHO = 13;
+  const MIN_TILES_ALTO  = 9.5;
   const TS_REF          = 48;
   const DPR_MAX         = 2;   // más de 2x no se nota y cuesta el doble de fill-rate
 

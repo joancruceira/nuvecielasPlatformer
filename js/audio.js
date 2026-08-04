@@ -104,7 +104,6 @@ const AudioManager = (() => {
   }
 
   // ── Estado de música ──────────────────────────────────
-  let _current     = null;
   let _currentKey  = null;
   let _pendingKey  = null;   // track esperando interacción del usuario
   let _unlocked    = false;  // el navegador ya permitió audio
@@ -143,92 +142,121 @@ const AudioManager = (() => {
     window.addEventListener(evt, _onUnlock, { once: false, capture: true });
   });
 
-  // Fade-out.
+  // ── Reproductor de música: UN SOLO elemento reutilizado ──
   //
-  // Antes el fade-in y el fade-out compartían una sola variable `_fadeTick`:
-  // si se solapaban (por ejemplo playMenu() y play(0) casi juntos), uno
-  // cancelaba el intervalo del otro y el <audio> viejo quedaba sonando para
-  // siempre a volumen 0.x, sin pausarse nunca. Ahora cada elemento lleva su
-  // propio intervalo y el fade-out SIEMPRE pausa, aunque lo cancelen.
-  function _fadeOut(el, cb) {
-    if (!el) { cb && cb(); return; }
-    if (el._fadeId) clearInterval(el._fadeId);
-    el._fadeId = setInterval(() => {
-      el.volume = Math.max(0, el.volume - 0.05);
-      if (el.volume <= 0) {
-        clearInterval(el._fadeId); el._fadeId = null;
-        el.pause();
-        el.currentTime = 0;
-        cb && cb();
+  // Antes cada cambio de track hacía `new Audio(src)`. En el escritorio no se
+  // nota, pero en el teléfono es el origen del "la canción del inicio se cuela
+  // en el nivel 1": el elemento del menú nace durante el toque del usuario y
+  // queda habilitado, mientras que el del nivel nace 400 ms después dentro de
+  // un setInterval, sin gesto detrás. El navegador lo trata distinto, y con
+  // dos elementos en juego cualquier fallo deja al viejo sonando.
+  //
+  // Ahora hay un único <audio> creado en el primer gesto —y por lo tanto
+  // habilitado para siempre—: cambiar de tema es cambiarle el `src`. Es
+  // imposible que suenen dos temas a la vez porque hay uno solo.
+  let _el       = null;    // el único elemento de música
+  let _fadeId   = null;
+  let _guardaId = null;
+
+  function _getEl() {
+    if (_el) return _el;
+    _el = new Audio();
+    _el.loop = true;
+    _el.preload = 'auto';
+    _el.volume = 0;
+    return _el;
+  }
+
+  function _pararFades() {
+    if (_fadeId)   { clearInterval(_fadeId);  _fadeId = null; }
+    if (_guardaId) { clearTimeout(_guardaId); _guardaId = null; }
+  }
+
+  function _fadeA(destino, alTerminar) {
+    _pararFades();
+    const el = _getEl();
+    const paso = destino > el.volume ? 0.05 : 0.07;
+    _fadeId = setInterval(() => {
+      const v = el.volume;
+      el.volume = destino > v ? Math.min(destino, v + paso) : Math.max(destino, v - paso);
+      if (Math.abs(el.volume - destino) < 0.001) {
+        _pararFades();
+        alTerminar && alTerminar();
       }
     }, 40);
+    // Red de seguridad: si el intervalo se queda sin correr (pestaña de fondo,
+    // carga pesada, throttling del móvil), forzamos el final igual. Sin esto
+    // una transición a medias deja música sonando donde no corresponde.
+    _guardaId = setTimeout(() => {
+      _pararFades();
+      el.volume = destino;
+      alTerminar && alTerminar();
+    }, 900);
   }
 
   function _startTrack(key) {
     const src = TRACKS[key];
-    if (!src) { _current = null; _currentKey = null; return; }
+    if (!src) { _currentKey = null; return; }
 
     // Si el navegador aún no desbloqueó el audio, encolar para después
-    if (!_unlocked) {
-      _pendingKey = key;
-      return;
-    }
+    if (!_unlocked) { _pendingKey = key; return; }
 
-    const audio  = new Audio(src);
-    audio.loop   = true;
-    audio.volume = 0;
-    audio.preload = 'auto';
-    audio.play().catch(() => {});
-
-    _current    = audio;
+    const el = _getEl();
     _currentKey = key;
 
-    // Fade in — con su propio intervalo, atado a este elemento
-    if (audio._fadeId) clearInterval(audio._fadeId);
-    audio._fadeId = setInterval(() => {
-      const target = _muted ? 0 : _volume;
-      if (_current !== audio) { clearInterval(audio._fadeId); audio._fadeId = null; return; }
-      audio.volume = Math.min(target, audio.volume + 0.03);
-      if (audio.volume >= target) { clearInterval(audio._fadeId); audio._fadeId = null; }
-    }, 40);
+
+    const arrancar = () => {
+      // Ruta absoluta para comparar sin sorpresas de base URL
+      const abs = new URL(src, location.href).href;
+      if (el.src !== abs) { el.src = abs; }
+      el.currentTime = 0;
+      el.volume = 0;
+      el.play().catch(() => {});
+      _fadeA(_muted ? 0 : _volume);
+    };
+
+    // Si ya venía sonando otro tema, bajarlo antes de cambiar el src
+    if (!el.paused && el.volume > 0.01) _fadeA(0, arrancar);
+    else arrancar();
   }
 
   // ── API pública ───────────────────────────────────────
 
-  function playMenu() {
-    if (_currentKey === 'menu' && _current && !_current.paused) return;
-    if (!_unlocked) { _pendingKey = 'menu'; return; }
-    _fadeOut(_current, () => _startTrack('menu'));
+  // Un único punto de entrada: pedir un tema. Si ya es el que suena, no hace
+  // nada; si no, cambia. Al haber un solo elemento no existe el estado
+  // "dos temas a la vez".
+  function _pedirTema(key) {
+    if (_currentKey === key && _el && !_el.paused) return;
+    if (!_unlocked) { _pendingKey = key; return; }
+    if (!(key in TRACKS)) { stop(); return; }
+    _startTrack(key);
   }
 
-  function play(levelIdx) {
-    const key = levelIdx;
-    if (_currentKey === key && _current && !_current.paused) return;
-    if (!_unlocked) { _pendingKey = key; return; }
-    // Si no hay track para este nivel, parar la música del menú
-    if (!(key in TRACKS)) {
-      if (_currentKey === 'menu') stop();
-      return;
-    }
-    _fadeOut(_current, () => _startTrack(key));
-  }
+  function playMenu()        { _pedirTema('menu'); }
+  function play(levelIdx)    { _pedirTema(levelIdx); }
 
   function stop() {
-    _fadeOut(_current, () => { _current = null; _currentKey = null; });
+    _pararFades();
+    _currentKey = null;
+    _pendingKey = null;
+    if (_el) { _el.pause(); _el.volume = 0; try { _el.currentTime = 0; } catch (e) {} }
   }
 
-  function pause()  { if (_current && !_current.paused) _current.pause(); }
-  function resume() { if (_current && _current.paused)  _current.play().catch(() => {}); }
+  function pause()  { if (_el && !_el.paused) _el.pause(); }
+  function resume() {
+    if (_el && _el.paused && _currentKey !== null) _el.play().catch(() => {});
+  }
 
   function setVolume(v) {
     _volume = Math.max(0, Math.min(1, v));
-    if (_current && !_muted) _current.volume = _volume;
+    if (_el && !_muted) _el.volume = _volume;
   }
 
   function toggleMute() {
     _muted = !_muted;
     try { localStorage.setItem('nuve_muted', _muted ? '1' : '0'); } catch (e) {}
-    if (_current) _current.volume = _muted ? 0 : _volume;
+    _pararFades();
+    if (_el) _el.volume = _muted ? 0 : _volume;
     return _muted;
   }
 

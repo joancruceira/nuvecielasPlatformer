@@ -1297,7 +1297,7 @@ body {
 #rotateHint { display: none; }
 
 @media (orientation: portrait) and (any-pointer: coarse) {
-  #screenGame.active #rotateHint:not(.oculto) {
+  body:not(.cinematica-activa) #screenGame.active #rotateHint:not(.oculto) {
     display: flex;
     position: absolute;
     inset: 0;
@@ -1330,4 +1330,23 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .rot-icon { animation: none; transform: rotate(90deg); }
+}
+
+/* ═══ HUD COMPACTO EN PANTALLAS BAJAS ═══
+   En un teléfono apaisado de 365 px de alto, el HUD se comía 99 px y los
+   controles 90: la mitad de la pantalla. Acá se achica y se vuelve más
+   translúcido para que el juego se vea a través. */
+@media (orientation: landscape) and (max-height: 460px) {
+  .hud { padding: 4px 8px; gap: 6px; }
+  .hud-panel { padding: 4px 10px; border-radius: 12px; background: rgba(10,14,26,.42); }
+  .hud-heart { font-size: 13px; }
+  .hud-char  { display: none; }          /* ya sabés qué personaje elegiste */
+  .hud-level { font-size: 12px; }
+  .hud-stars { font-size: 13px; }
+  .hud-star-icon { font-size: 13px; }
+
+  /* Los controles flotan sobre el juego en vez de tapar una franja opaca */
+  .mobile-controls { min-height: 0; padding-bottom: calc(var(--sab) + 4px); }
+  .mc-btn  { opacity: .62; }
+  .mc-btn.pressed { opacity: 1; }
 }
