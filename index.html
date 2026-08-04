@@ -124,6 +124,17 @@
     <!-- Canvas principal -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- Aviso de rotar: en vertical sólo entran ~8 tiles de ancho y el juego
+         se vuelve injusto. Se muestra solo en teléfonos en vertical. -->
+    <div id="rotateHint">
+      <div class="rot-card">
+        <div class="rot-icon">📱</div>
+        <p class="rot-title">Girá el teléfono</p>
+        <p class="rot-sub">Se juega mucho mejor apaisado</p>
+        <button class="btn-secondary" id="rotDismiss">Jugar así igual</button>
+      </div>
+    </div>
+
     <!-- Controles móvil -->
     <div class="mobile-controls" id="mobileControls">
       <!-- Izquierda: ◀  ▶  ▼ -->

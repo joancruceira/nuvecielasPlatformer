@@ -67,6 +67,12 @@ const UI = (() => {
 
     preloadImages();
 
+    // Aviso de rotar: descartable por si no pueden girar la pantalla
+    _bindBtn('rotDismiss', () => {
+      const el = document.getElementById('rotateHint');
+      if (el) el.classList.add('oculto');
+    });
+
     _bindBtn('btnPlay',      showChar);
     _bindBtn('btnHow',       showHow);
     _bindBtn('btnHowBack',   showMenu);

@@ -30,6 +30,11 @@ const Renderer = (() => {
   const TS_REF          = 48;
   const DPR_MAX         = 2;   // más de 2x no se nota y cuesta el doble de fill-rate
 
+  // Alto real de todos los niveles. Es el techo duro del alejamiento: pedir
+  // más mundo del que el mapa tiene sólo agrega franjas vacías.
+  const ALTO_MAPA_TILES = 16;
+  const ZOOM_MAX        = 1.7;   // tope de acercamiento en pantallas angostas
+
   function resize() {
     if (!R.canvas) return;
     const cssW = R.canvas.offsetWidth  || R.canvas.clientWidth  || window.innerWidth;
@@ -43,13 +48,25 @@ const Renderer = (() => {
     R.dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
 
     // ── Zoom ──
-    // El mundo se dibujaba 1 px = 1 px de pantalla. En un teléfono apaisado de
-    // 375 px de alto eso son 7.8 tiles de un mapa de 16: no veías media
-    // pantalla de nivel. Ahora, si la pantalla es chica, se aleja la cámara
-    // hasta mostrar el mínimo jugable. En desktop el zoom queda en 1.
-    R.zoom = Math.min(1,
+    // El mundo se dibujaba 1 px = 1 px de pantalla, sin importar el tamaño de
+    // la pantalla. Si es chica, hay que alejar la cámara para mostrar un
+    // mínimo jugable; en desktop el zoom queda en 1.
+    const deseado = Math.min(1,
       cssW / (MIN_TILES_ANCHO * TS_REF),
       cssH / (MIN_TILES_ALTO  * TS_REF));
+
+    // Techo duro del alejamiento: NUNCA mostrar más alto de mundo del que el
+    // mapa realmente tiene.
+    //
+    // Sin esto, en un teléfono en VERTICAL el mínimo de 17 tiles de ancho
+    // forzaba un zoom de 0.50, y con ese zoom entraban 35 tiles de alto en un
+    // mapa de 16: casi 20 tiles de fondo vacío arriba y abajo, y todo dibujado
+    // a la mitad de tamaño. Es lo que se veía "muy chiquito".
+    //
+    // En pantallas angostas esto obliga a ACERCAR (zoom > 1), que es lo
+    // correcto: se ve menos ancho pero a tamaño legible y sin franjas muertas.
+    const minParaLlenarAlto = cssH / (ALTO_MAPA_TILES * TS_REF);
+    R.zoom = Math.max(deseado, Math.min(minParaLlenarAlto, ZOOM_MAX));
 
     R.canvas.width  = Math.round(cssW * R.dpr);
     R.canvas.height = Math.round(cssH * R.dpr);

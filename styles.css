@@ -1289,3 +1289,45 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══ AVISO DE ROTAR EL TELÉFONO ═══
+   En vertical sólo entran ~8 tiles de ancho: los enemigos aparecen encima
+   del jugador sin tiempo de reacción. Sólo se muestra en pantallas táctiles
+   en vertical, y se puede descartar por si no pueden rotar. */
+#rotateHint { display: none; }
+
+@media (orientation: portrait) and (any-pointer: coarse) {
+  #screenGame.active #rotateHint:not(.oculto) {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    z-index: 90;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 10, 22, .92);
+    backdrop-filter: blur(6px);
+    padding: 24px;
+  }
+}
+
+.rot-card {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; max-width: 320px;
+}
+.rot-icon {
+  font-size: 64px;
+  animation: rotGirar 2.2s ease-in-out infinite;
+}
+@keyframes rotGirar {
+  0%, 40%   { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(90deg); }
+}
+.rot-title {
+  font-family: var(--font-title);
+  font-size: 26px; font-weight: 700; color: var(--white);
+}
+.rot-sub { font-size: 15px; color: rgba(255,255,255,.72); margin-bottom: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rot-icon { animation: none; transform: rotate(90deg); }
+}
