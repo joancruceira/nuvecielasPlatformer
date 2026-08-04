@@ -68,7 +68,7 @@ body {
 .menu-bg {
   position: absolute;
   inset: 0;
-  background-image: url('img/FLYER_NUVEBOSQUE.png');
+  background-image: url('img/FLYER_NUVEBOSQUE.jpg');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
@@ -650,9 +650,17 @@ body {
   .mobile-controls { gap: 4px; padding-left: 10px; padding-right: 10px; }
 }
 
-/* Solo mostrar en pantallas táctiles */
-@media (pointer: fine) {
+/* Ocultar los controles táctiles SÓLO si no hay ningún dedo posible.
+   Con `pointer: fine` a secas, una notebook táctil o una tablet con mouse
+   —que reportan puntero fino— se quedaban sin controles y sin forma de
+   jugar. `any-pointer: coarse` responde "¿existe algún puntero grueso?",
+   que es la pregunta correcta. */
+@media (pointer: fine) and (not (any-pointer: coarse)) {
   .mobile-controls { display: none; }
+}
+/* Respaldo para navegadores sin soporte de `not` en media queries */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  @media (pointer: fine) { .mobile-controls { display: none; } }
 }
 
 /* ═══ PAUSE BUTTON ═══ */

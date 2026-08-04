@@ -69,9 +69,10 @@ const AssetLoader = (() => {
       { key:'fantasma_idle1',  src:'img/fantasma_idle1.png'  },
       { key:'fantasma_attack', src:'img/fantasma_attack.png' },
       { key:'fantasma_hit',    src:'img/fantasma_hit.png'    },
-      // Mecánicas nivel 2
-      { key:'magicdoor',       src:'img/magicdoor.png'       },
-      { key:'magicdoor_open',  src:'img/magicdoor_open.png'  },
+      // Mecánicas nivel 2 — el sprite real que usa MagicDoor.
+      // Antes acá figuraban magicdoor.png / magicdoor_open.png, que no
+      // existen: daban 404 y un console.warn en cada carga del nivel.
+      { key:'puerta_cerrada',  src:'img/puerta_cerrada.png'  },
     ],
 
     // ── Nivel 2 — Sendero Nocturno ───────────────────
@@ -154,11 +155,16 @@ const AssetLoader = (() => {
   function unload(levelIdx) {
     const items = MANIFEST[levelIdx] || [];
     for(const item of items) {
-      if(_cache[item.key]) {
-        // Vaciar src libera la referencia en memoria
-        _cache[item.key].src = '';
-        delete _cache[item.key];
-      }
+      const img = _cache[item.key];
+      if(!img) continue;
+      // Soltar los handlers ANTES de vaciar src. Asignar src='' aborta la
+      // descarga en curso y dispara `error`: sin esto, cada cambio de nivel
+      // llenaba la consola de "no se pudo cargar" sobre imágenes que estaban
+      // perfectamente bien, y adelantaba el contador de progreso.
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      delete _cache[item.key];
     }
   }
 

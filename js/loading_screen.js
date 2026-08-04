@@ -32,6 +32,9 @@ const LoadingScreen = (() => {
     const canvas = document.getElementById('gameCanvas');
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
+    // La pantalla de carga se dibuja en píxeles del canvas, no en unidades de
+    // mundo: hay que neutralizar la transformación de dpr/zoom del Renderer.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     const W = canvas.width, H = canvas.height;
     const dt = _lastTs ? Math.min((ts - _lastTs)/1000, 0.05) : 0;
     _lastTs = ts;

@@ -23,7 +23,7 @@ const Cinematica = (() => {
       titulo: 'Manolandia',
       escenas: [
         {
-          imagen: 'img/cinematica1_escena2.png',
+          imagen: 'img/cinematica1_escena2.jpg',
           texto: [
             'Había una vez un mundo mágico llamado Manolandia.',
             'Un lugar alegre y lleno de color, hecho a mano con mucho cariño.',
@@ -31,7 +31,7 @@ const Cinematica = (() => {
           ],
         },
         {
-          imagen: 'img/cinematica1_escena1.png',
+          imagen: 'img/cinematica1_escena1.jpg',
           texto: [
             'Pero una tarde, una sombra traviesa se sintió sola.',
             '«¿Por qué nadie juega conmigo?», suspiró.',
@@ -39,7 +39,7 @@ const Cinematica = (() => {
           ],
         },
         {
-          imagen: 'img/cinematica1_escena2.png',
+          imagen: 'img/cinematica1_escena2.jpg',
           texto: [
             '🎯 Misión: devolvé la alegría al Bosque y llegá al Castillo de la Nuveciela.',
           ],

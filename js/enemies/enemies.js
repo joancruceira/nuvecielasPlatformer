@@ -35,10 +35,15 @@ const Enemies = (() => {
     Object.values(MODULES).forEach(mod => mod.preload && mod.preload());
   }
 
+  // Se llama al cargar CUALQUIER nivel.
+  //
+  // Vaciar los tres sistemas —no sólo el del nivel entrante— es obligatorio:
+  // getEnemies()/update()/drawAll() despachan por "¿qué array tiene elementos?",
+  // así que un solo enemigo sobreviviente del nivel 3 secuestra los niveles 4 y 5.
   function init() {
     enemies = [];
-    if (typeof EnemiesLevel3 !== 'undefined') EnemiesLevel3.preload();
-    if (typeof EnemiesLevel4 !== 'undefined') EnemiesLevel4.preload();
+    if (typeof EnemiesLevel3 !== 'undefined') { EnemiesLevel3.reset(); EnemiesLevel3.preload(); }
+    if (typeof EnemiesLevel4 !== 'undefined') { EnemiesLevel4.reset(); EnemiesLevel4.preload(); }
     preloadAll();
   }
 

@@ -117,7 +117,13 @@ const SubMisionNatan = (() => {
     if(e.key==='ArrowDown'||e.key==='s') keys.down=true;
     if(e.key==='ArrowUp'  ||e.key==='w'){if(!keys.up)_tryJump();keys.up=true;}
     if(e.key==='z'||e.key==='Z'||e.key===' ') _tryJump();
-    if(e.key==='Escape') _finish();
+    if(e.key==='Escape'){
+      // Cortar la propagación: si el evento sigue hasta el listener de window
+      // del engine, éste ve el subnivel ya cerrado y abre el menú de pausa.
+      // Salir del subnivel y quedar en pausa a la vez es desconcertante.
+      e.stopPropagation();
+      _finish();
+    }
   }
   function _onKU(e){
     if(e.key==='ArrowLeft' ||e.key==='a') keys.left=false;
@@ -382,10 +388,16 @@ const SubMisionNatan = (() => {
   function _updateEnemies(dt){
     for(let i=enemies.length-1;i>=0;i--){
       const e=enemies[i];
-      if(phase===C.PHASE.VUELO&&e.zone===C.PHASE.TIERRA&&e.type!=='avion_bajo'){enemies.splice(i,1);continue;}
+      // Los que vuelan siguen existiendo en la fase de vuelo y NO se pegan al
+      // suelo. Antes esto se preguntaba con `e.type!=='avion_bajo'`, un tipo
+      // que no existe en ningún lado: el tipo real es 'heli_bajo'. Resultado:
+      // los helicópteros se clavaban al piso (142 px por debajo de su altura)
+      // peleando contra su propia onda senoidal —de ahí el temblor— y además
+      // desaparecían justo al empezar a volar.
+      if(phase===C.PHASE.VUELO&&e.zone===C.PHASE.TIERRA&&!e.flying){enemies.splice(i,1);continue;}
       if(!e.alive||e.state==='gone'||e.y>H+200){enemies.splice(i,1);continue;}
       SNEnemies.updateEnemy(e,dt,N);
-      if(e.zone===C.PHASE.TIERRA&&e.type!=='avion_bajo'){
+      if(e.zone===C.PHASE.TIERRA&&!e.flying){
         const eg=groundY-(e.h-N.h);
         if(e.y>=eg){e.y=eg;e.vy=0;e.onGround=true;}else e.onGround=false;
       }
@@ -461,8 +473,8 @@ const SubMisionNatan = (() => {
   }
 
   // ── Finalizar ─────────────────────────────────────────
-  function _finish(gameOver=false){
-    if(!active)return; active=false;
+  function _teardown(){
+    active=false;
     document.removeEventListener('keydown',_onKD);
     document.removeEventListener('keyup',  _onKU);
     btnHandlers.forEach((h,id)=>{
@@ -473,11 +485,22 @@ const SubMisionNatan = (() => {
     });
     btnHandlers.clear();
     rays.length=enemies.length=particles.length=0;
+    Object.keys(keys).forEach(k=>keys[k]=false);
     if(_hudEl) _hudEl.style.visibility='';
     _hudEl=null;
+  }
+
+  function _finish(gameOver=false){
+    if(!active)return;
+    _teardown();
     if(gameOver) onGameOver();
     else onReturn();
   }
 
-  return {start,isActive,update,handleKey};
+  // Cierre forzado sin disparar callbacks: lo usa el Engine al parar o al
+  // cargar otro nivel. Sin esto el subnivel quedaba "activo" para siempre y
+  // el game loop nunca volvía a llamar a _update() del nivel principal.
+  function abort(){ if(active) _teardown(); }
+
+  return {start,isActive,update,handleKey,abort};
 })();

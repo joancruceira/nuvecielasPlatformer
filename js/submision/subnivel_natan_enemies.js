@@ -62,7 +62,8 @@ const SNEnemies = (() => {
       return {type:'heli_bajo',x,y,w:95,h:60,vx:-100,vy:0,facing:-1,
         hp:2,maxHp:2,alive:true,state:'fly',fi:0,ft:0,st:0,
         baseY:y,sinePhase:Math.random()*Math.PI*2,attackCooldown:2.0,score:180,
-        zone:'tierra',flipRight:true};
+        zone:'tierra',flipRight:true,
+        flying:true};   // no se pega al suelo ni se borra al pasar a fase vuelo
     }
     function update(e,dt,natan){
       if(!e.alive&&e.state!=='death')return;
@@ -126,7 +127,8 @@ const SNEnemies = (() => {
       return {type:'helicoptero',x,y,w:110,h:70,vx:-90,vy:0,facing:-1,
         hp:4,maxHp:4,alive:true,state:'fly',fi:0,ft:0,st:0,
         baseY:y,sinePhase:Math.random()*Math.PI*2,attackCooldown:3.0,searchTimer:0,score:300,
-        flipRight:true};
+        flipRight:true,
+        flying:true};
     }
     function update(e,dt,natan){
       if(!e.alive&&e.state!=='death')return;
@@ -194,27 +196,54 @@ const SNEnemies = (() => {
       for(let i=0;i<frameCount;i++)
         imgs.push(mkImg(`${B}${folder}/${prefix}${i}.png`));
     }
+    const SPEED  = opts.speed  || 80;
+    const AGGRO  = opts.aggro  || 300;   // px a los que detecta a Natan
+    const CHASE  = opts.chase  || 1.7;   // multiplicador de velocidad al perseguir
+
     function spawn(x,y){
-      const dir=Math.random()>0.5?1:-1;
+      // Arrancar SIEMPRE mirando hacia la izquierda, que es de donde llega
+      // Natan. Antes la dirección era Math.random(): la mitad de los enemigos
+      // empezaba alejándose y el conjunto se leía como ruido, no como amenaza.
       return {
         type,x,y,w:opts.w||52,h:opts.h||72,
-        vx:dir*(opts.speed||80), vy:0, facing:dir,
+        vx:-SPEED, vy:0, facing:-1,
         hp:opts.hp||2, maxHp:opts.hp||2,
         alive:true, state:'walk', fi:0, ft:0, st:0,
         patrolLeft:x-(opts.patrol||160), patrolRight:x+(opts.patrol||160),
         onGround:false, score:opts.score||80,
+        chasing:false,
       };
     }
+
     function update(e,dt,natan){
       if(!e.alive&&e.state!=='death')return;
       e.st+=dt;
       if(e.state==='death'){anim(e,dt,frameCount,0.10);if(e.st>0.6){e.alive=false;e.state='gone';}return;}
       if(e.state==='hurt'){if(e.st>0.3){e.state='walk';e.st=0;}return;}
       if(!e.onGround){e.vy=Math.min(e.vy+600*dt,500);e.y+=e.vy*dt;}
-      e.x+=e.vx*dt;
-      if(e.x<=e.patrolLeft){e.vx=Math.abs(e.vx);e.facing=1;}
-      if(e.x>=e.patrolRight){e.vx=-Math.abs(e.vx);e.facing=-1;}
-      anim(e,dt,frameCount,0.10);
+
+      // Persecución. `natan` se recibía como parámetro y nunca se leía: los
+      // enemigos iban y venían en una caja fija, ajenos al jugador. Ahora, si
+      // Natan entra en rango, lo encaran y aceleran; si no, patrullan.
+      const dx = (natan.x + natan.w/2) - (e.x + e.w/2);
+      const dy = Math.abs((natan.y + natan.h/2) - (e.y + e.h/2));
+      e.chasing = Math.abs(dx) < AGGRO && dy < 160;
+
+      if(e.chasing){
+        e.facing = dx > 0 ? 1 : -1;
+        e.vx     = e.facing * SPEED * CHASE;
+        e.x     += e.vx * dt;
+        // Al perseguir puede salirse de su caja, pero sólo hasta el doble:
+        // así te sigue de verdad sin irse a la otra punta del barrio.
+        const l = e.patrolLeft - (e.patrolRight - e.patrolLeft);
+        const r = e.patrolRight + (e.patrolRight - e.patrolLeft);
+        e.x = Math.max(l, Math.min(r, e.x));
+      } else {
+        e.x += e.vx * dt;
+        if(e.x<=e.patrolLeft){e.vx=Math.abs(e.vx);e.facing=1;}
+        if(e.x>=e.patrolRight){e.vx=-Math.abs(e.vx);e.facing=-1;}
+      }
+      anim(e,dt,frameCount,e.chasing?0.07:0.10);
     }
     function hit(e){
       if(!e.alive||e.state==='death')return;

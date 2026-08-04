@@ -26,6 +26,8 @@ const EngineRender = (() => {
     Renderer.clear();
 
     // ── SubMisión activa: delegarle el render completo ──
+    // Las submisiones tienen su propio espacio de coordenadas y su propio
+    // sistema de partículas: no deben heredar la cámara del nivel principal.
     if (SubMision.isActive()) {
       const { W, H } = Renderer.getSize();
       SubMision.update(dt, Renderer.getCtx(), W, H);
@@ -39,10 +41,16 @@ const EngineRender = (() => {
       return;
     }
 
+    // Los FX (partículas/textos) se spawnean en coordenadas de MUNDO.
+    // Registrar la cámara del frame antes de dibujar cualquiera de ellos.
+    Renderer.setFxCamera(cam.x, cam.y);
+
+    const { W: vw, H: vh } = Renderer.getSize();
+
     // ── Fondo ───────────────────────────────────────────
     Renderer.drawBackground(levelData, cam.x, cam.y, timestamp);
-    GiftBox.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
-    MagicDoor.drawRainbowBg(Renderer.getCtx(), Renderer.getSize().W, Renderer.getSize().H, timestamp);
+    GiftBox.drawRainbowBg(Renderer.getCtx(), vw, vh, timestamp);
+    MagicDoor.drawRainbowBg(Renderer.getCtx(), vw, vh, timestamp);
 
     // ── Tilemap ─────────────────────────────────────────
     Renderer.drawTilemap(map, levelData, cam.x, cam.y);
@@ -51,9 +59,12 @@ const EngineRender = (() => {
     const ctx = Renderer.getCtx();
 
     // ── Coleccionables (estrellas) ───────────────────────
+    // Culling: en el nivel 4 hay ~55 estrellas y a lo sumo 4 son visibles.
     for (const col of collectibles) {
       if (col.collected) continue;
-      Renderer.drawStarAnimated(col.x - cam.x, col.y - cam.y, timestamp, false);
+      const sx = col.x - cam.x;
+      if (sx < -TS || sx > vw + TS) continue;
+      Renderer.drawStarAnimated(sx, col.y - cam.y, timestamp, false);
     }
 
     // ── Checkpoints (bandera) ────────────────────────────
@@ -78,7 +89,13 @@ const EngineRender = (() => {
     const images  = UI.getImages();
     const visible = !ps.invincible || Math.floor(timestamp / 90) % 2 === 0;
     if (visible) {
-      Renderer.drawPlayer({ ...ps, x: ps.x - cam.x, y: ps.y - cam.y }, images, timestamp);
+      // Redondear la posición de pantalla: con la cámara ya en enteros, esto
+      // deja al jugador alineado al píxel contra los tiles y elimina el
+      // temblor de subpíxel al caminar.
+      Renderer.drawPlayer(
+        { ...ps, x: Math.round(ps.x - cam.x), y: Math.round(ps.y - cam.y) },
+        images, timestamp
+      );
     }
 
     // ── Proyectiles y fireballs ───────────────────────────
@@ -86,9 +103,12 @@ const EngineRender = (() => {
     Renderer.drawProjectiles(Player.getProjectiles(), cam.x, cam.y, timestamp);
 
     // ── FX ───────────────────────────────────────────────
-    Renderer.updateAndDrawParticles(Math.min(1/30, 1/60));
-    Renderer.drawFloatingTexts(Math.min(1/30, 1/60));
-    Renderer.drawFlash();
+    // dt real y acotado. Antes era `Math.min(1/30, 1/60)`, que es la
+    // constante 1/60: los FX corrían a velocidad fija sin importar el FPS.
+    const fxDt = Math.min(dt || 1/60, 1/30);
+    Renderer.updateAndDrawParticles(fxDt);
+    Renderer.drawFloatingTexts(fxDt);
+    Renderer.drawFlash(fxDt);
   }
 
   // ── Checkpoints ──────────────────────────────────────

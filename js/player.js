@@ -40,7 +40,31 @@ const Player = (() => {
     // sizeMult NUNCA toca w/h (hitbox) — es puramente visual/render.
     superTimer: 0,
     sizeMult: 1,
+    // Coyote time / jump buffer — ver _consumeJump()
+    coyoteTimer: 0,
+    jumpBufferTimer: 0,
   };
+
+  // Ventanas de gracia del salto (segundos). Son EL detalle que separa un
+  // plataformas que responde de uno que "se come" los saltos:
+  //  - coyote: podés saltar hasta 100ms después de dejar el borde
+  //  - buffer: si apretás saltar poco antes de aterrizar, se ejecuta al tocar suelo
+  const COYOTE_TIME = 0.10;
+  const JUMP_BUFFER = 0.12;
+
+  // ── Contexto de nivel ────────────────────────────────
+  // El nivel activo declara sus propios modificadores de física en
+  // `levelData.physics`. Antes esto se resolvía con
+  // `typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4`,
+  // pero currentLevelIdx es un `let` dentro de la IIFE del Engine: nunca
+  // fue global, así que la condición era SIEMPRE falsa y el nivel
+  // subacuático se jugaba con la física de tierra firme.
+  const DEFAULT_PHYSICS = null;
+  function _levelPhysics() {
+    if (typeof Engine === 'undefined' || !Engine.getLevelData) return DEFAULT_PHYSICS;
+    const data = Engine.getLevelData();
+    return (data && data.physics) || DEFAULT_PHYSICS;
+  }
 
   // ── Getters ──────────────────────────────────────────
   function getChar()       { return CHARACTERS[state.charId]; }
@@ -71,6 +95,7 @@ const Player = (() => {
     state.immuneTimer=0;
     state.onIce=false;
     state.superTimer=0; state.sizeMult=1;
+    state.coyoteTimer=0; state.jumpBufferTimer=0;
   }
 
   function respawn() {
@@ -86,6 +111,7 @@ const Player = (() => {
     state.projectiles=[]; state.projectileCooldown=0;
     state.onIce=false;
     state.superTimer=0; state.sizeMult=1;
+    state.coyoteTimer=0; state.jumpBufferTimer=0;
   }
 
   // ═══════════════════════════════════════════════════
@@ -106,6 +132,11 @@ const Player = (() => {
     state.grounded = false;
     _resolveCollisions(map);
     _handleLanding(ch, onLand);
+
+    // El salto se resuelve DESPUÉS de las colisiones: en ese punto ya sabemos
+    // si el jugador está realmente en el suelo este frame.
+    _updateJumpWindows(dt);
+    _consumeJump(ch);
 
     _updateAbilities(dt, input, ch);
     _updateProjectiles(dt, map);
@@ -149,16 +180,17 @@ const Player = (() => {
 
   // ── Movimiento horizontal ────────────────────────────
   function _updateMovement(dt, input, ch) {
-    const isWater = typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4;
+    const phys    = _levelPhysics();
+    const isWater = !!(phys && phys.swim);
     if (state.sliding) {
       state.vx = state.facing * (state.onIce ? ch.slideSpeed * 1.15 : ch.slideSpeed);
     } else {
       let targetVx = input.right ? ch.speed : input.left ? -ch.speed : 0;
-      if (isWater) targetVx *= 0.65; // Arrastre horizontal en agua
-      
+      if (isWater) targetVx *= (phys.hDrag ?? 0.65); // Arrastre horizontal en agua
+
       let acc = state.grounded ? 18 : 10;
       if (isWater) {
-        acc = 6.0; // Desaceleración/Aceleración por flotabilidad
+        acc = phys.accel ?? 6.0; // Desaceleración/Aceleración por flotabilidad
       } else if (state.grounded && state.onIce) {
         // En hielo aceleramos y cambiamos de dirección más lento, y patinamos mucho más al frenar
         acc = targetVx === 0 ? 1.5 : 3.0;
@@ -174,10 +206,11 @@ const Player = (() => {
   function _updateGravity(dt, input, ch) {
     let gravity = ch.gravity;
 
-    // Nivel 5: Gravedad de agua reducida
-    const isWater = typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4;
+    // Niveles subacuáticos: gravedad reducida (declarada en levelData.physics)
+    const phys    = _levelPhysics();
+    const isWater = !!(phys && phys.swim);
     if (isWater) {
-      gravity = 320;
+      gravity = phys.gravity ?? 320;
     }
 
     // Flotación (Lunaria y cualquier char con canFloat)
@@ -200,7 +233,7 @@ const Player = (() => {
     // Caída rápida al soltar el salto
     if (!isWater && !input.jumpHeld && state.vy < 0) gravity *= 1.5;
 
-    const maxFallSpeed = isWater ? 250 : 900; // Caer más lento en agua
+    const maxFallSpeed = isWater ? (phys.maxFall ?? 250) : 900; // Caer más lento en agua
     state.vy = Math.min(state.vy + gravity * dt, maxFallSpeed);
   }
 
@@ -315,12 +348,15 @@ const Player = (() => {
   // ═══════════════════════════════════════════════════
   //  ACCIONES
   // ═══════════════════════════════════════════════════
+  // tryJump() ya no salta: registra la INTENCIÓN de saltar.
+  // El salto real lo resuelve _consumeJump() después de las colisiones.
   function tryJump() {
     if (state.dead || state.sliding) return;
 
-    // Nivel 5: Nadar infinitamente con fuerza reducida
-    if (typeof currentLevelIdx !== 'undefined' && currentLevelIdx === 4) {
-      state.vy = -300;
+    // Niveles subacuáticos: brazada infinita, sin ventanas de gracia
+    const phys = _levelPhysics();
+    if (phys && phys.swim) {
+      state.vy = phys.strokeVy ?? -300;
       state.grounded = false;
       state.jumping = true;
       if (typeof Renderer !== 'undefined') {
@@ -329,14 +365,30 @@ const Player = (() => {
       return;
     }
 
-    const ch = getChar();
-    if (state.grounded) {
-      state.vy=ch.jumpForce; state.grounded=false; state.jumping=true;
-      state.canDoubleJump=true; state.floatTimer=0;
+    state.jumpBufferTimer = JUMP_BUFFER;
+  }
+
+  function _updateJumpWindows(dt) {
+    // Coyote: se recarga mientras estés en el suelo y se consume al caer
+    if (state.grounded) state.coyoteTimer = COYOTE_TIME;
+    else                state.coyoteTimer = Math.max(0, state.coyoteTimer - dt);
+    state.jumpBufferTimer = Math.max(0, state.jumpBufferTimer - dt);
+  }
+
+  function _consumeJump(ch) {
+    if (state.jumpBufferTimer <= 0 || state.dead || state.sliding) return;
+
+    if (state.grounded || state.coyoteTimer > 0) {
+      state.vy = ch.jumpForce;
+      state.grounded = false; state.jumping = true;
+      state.canDoubleJump = true; state.floatTimer = 0;
+      state.coyoteTimer = 0;
+      state.jumpBufferTimer = 0;
     } else if (state.canDoubleJump && !state.doubleJumped) {
-      state.vy=ch.dblJumpForce;
-      state.doubleJumped=true; state.canDoubleJump=false;
-      state.floating=false; state.floatTimer=0;
+      state.vy = ch.dblJumpForce;
+      state.doubleJumped = true; state.canDoubleJump = false;
+      state.floating = false; state.floatTimer = 0;
+      state.jumpBufferTimer = 0;
       Renderer.spawnParticles(state.x+state.w/2, state.y+state.h, ch.color, 12);
     }
   }

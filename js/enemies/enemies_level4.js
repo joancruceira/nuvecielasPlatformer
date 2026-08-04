@@ -1300,8 +1300,11 @@ const EnemiesLevel4 = (() => {
     }
   }
 
+  // Vaciar el sistema al salir del nivel 4 (ver nota en enemies_level3.reset).
+  function reset() { _enemies = []; _ts = 0; }
+
   return {
-    preload, spawnFromMap, update, drawAll,
+    preload, reset, spawnFromMap, update, drawAll,
     getEnemies, getBoss, allDefeated, stunNearby,
     hitEnemy, hitByProjectile
   };

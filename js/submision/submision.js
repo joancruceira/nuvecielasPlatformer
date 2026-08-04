@@ -31,14 +31,15 @@ const SubMision = (() => {
       if(S.phase !== 'select') return;
       ev.preventDefault();
 
-      // Coordenadas relativas al canvas, corregidas por DPR / CSS scaling
-      const rect  = _canvas.getBoundingClientRect();
-      const scaleX = _canvas.width  / rect.width;
-      const scaleY = _canvas.height / rect.height;
+      // Pasar el toque a UNIDADES DE MUNDO, que es donde drawSelect registró
+      // las zonas de los botones. Antes se escalaba por canvas.width/rect.width,
+      // que ahora incluye la densidad de píxeles y daba coordenadas al doble.
+      const rect = _canvas.getBoundingClientRect();
+      const { W, H } = Renderer.getSize();
       const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      const cx = (clientX - rect.left) * scaleX;
-      const cy = (clientY - rect.top)  * scaleY;
+      const cx = (clientX - rect.left) / rect.width  * W;
+      const cy = (clientY - rect.top)  / rect.height * H;
 
       for(const [id, z] of Object.entries(_btnZones)){
         if(cx >= z.x && cx <= z.x+z.w && cy >= z.y && cy <= z.y+z.h){

@@ -221,14 +221,15 @@ const LevelMap = (() => {
     const yaVista = !cinKey || _cinVista(cinKey);
 
     const launch = () => {
-      // Nodo especial de submisión
+      // Nodo especial de submisión.
+      // Hace falta mostrar #screenGame (el canvas vive ahí) y arrancar el
+      // game loop: SubMision.update() sólo corre desde Engine._loop.
       if (_selectedLevel === 'sub') {
         hide();
-        SubMision.start({}, {
-          onReturn: () => {
-            try { const ps = Player.getState(); if (ps) ps.lives = 5; UI && UI.updateHUD && UI.updateHUD(); } catch(e) {}
-            UI.showMap && UI.showMap();
-          }
+        UI.showGame();
+        Engine.startSubMision(() => {
+          try { const ps = Player.getState(); if (ps) ps.lives = 5; UI && UI.updateHUD && UI.updateHUD(); } catch(e) {}
+          UI.showMap && UI.showMap();
         });
         return;
       }

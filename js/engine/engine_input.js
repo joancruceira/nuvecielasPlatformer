@@ -37,6 +37,16 @@ const EngineInput = (() => {
   }
 
   // ── Teclado ───────────────────────────────────────────
+
+  // ¿Hay una submisión en curso? Mientras la haya, el input del juego
+  // principal debe callarse por completo: el subnivel tiene sus propios
+  // listeners. Si no, ↓/↑ pulsados dentro del subnivel quedan "pegados" en
+  // `_input` y al volver el jugador salta solo o re-entra a la puerta.
+  function _subLevelActive() {
+    return SubMision.isActive() ||
+           (typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive());
+  }
+
   function _setupKeyboard() {
     window.addEventListener('keydown', e => {
       // SubMisión captura sus propias teclas primero
@@ -44,6 +54,10 @@ const EngineInput = (() => {
         SubMision.handleKeyForSubMision(e.key);
         return;
       }
+      // SubMisión Natan gestiona su propio teclado (document-level).
+      // No consumir el evento acá ni tocar `_input`, ni pausar el engine.
+      if (typeof SubMisionNatan !== 'undefined' && SubMisionNatan.isActive()) return;
+
       if (e.repeat) return;
       _keys[e.key] = true;
 
@@ -61,12 +75,15 @@ const EngineInput = (() => {
       if (e.key === 'ArrowDown'  || e.key === 's' || e.key === 'S') { _input.down  = true; }
       if (e.key === 'ArrowUp'    || e.key === 'w' || e.key === 'W' ||
           e.key === 'z'          || e.key === 'Z' || e.key === ' ') {
-        _input.jumpPressed++;
+        // Cap: sin esto, machacar el botón acumula saltos que se ejecutan
+        // uno por frame más tarde y el personaje salta solo.
+        _input.jumpPressed = Math.min(_input.jumpPressed + 1, 2);
         _input.jumpHeld    = true;
       }
     });
 
     window.addEventListener('keyup', e => {
+      if (_subLevelActive()) return;
       _keys[e.key] = false;
       if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') _input.left  = false;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') _input.right = false;
@@ -121,7 +138,9 @@ const EngineInput = (() => {
         jumpBtn.setPointerCapture(ev.pointerId);
         jumpBtn.classList.add('pressed');
         // Cada toque es un salto — el engine decide si es primero o doble
-        _input.jumpPressed++;
+        // Cap: sin esto, machacar el botón acumula saltos que se ejecutan
+        // uno por frame más tarde y el personaje salta solo.
+        _input.jumpPressed = Math.min(_input.jumpPressed + 1, 2);
         _input.jumpHeld    = true;
       }, { passive: false });
 
@@ -203,6 +222,23 @@ const EngineInput = (() => {
     }
   }
 
+  // ── Ciclo de vida en móvil ────────────────────────────
+  // Bloquear el teléfono, atender una llamada o cambiar de app dejaba el juego
+  // corriendo: volvías y te habían matado, o la música seguía sonando de fondo.
+  // Ahora se pausa solo y suelta todas las teclas (que si no quedan "pegadas").
+  function _setupLifecycle() {
+    const pausarSiHaceFalta = () => {
+      if (!document.hidden) return;
+      reset();
+      if (EngineState.running && !EngineState.paused) EngineActions.togglePause();
+      else if (typeof AudioManager !== 'undefined') AudioManager.pause();
+    };
+    document.addEventListener('visibilitychange', pausarSiHaceFalta);
+    window.addEventListener('pagehide', pausarSiHaceFalta);
+    // Perder el foco (notificación, barra de tareas) también suelta las teclas
+    window.addEventListener('blur', () => reset());
+  }
+
   // ── API pública ───────────────────────────────────────
   function setup(inputRef) {
     _input = inputRef;
@@ -210,6 +246,7 @@ const EngineInput = (() => {
     _setupMobileControls();
     _setupCanvasTouch();
     _setupOrientationHandler();
+    _setupLifecycle();
   }
 
   function reset() {
