@@ -6,34 +6,46 @@ const AudioManager = (() => {
 
   // ── Música por nivel ──────────────────────────────────
   const TRACKS = {
-    menu: 'audio/nuvecielas_portada.mp3',
-    0:    'audio/cancion_nuve.mp3',         // FIX: el archivo real es minúsculas (servidores case-sensitive)
-    1:    'audio/castillo_nuveciela.mp3',
-    2:    'audio/sendero_nocturno.mp3',
-    3:    'audio/castillo_nuveciela.mp3',   // Castillo de la Ciela — reutiliza tema de castillo (track propio = asset futuro)
-    4:    'audio/cancion_nuve.mp3',         // Atravesando el Lago — reutiliza tema suave (track propio = asset futuro)
+    menu: 'audio/nuvecielas_portada.m4a',
+    0:    'audio/cancion_nuve.m4a',         // FIX: el archivo real es minúsculas (servidores case-sensitive)
+    1:    'audio/castillo_nuveciela.m4a',
+    2:    'audio/sendero_nocturno.m4a',
+    3:    'audio/castillo_nuveciela.m4a',   // Castillo de la Ciela — reutiliza tema de castillo (track propio = asset futuro)
+    4:    'audio/cancion_nuve.m4a',         // Atravesando el Lago — reutiliza tema suave (track propio = asset futuro)
   };
 
   // ── Efectos de sonido ─────────────────────────────────
   const SFX = {
-    grab_star:    'audio/grab_star.mp3',
-    giftbox_open: 'audio/giftbox_open.mp3',
-    get_tree:     'audio/get_tree.mp3',
-    game_over:    'audio/game_over.mp3',
-    lunaria_shoot:'audio/lunaria_shoot.mp3',
-    death_enemy:  'audio/death_enemy.mp3',
-    death_boss:   'audio/death_boss.mp3',
-    hit_boss:     'audio/hit_boss.mp3',
-    flag_point:   'audio/flag_point.mp3',
+    grab_star:    'audio/grab_star.m4a',
+    giftbox_open: 'audio/giftbox_open.m4a',
+    get_tree:     'audio/get_tree.m4a',
+    game_over:    'audio/game_over.m4a',
+    lunaria_shoot:'audio/lunaria_shoot.m4a',
+    death_enemy:  'audio/death_enemy.m4a',
+    death_boss:   'audio/death_boss.m4a',
+    hit_boss:     'audio/hit_boss.m4a',
+    flag_point:   'audio/flag_point.m4a',
   };
 
-  // Pre-cargar efectos en cache
-  const _sfxCache = {};
+  // Pool de efectos.
+  //
+  // Antes sfx() hacía `new Audio(src)` en CADA llamada: recoger veinte
+  // estrellas creaba veinte elementos <audio> que el GC recogía tarde, y el
+  // _sfxCache precargado no se usaba nunca para reproducir. Ahora cada efecto
+  // tiene unas pocas voces que se reciclan por turnos, así que sigue pudiendo
+  // solaparse consigo mismo sin crear objetos dentro del juego.
+  const VOCES_POR_SFX = 4;
+  const _sfxCache = {};   // key → { voces:[Audio], siguiente:int }
+
   function _preloadSfx() {
     for (const [key, src] of Object.entries(SFX)) {
-      const a = new Audio(src);
-      a.preload = 'auto';
-      _sfxCache[key] = a;
+      const voces = [];
+      for (let i = 0; i < VOCES_POR_SFX; i++) {
+        const a = new Audio(src);
+        a.preload = 'auto';
+        voces.push(a);
+      }
+      _sfxCache[key] = { voces, siguiente: 0 };
     }
   }
   // Cargar al primer gesto del usuario (evita bloqueo autoplay)
@@ -48,11 +60,13 @@ const AudioManager = (() => {
 
   // ── Reproducir efecto ─────────────────────────────────
   function sfx(key) {
-    const src = SFX[key];
-    if (!src) return;
-    // Clonar para poder solapar sonidos iguales
-    const a = new Audio(src);
+    if (_muted) return;                 // no gastar decodificación si está silenciado
+    const slot = _sfxCache[key];
+    if (!slot) return;                  // todavía no se desbloqueó el audio
+    const a = slot.voces[slot.siguiente];
+    slot.siguiente = (slot.siguiente + 1) % slot.voces.length;
     a.volume = _sfxVolume;
+    try { a.currentTime = 0; } catch (e) {}
     a.play().catch(() => {});
   }
 
@@ -64,7 +78,6 @@ const AudioManager = (() => {
   let _volume      = 0.50;
   let _sfxVolume   = 0.75;
   let _muted       = (() => { try { return localStorage.getItem('nuve_muted') === '1'; } catch (e) { return false; } })();
-  let _fadeTick    = null;
 
   // Al primer toque/tecla, desbloquear y arrancar el track pendiente
   function _onUnlock() {
@@ -98,13 +111,20 @@ const AudioManager = (() => {
     window.addEventListener(evt, _onUnlock, { once: false, capture: true });
   });
 
+  // Fade-out.
+  //
+  // Antes el fade-in y el fade-out compartían una sola variable `_fadeTick`:
+  // si se solapaban (por ejemplo playMenu() y play(0) casi juntos), uno
+  // cancelaba el intervalo del otro y el <audio> viejo quedaba sonando para
+  // siempre a volumen 0.x, sin pausarse nunca. Ahora cada elemento lleva su
+  // propio intervalo y el fade-out SIEMPRE pausa, aunque lo cancelen.
   function _fadeOut(el, cb) {
     if (!el) { cb && cb(); return; }
-    clearInterval(_fadeTick);
-    _fadeTick = setInterval(() => {
+    if (el._fadeId) clearInterval(el._fadeId);
+    el._fadeId = setInterval(() => {
       el.volume = Math.max(0, el.volume - 0.05);
       if (el.volume <= 0) {
-        clearInterval(_fadeTick);
+        clearInterval(el._fadeId); el._fadeId = null;
         el.pause();
         el.currentTime = 0;
         cb && cb();
@@ -131,13 +151,13 @@ const AudioManager = (() => {
     _current    = audio;
     _currentKey = key;
 
-    // Fade in
-    clearInterval(_fadeTick);
-    _fadeTick = setInterval(() => {
+    // Fade in — con su propio intervalo, atado a este elemento
+    if (audio._fadeId) clearInterval(audio._fadeId);
+    audio._fadeId = setInterval(() => {
       const target = _muted ? 0 : _volume;
-      if (!_current) { clearInterval(_fadeTick); return; }
-      _current.volume = Math.min(target, _current.volume + 0.03);
-      if (_current.volume >= target) clearInterval(_fadeTick);
+      if (_current !== audio) { clearInterval(audio._fadeId); audio._fadeId = null; return; }
+      audio.volume = Math.min(target, audio.volume + 0.03);
+      if (audio.volume >= target) { clearInterval(audio._fadeId); audio._fadeId = null; }
     }, 40);
   }
 
