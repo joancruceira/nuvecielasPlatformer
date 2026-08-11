@@ -7,6 +7,12 @@ const EnemiesLevel4 = (() => {
   let _enemies = [];
   let _ts = 0;
 
+  // ── Jaula de hielo — las 3 amigas NO elegidas, cautivas detrás del jefe ──
+  let _cage = null;
+  const _CAGE_CHARS = ['nuveciela', 'ciela', 'lunaria', 'nuve'];
+  const _cageImgs = {};
+  _CAGE_CHARS.forEach(id => { const im = new Image(); im.src = `img/${id}.png`; _cageImgs[id] = im; });
+
   // ── Sprite Animation System ──────────────────────────
   // Loads individual PNG frames and cycles through them at a given FPS.
   // Usage: SpriteAnim.get(key, frameDt) returns the correct HTMLImageElement.
@@ -81,6 +87,7 @@ const EnemiesLevel4 = (() => {
   // ── Spawn ─────────────────────────────────────────────
   function spawnFromMap(map, TS) {
     _enemies = [];
+    _cage = null;
     const rows = map.length, cols = map[0].length;
 
     for (let r = 0; r < rows; r++) {
@@ -107,6 +114,7 @@ const EnemiesLevel4 = (() => {
           const arenaR = Math.min((cols - 1) * TS, (c + 15) * TS);
           _enemies.push(_spawnReyEscarcha(x, r * TS - 80, arenaL, arenaR));
           map[r][c] = TILE.AIR;
+          _cage = _createIceCage(TS, c); // las amigas cautivas, detrás del jefe
         }
       }
     }
@@ -241,6 +249,26 @@ const EnemiesLevel4 = (() => {
 
       // Colisiones de daño con jugador
       _checkPlayerCollisions(e, ps, onPlayerHit);
+    }
+
+    // ── Jaula de hielo: se libera cuando el jefe ya no está ──────────────
+    if (_cage) {
+      if (!_cage.freeing) {
+        const bossPresent = _enemies.some(e => e.type === 'rey_escarcha');
+        if (!bossPresent) _freeCage();
+      } else {
+        _cage.freeTimer += dt;
+        if (!_cage.freed && _cage.freeTimer > 0.45) _cage.freed = true;
+        // Fiesta sostenida (~1.2s): chispas arcoíris alrededor de la jaula
+        if (_cage.freeTimer < 1.2 && Math.random() < 0.7 && typeof Renderer !== 'undefined') {
+          const cols = ['#f97316', '#f9c846', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6'];
+          Renderer.spawnParticles(
+            _cage.frame.x + Math.random() * _cage.frame.w,
+            _cage.frame.y - 10 + Math.random() * (_cage.frame.h + 20),
+            cols[(Math.random() * cols.length) | 0], 2
+          );
+        }
+      }
     }
   }
 
@@ -931,8 +959,140 @@ const EnemiesLevel4 = (() => {
     return true;
   }
 
+  // ══════════════════════════════════════════════════════
+  //  JAULA DE HIELO — las amigas cautivas detrás del jefe
+  // ══════════════════════════════════════════════════════
+  function _createIceCage(TS, bossCol) {
+    // La jaula se crea en _loadLevel, ANTES de Player.init(charId). Por eso
+    // las cautivas se resuelven de forma diferida (en el primer dibujo, ya
+    // con el personaje elegido seteado). Acá solo montamos la geometría.
+    const groundTopY = 13 * TS;              // superficie del piso de la arena
+    const gap        = 1.6 * TS;             // separación entre amigas
+    const centerX    = (bossCol + 12) * TS;  // "detrás" del jefe (a su derecha)
+    const n = 3;                             // siempre 3 (las 4 amigas menos la elegida)
+
+    const slots = [];
+    for (let i = 0; i < n; i++) {
+      slots.push({
+        id: null,                                 // se resuelve en _resolveCageChars
+        cx:    centerX + (i - (n - 1) / 2) * gap, // centro horizontal (mundo)
+        feetY: groundTopY,                        // pies sobre el piso
+        shiver: Math.random() * Math.PI * 2,      // fase de tembleque distinta c/u
+        hop:    Math.random() * Math.PI * 2,
+      });
+    }
+
+    const charW = 46, charH = 62;
+    const left  = slots[0].cx - gap * 0.6;
+    const right = slots[n - 1].cx + gap * 0.6;
+    const top   = groundTopY - charH - 20;
+    return {
+      slots, charW, charH, captured: [], resolved: false,
+      frame: { x: left, y: top, w: right - left, h: groundTopY - top },
+      freeing: false, freeTimer: 0, freed: false,
+    };
+  }
+
+  // Resuelve qué 3 amigas están cautivas: SIEMPRE excluye a la elegida.
+  // Se llama en el primer dibujo, cuando Player.getState().charId ya es correcto.
+  function _resolveCageChars() {
+    if (!_cage || _cage.resolved) return;
+    const chosen = (typeof Player !== 'undefined' && Player.getState)
+      ? Player.getState().charId : 'nuveciela';
+    _cage.captured = _CAGE_CHARS.filter(id => id !== chosen).slice(0, 3);
+    _cage.slots.forEach((s, i) => { s.id = _cage.captured[i]; });
+    _cage.resolved = true;
+  }
+
+  function _freeCage() {
+    _cage.freeing = true;
+    _cage.freeTimer = 0;
+    if (typeof AudioManager !== 'undefined') AudioManager.sfx('get_tree');
+    if (typeof Renderer !== 'undefined') {
+      Renderer.flash('rgba(147,197,253,0.5)', 0.7);
+      const cx = _cage.frame.x + _cage.frame.w / 2;
+      const cy = _cage.frame.y + _cage.frame.h / 2;
+      const cols = ['#f97316', '#f9c846', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6', '#ffffff'];
+      for (const c of cols) Renderer.spawnParticles(cx, cy, c, 10);
+      Renderer.spawnText(cx, _cage.frame.y - 26, '💖 ¡Liberaste a tus amigas!', '#f9c846');
+    }
+    if (typeof UI !== 'undefined' && UI.showAbilityBadge) {
+      UI.showAbilityBadge('💖 ¡Liberaste a tus amigas!', 4500);
+    }
+  }
+
+  function _drawIceCage(ctx, camX, camY) {
+    if (!_cage) return;
+    _resolveCageChars();  // fija las cautivas (excluyendo a la elegida) ya con charId correcto
+    const t = _cage.freeTimer;
+    const breaking = _cage.freeing ? Math.min(1, t / 0.45) : 0; // 0→1 apertura de barras
+
+    // ── Las amigas cautivas ──
+    for (const s of _cage.slots) {
+      const img = _cageImgs[s.id];
+      const feetX = s.cx - camX;
+      const feetY = s.feetY - camY;
+
+      let dx = 0, dy = 0, alpha = 0.9, extra = 1;
+      if (!_cage.freeing) {
+        dx = Math.sin(_ts / 90 + s.shiver) * 1.5;  // tiritan de frío
+        alpha = 0.86;
+      } else {
+        const hop = Math.abs(Math.sin(t * 6 + s.hop)) * Math.max(0, 1 - t / 2.5);
+        dy = -hop * 14;                              // saltito de alegría
+        extra = 1 + hop * 0.08;
+        alpha = Math.min(1, 0.86 + t);
+      }
+
+      if (img && img.complete && img.naturalWidth > 0) {
+        const ar = img.naturalWidth / img.naturalHeight;
+        const dh = _cage.charH * extra;
+        const dw = dh * ar;
+        const dxL = feetX - dw / 2 + dx, dyT = feetY - dh + dy;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, dxL, dyT, dw, dh);
+        // Tinte celeste de "congeladas" que se desvanece al liberarse
+        const frost = _cage.freeing ? Math.max(0, 0.35 - t * 0.9) : 0.35;
+        if (frost > 0.01) {
+          ctx.globalAlpha = frost;
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = '#7dd3fc';
+          ctx.fillRect(dxL, dyT, dw, dh);
+        }
+        ctx.restore();
+      }
+    }
+
+    // ── Barras de la jaula — delante de las amigas; se abren al romperse ──
+    if (breaking < 1) {
+      const f = _cage.frame;
+      const fx = f.x - camX, fy = f.y - camY;
+      ctx.save();
+      ctx.globalAlpha = (1 - breaking) * 0.9;
+      ctx.fillStyle = 'rgba(186,230,253,0.14)';
+      ctx.fillRect(fx, fy, f.w, f.h);
+      ctx.strokeStyle = 'rgba(224,242,254,0.85)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(fx, fy, f.w, f.h);
+      ctx.strokeStyle = 'rgba(125,211,252,0.9)';
+      ctx.lineWidth = 4;
+      const bars = 6;
+      for (let i = 1; i < bars; i++) {
+        const px = fx + (f.w * i) / bars;
+        const spread = breaking * (px - (fx + f.w / 2)) * 1.4; // se separan del centro
+        ctx.beginPath();
+        ctx.moveTo(px + spread, fy);
+        ctx.lineTo(px + spread, fy + f.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
   // ── Dibujar Todos ─────────────────────────────────────
   function drawAll(ctx, camX, camY) {
+    _drawIceCage(ctx, camX, camY);  // detrás del jefe (se dibuja primero)
     for (const e of _enemies) {
       if (!e.alive && e.state !== 'death') continue;
       if (e.state === 'gone') continue;
