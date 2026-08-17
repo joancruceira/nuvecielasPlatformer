@@ -80,26 +80,64 @@ const LevelMap = (() => {
   let _el            = null;  // el elemento DOM del mapa
 
   // ── Persistencia ────────────────────────────────────
-  function _getUnlocked() {
-    try { return parseInt(localStorage.getItem('nuvecielas_unlocked') || '0', 10); }
+  //
+  //  El progreso es DE CADA JUGADOR cuando /nuve-world.js está presente. Antes
+  //  había un solo avance para toda la casa: el hermano te desbloqueaba (o te
+  //  spoileaba) los niveles. Si el mundo compartido no está —este juego también
+  //  se publica solo en su propio dominio— sigue funcionando como siempre.
+  //
+  //  El progreso viejo, de cuando el juego no sabía quién estaba jugando, se
+  //  hereda como PISO: nadie queda encerrado fuera de un nivel al que ya podía
+  //  entrar. De ahí en más cada uno avanza por su cuenta. No se borra nunca.
+
+  const GAME_ID = 'bosque';
+  function _world() {
+    return (window.NuveWorld && window.NuveWorld.currentPlayerId()) ? window.NuveWorld : null;
+  }
+
+  function _legacyUnlocked() {
+    try { return parseInt(localStorage.getItem('nuvecielas_unlocked') || '0', 10) || 0; }
     catch(e) { return 0; }
+  }
+
+  function _legacyStars(idx) {
+    try { return parseInt(localStorage.getItem(`nuvecielas_stars_${idx}`) || '0', 10) || 0; }
+    catch(e) { return 0; }
+  }
+
+  function _getUnlocked() {
+    const W = _world();
+    if(!W) return _legacyUnlocked();
+    const mine = W.gameState(GAME_ID).unlocked;
+    return Math.max(typeof mine === 'number' ? mine : 0, _legacyUnlocked());
   }
 
   function _setUnlocked(idx) {
-    try { localStorage.setItem('nuvecielas_unlocked', String(idx)); }
-    catch(e) {}
+    const W = _world();
+    if(!W) {
+      try { localStorage.setItem('nuvecielas_unlocked', String(idx)); } catch(e) {}
+      return;
+    }
+    W.patchGameState(GAME_ID, { unlocked: idx });
   }
 
   function _getStars(idx) {
-    try { return parseInt(localStorage.getItem(`nuvecielas_stars_${idx}`) || '0', 10); }
-    catch(e) { return 0; }
+    const W = _world();
+    if(!W) return _legacyStars(idx);
+    const stars = W.gameState(GAME_ID).stars || {};
+    return Math.max(stars[idx] || 0, _legacyStars(idx));
   }
 
   function _setStars(idx, stars) {
-    try {
-      const prev = _getStars(idx);
-      if(stars > prev) localStorage.setItem(`nuvecielas_stars_${idx}`, String(stars));
-    } catch(e) {}
+    if(stars <= _getStars(idx)) return;   // sólo mejora, nunca empeora
+    const W = _world();
+    if(!W) {
+      try { localStorage.setItem(`nuvecielas_stars_${idx}`, String(stars)); } catch(e) {}
+      return;
+    }
+    const mine = Object.assign({}, W.gameState(GAME_ID).stars);
+    mine[idx] = stars;
+    W.patchGameState(GAME_ID, { stars: mine });
   }
 
   // ── Construcción del DOM ────────────────────────────

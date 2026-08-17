@@ -138,7 +138,23 @@ const UI = (() => {
     Engine.stop();
     hideAll();
     elMenu.classList.add('active');
+    _greetPlayer();
     if (typeof AudioManager !== 'undefined') AudioManager.playMenu();
+  }
+
+  /**
+   * Si el mundo ya sabe quién está jugando, el Bosque lo saluda por su nombre
+   * en vez de tratarlo como un desconocido. Sin mundo compartido (deploy suelto
+   * en su propio dominio) queda el texto de siempre.
+   */
+  function _greetPlayer() {
+    const hint = elMenu && elMenu.querySelector('.menu-hint');
+    if (!hint) return;
+
+    const player = window.NuveWorld ? window.NuveWorld.currentPlayer() : null;
+    hint.textContent = player
+      ? `¡Hola, ${player.name}! Elegí tu Nuveciela`
+      : 'Seleccioná tu Nuveciela para comenzar';
   }
 
   function showChar() {
