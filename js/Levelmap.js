@@ -382,6 +382,20 @@ const LevelMap = (() => {
     if(next < NODES.length && next > _getUnlocked()){
       _setUnlocked(next);
     }
+
+    // Que el mundo se entere. El NOMBRE del nivel lo manda el juego: el hub no
+    // tiene por qué conocer el mapa del Bosque para poder contar lo que pasó.
+    const node = NODES.find(n => n.idx === levelIdx);
+    const W = _world();
+    if(W){
+      W.note(GAME_ID, 'nivel', {
+        value: levelIdx,
+        stars: stars,
+        label: node ? node.name : ('Nivel ' + (levelIdx + 1)),
+      });
+      // Por dónde va, para que el hub pueda decir "seguí donde dejaste".
+      W.patchGameState(GAME_ID, { lastLevelName: node ? node.name : null });
+    }
   }
 
   // Reset completo (debug)
