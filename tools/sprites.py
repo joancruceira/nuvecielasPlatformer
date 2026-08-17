@@ -241,6 +241,37 @@ def drop_small_blobs(img, min_ratio=0.03):
     return salida
 
 
+def trim_faint_columns(img, umbral=0.25):
+    """
+    Recorta por los costados las columnas de poca tinta.
+
+    Es el remedio para el problema que ya apareció cuatro veces: el efecto
+    dibujado DENTRO del sprite —estela, líneas de velocidad, proyectil— lo hace
+    mucho más ancho que el resto de sus cuadros, y como el motor mete todo en
+    una caja fija, el bicho se achica justo en el cuadro más visible.
+
+    El cuerpo es denso y las líneas de velocidad son finas, así que alcanza con
+    mirar cuánta tinta tiene cada columna: se descartan las de los extremos que
+    no llegan al 25% de la columna más cargada.
+    """
+    alpha = img.getchannel("A")
+    w, h = alpha.size
+    px = alpha.load()
+    cols = [sum(1 for y in range(h) if px[x, y] > 24) for x in range(w)]
+    pico = max(cols) if cols else 0
+    if not pico:
+        return img
+
+    minimo = pico * umbral
+    izq = 0
+    while izq < w and cols[izq] < minimo:
+        izq += 1
+    der = w - 1
+    while der > izq and cols[der] < minimo:
+        der -= 1
+    return img.crop((izq, 0, der + 1, h))
+
+
 # ── Recorte y escala ─────────────────────────────────────────────────────────
 
 def trim(img, padding=0):
@@ -264,22 +295,32 @@ def scale_to_height(img, height):
 
 def pad_to_ratio(img, ratio):
     """
-    Agrega transparencia a los costados hasta llegar a la proporción pedida,
-    con el bicho centrado.
+    Agrega transparencia hasta llegar EXACTAMENTE a la proporción pedida, con el
+    bicho centrado. Ensancha o alarga según haga falta.
 
     Es la solución de fondo al problema que arrastramos: el motor mete cada
-    cuadro en una caja FIJA, así que si un cuadro es más largo que otro el bicho
-    se deforma al animarse. Rellenando todos hasta la misma proporción, la caja
-    calza perfecto y no se deforma ninguno.
+    cuadro en una caja FIJA, así que cualquier cuadro con otra proporción sale
+    deformado. Si se rellena hasta la proporción DE LA CAJA, el calce es exacto
+    y no se deforma ninguno.
 
-    Lo que queda es que en un cuadro el bicho se vea un poquito más corto —que
-    es la verdad del dibujo— en vez de verse aplastado, que es un error.
+    Ojo: hay que pasarle la proporción de la caja del enemigo (e.w/e.h), no el
+    máximo del grupo. Igualar los cuadros entre sí evita que el bicho lata al
+    animarse, pero si esa proporción no es la de la caja, TODOS salen
+    deformados por igual — que es un error más difícil de ver y no menos malo.
     """
-    objetivo = max(1, round(img.height * ratio))
-    if objetivo <= img.width:
+    actual = img.width / img.height
+    if abs(actual - ratio) < 0.005:
         return img
-    lienzo = Image.new("RGBA", (objetivo, img.height), (0, 0, 0, 0))
-    lienzo.alpha_composite(img, ((objetivo - img.width) // 2, 0))
+
+    if actual < ratio:                      # falta ancho
+        w = max(1, round(img.height * ratio))
+        lienzo = Image.new("RGBA", (w, img.height), (0, 0, 0, 0))
+        lienzo.alpha_composite(img, ((w - img.width) // 2, 0))
+        return lienzo
+
+    h = max(1, round(img.width / ratio))    # falta alto
+    lienzo = Image.new("RGBA", (img.width, h), (0, 0, 0, 0))
+    lienzo.alpha_composite(img, (0, (h - img.height) // 2))
     return lienzo
 
 
@@ -379,11 +420,20 @@ def find_sprites(img, min_area_ratio=0.004, gap_ratio=0.008):
 
 # ── Nombres ──────────────────────────────────────────────────────────────────
 
-def frame_name(base, index):
+def frame_name(base, index, estilo="cero"):
     """
-    Convención del proyecto, tal como está en img/level3/:
-    el primero sin cero (walk0) y los siguientes con cero (walk01, walk02…).
+    El proyecto usa DOS convenciones distintas, y equivocarse no rompe nada de
+    forma visible: simplemente ese enemigo deja de dibujarse.
+
+      cero   img/level3/ y img/level5/  →  fly0, fly01, fly02
+             (así lo arma murcielago.js: `${anim}${i===0?'0':'0'+i}`)
+      plano  img/ (raíz)                →  walker_idle0, walker_idle1
+      unico  img/ (raíz), un solo cuadro →  walker_attack.png, sin número
     """
+    if estilo == "unico":
+        return f"{base}.png"
+    if estilo == "plano":
+        return f"{base}{index}.png"
     return f"{base}{index}.png" if index == 0 else f"{base}0{index}.png"
 
 
@@ -421,6 +471,12 @@ def main():
     ap.add_argument("--tol", type=int, default=12, help="Tolerancia del fondo (default 12)")
     ap.add_argument("--padding", type=int, default=0, help="Margen al recortar")
     ap.add_argument("--grilla", help="Partir una hoja en celdas iguales, ej: 4x1")
+    ap.add_argument("--estilo", choices=["cero", "plano", "unico"], default="cero",
+                    help="Convencion de nombres: cero (level3/level5), plano (raiz img/), "
+                         "unico (un solo cuadro, sin numero)")
+    ap.add_argument("--sin-estela", action="store_true",
+                    help="Recortar los costados de poca tinta: estelas, lineas de "
+                         "velocidad y proyectiles dibujados dentro del sprite")
     ap.add_argument("--sin-motas", action="store_true",
                     help="Borrar manchitas sueltas: carteles al costado, burbujas")
     ap.add_argument("--sin-etiquetas", action="store_true",
@@ -463,10 +519,12 @@ def main():
             img = drop_label_bands(img)
         if getattr(args, "sin_motas", False):
             img = drop_small_blobs(img)
+        if getattr(args, "sin_estela", False):
+            img = trim_faint_columns(img)
         img = trim(img, args.padding)
         img = scale_to_height(img, args.alto)
 
-        name = frame_name(args.nombre, i)
+        name = frame_name(args.nombre, i, args.estilo)
         destino = os.path.join(args.salida, name)
 
         if args.previo:
