@@ -37,7 +37,7 @@ const Boss = (() => {
   function _frame(e, ts) {
     let anim = 'idle';
     if (e.stunTimer > 0)                 anim = 'hit';
-    else if (e.bossPattern === 'charge') anim = 'attack';   // la embestida
+    else if (e.bossPattern === 'charge' || e.bossPattern === 'escupir') anim = 'attack';
     else if (Math.abs(e.vx) > 5)         anim = 'walk';
 
     const lista = ANIMS[anim];
@@ -60,6 +60,9 @@ const Boss = (() => {
       bossPattern:      'patrol',
       activated:        false,
       alive:            true,
+      // Esporas en vuelo. El arte tenía el cuadro de lanzamiento desde el
+      // principio; hasta ahora el hongo hacía el gesto y no salía nada.
+      esporas:          [],
     };
   }
 
@@ -89,13 +92,23 @@ const Boss = (() => {
     e.bossPatternTimer += dt;
     if (e.bossPatternTimer > dur) {
       e.bossPatternTimer = 0;
-      const opts = e.bossPhase >= 2 ? ['patrol','chase','charge'] : ['patrol','chase'];
+      const opts = e.bossPhase >= 2
+        ? ['patrol','chase','charge','escupir']
+        : ['patrol','chase'];
       e.bossPattern = opts[Math.floor(Math.random() * opts.length)];
     }
 
     if (e.bossPattern === 'patrol')      e.vx = e.facing * speed;
     else if (e.bossPattern === 'chase')  e.vx = dx > 0 ? speed : -speed;
     else if (e.bossPattern === 'charge') e.vx = dx > 0 ? speed * 2.2 : -speed * 2.2;
+    else if (e.bossPattern === 'escupir') {
+      // Se planta y escupe. De cerca no sirve: es el castigo por quedarse lejos.
+      e.vx = 0;
+      e.facing = dx > 0 ? 1 : -1;
+      if (dist > 220) _escupir(e, dx);   // `_escupido` garantiza una por ciclo
+    }
+
+    _actualizarEsporas(e, dt, map, ps);
 
     e.vy += 900 * dt;
     e.x  += e.vx * dt;
@@ -115,6 +128,83 @@ const Boss = (() => {
       Renderer.flash('#86efac', 0.6);
       onDefeated && onDefeated();
     }
+  }
+
+  /** Lanza una espora en arco hacia la jugadora. */
+  function _escupir(e, dx) {
+    // Una sola por ciclo de patrón: si no, escupe sin parar.
+    if (e._escupido) return;
+    e._escupido = true;
+
+    const dir = dx > 0 ? 1 : -1;
+    e.esporas.push({
+      x: e.x + e.w / 2 + dir * e.w * 0.4,
+      y: e.y + e.h * 0.45,
+      vx: dir * 300,
+      vy: -180,          // sale en arco, no recto: se puede saltar por debajo
+      giro: 0,
+    });
+    if (typeof AudioManager !== 'undefined') AudioManager.sfx('shoot');
+    if (typeof Renderer !== 'undefined') {
+      Renderer.spawnParticles(e.x + e.w / 2, e.y + e.h * 0.45, '#a3e635', 8);
+    }
+  }
+
+  function _actualizarEsporas(e, dt, map, ps) {
+    if (e.bossPattern !== 'escupir') e._escupido = false;
+
+    for (let i = e.esporas.length - 1; i >= 0; i--) {
+      const sp = e.esporas[i];
+      sp.vy += 520 * dt;
+      sp.x  += sp.vx * dt;
+      sp.y  += sp.vy * dt;
+      sp.giro += dt * 7;
+
+      // Contra el suelo: revienta en una nubecita
+      const r = Math.floor(sp.y / TS), c = Math.floor(sp.x / TS);
+      const t = map[r]?.[c];
+      if (t === TILE.GROUND || t === TILE.BLOCK) {
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(sp.x, sp.y, '#a3e635', 10);
+        }
+        e.esporas.splice(i, 1);
+        continue;
+      }
+
+      // Contra la jugadora
+      if (sp.x > ps.x && sp.x < ps.x + ps.w && sp.y > ps.y && sp.y < ps.y + ps.h) {
+        if (!ps.invincible) Player.takeDamage(sp.x);
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(sp.x, sp.y, '#a3e635', 12);
+        }
+        e.esporas.splice(i, 1);
+        continue;
+      }
+
+      // Fuera del mapa
+      if (sp.y > map.length * TS + 100 || sp.x < 0 || sp.x > map[0].length * TS) {
+        e.esporas.splice(i, 1);
+      }
+    }
+  }
+
+  function _dibujarEsporas(ctx, e, camX, camY) {
+    if (!e.esporas || !e.esporas.length) return;
+    ctx.save();
+    for (const sp of e.esporas) {
+      const x = sp.x - camX, y = sp.y - camY;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(sp.giro);
+      ctx.fillStyle = '#65a30d';
+      ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a3e635';
+      ctx.beginPath(); ctx.arc(-3, -3, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3f6212';
+      ctx.beginPath(); ctx.arc(4, 2, 2.5, 0, Math.PI * 2); ctx.arc(-2, 5, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   function _resolveFloor(e, dt, map) {
@@ -166,6 +256,7 @@ const Boss = (() => {
   }
 
   function draw(ctx, e, camX, camY, ts) {
+    _dibujarEsporas(ctx, e, camX, camY);
     const x = e.x - camX, y = e.y - camY;
     const { w, h, bossPhase = 1, stunTimer, hp, maxHp } = e;
     const bob = Math.sin(ts / 300) * 4;

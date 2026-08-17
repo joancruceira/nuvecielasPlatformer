@@ -51,6 +51,11 @@ const AssetLoader = (() => {
       { key:'serpiente_walk0',src:'img/serpiente_walk0.png'},
       { key:'serpiente_walk1',src:'img/serpiente_walk1.png'},
       { key:'serpiente_walk2',src:'img/serpiente_walk2.png'},
+      // Slime — salta por el bosque
+      { key:'slime_idle0', src:'img/slime_idle0.png' },
+      { key:'slime_crouch0', src:'img/slime_crouch0.png' },
+      { key:'slime_air0', src:'img/slime_air0.png' },
+      { key:'slime_land0', src:'img/slime_land0.png' },
       // El flyer (mosquito) — se usa en los niveles 1 y 2
       { key:'flyer_fly0', src:'img/flyer_fly0.png' },
       { key:'flyer_fly1', src:'img/flyer_fly1.png' },
@@ -75,6 +80,11 @@ const AssetLoader = (() => {
 
     // ── Nivel 1 — Castillo de Nuveciela ──────────────
     1: [
+      // Araña — cuelga del techo del castillo
+      { key:'arana_hang0', src:'img/arana_hang0.png' },
+      { key:'arana_hang1', src:'img/arana_hang1.png' },
+      { key:'arana_drop0', src:'img/arana_drop0.png' },
+      { key:'arana_drop1', src:'img/arana_drop1.png' },
       { key:'flyer_fly0', src:'img/flyer_fly0.png' },
       { key:'flyer_fly1', src:'img/flyer_fly1.png' },
       { key:'flyer_fly2', src:'img/flyer_fly2.png' },

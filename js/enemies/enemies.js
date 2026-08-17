@@ -13,6 +13,8 @@ const Enemies = (() => {
     serpiente: Serpiente,
     boss:      Boss,
     fantasma:  Fantasma,
+    arana:     Arana,
+    slime:     Slime,
   };
 
   const TILE_TO_TYPE = {
@@ -21,6 +23,8 @@ const Enemies = (() => {
     [12]: 'boss',
     [13]: 'serpiente',
     [14]: 'ghost',
+    [18]: 'arana',
+    [19]: 'slime',
     [20]: 'oruga',
     [21]: 'arbusto',
     [22]: 'murcielago',

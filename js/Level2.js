@@ -35,6 +35,7 @@ const Level2 = {
     const st = (x,y)=>star(map,x,y);
     const w  = (x,y=12)=>walker(map,x,y);
     const f  = (x,y=6)=>flyer(map,x,y);
+    const ar = (x,y=2)=>{ map[y][x] = TILE.ARANA; };   // cuelga del techo y baja
     const se = (x,y=12)=>serpiente(map,x,y);
     const fa = (x,y=7)=>fantasma(map,x,y);
 
@@ -77,6 +78,16 @@ const Level2 = {
     map[12][101]= TILE.CHECKPOINT;
     map[12][179]= TILE.BOSS;
     map[12][182]= TILE.PORTAL;
+
+
+    // ── Arañas ──────────────────────────────────────────
+    // Cuelgan del techo y bajan al pasar por debajo. Es el único enemigo que
+    // ataca desde arriba: obliga a mirar el techo antes de avanzar.
+    ar(26);
+    ar(58);
+    ar(84);
+    ar(112);
+    ar(140);
 
     return map;
   },

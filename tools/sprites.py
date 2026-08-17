@@ -346,6 +346,24 @@ def pad_to_content_fraction(img, fraccion):
     return lienzo
 
 
+def scale_group(imgs, referencia, alto_destino):
+    """
+    Escala TODO el grupo con un mismo factor, calculado para que el cuadro
+    `referencia` quede en `alto_destino`.
+
+    Es lo contrario de escalar cada cuadro a la misma altura: eso destruye el
+    squash-and-stretch. Un slime aplastado tiene que verse MÁS BAJO y más ancho
+    que uno en reposo; si se lo estira hasta la misma altura que los demás, deja
+    de leerse como aplastado y pasa a leerse como "otro slime más gordo".
+    """
+    recortados = [trim(i) for i in imgs]
+    factor = alto_destino / recortados[referencia].height
+    return [
+        i.resize((max(1, round(i.width * factor)), max(1, round(i.height * factor))), Image.LANCZOS)
+        for i in recortados
+    ]
+
+
 # ── Hojas de sprites ─────────────────────────────────────────────────────────
 
 def split_sheet(img, cols, rows):

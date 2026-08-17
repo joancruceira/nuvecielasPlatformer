@@ -21,6 +21,8 @@ const TILE = {
   MAGIC_TREE:15,
   GIFT_BOX:  16,
   MAGIC_DOOR:17,
+  ARANA:     18,   // Castillo de Nuveciela
+  SLIME:     19,   // Bosque Mágico
   // Nivel 3 — Sendero Nocturno
   ORUGA:     20,
   ARBUSTO:   21,

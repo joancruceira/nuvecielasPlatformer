@@ -34,6 +34,7 @@ const Level1 = {
     const st= (x,y)=>star(map,x,y);
     const w = (x,y=12)=>walker(map,x,y);
     const f = (x,y=7)=>flyer(map,x,y);
+    const sl = (x,y=12)=>{ map[y][x] = TILE.SLIME; };   // salta, no camina
 
     // ── Suelo base ───────────────────────────────────
     g(0,30); g(32,18); g(52,12);
@@ -57,6 +58,14 @@ const Level1 = {
     st(83,8); st(90,6);
     st(105,9); st(112,7);
     st(130,11); st(140,11); st(150,11); st(160,11);
+    // ── Slimes ──────────────────────────────────────────
+    // Saltan en vez de caminar: rompen el ritmo de los walkers, que van todos
+    // a la misma velocidad y en línea recta.
+    sl(22);
+    sl(46);
+    sl(88);
+    sl(124);
+
 
     // ── Enemigos ─────────────────────────────────────
     w(20); w(37); w(55); w(70); w(85);
