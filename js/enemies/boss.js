@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════════════════
-//  BOSS.JS — Alien (Jefe del nivel 1) 
-//  Usa alien.png como sprite
-//  Tres fases, puede caer al foso (derrota alternativa)
+//  BOSS.JS — Hongo Gigante (Jefe del nivel 1)
+//
+//  Level1 siempre declaró `bossName: 'Hongo Gigante'`, pero el sprite que se
+//  cargaba era img/alien.png, con aura verde alienígena. El jefe del bosque
+//  mágico era, literalmente, un extraterrestre.
+//
+//  Tres fases, puede caer al foso (derrota alternativa).
 // ═══════════════════════════════════════════════════════
 
 const Boss = (() => {
@@ -9,11 +13,35 @@ const Boss = (() => {
   const TS         = 48;
   const BASE_SPEED = 70;
 
+  // ── Animaciones ──────────────────────────────────────
+  const ANIMS = {
+    idle:   ['hongo_idle0', 'hongo_idle01'],
+    walk:   ['hongo_walk0', 'hongo_walk01', 'hongo_walk02', 'hongo_walk03'],
+    attack: ['hongo_attack0', 'hongo_attack01', 'hongo_attack02', 'hongo_attack03'],
+    hit:    ['hongo_hit0'],
+  };
+  const FPS = { idle: 4, walk: 8, attack: 10, hit: 6 };
+
   const frames = {};
   function preload() {
-    const img = new Image();
-    img.src = 'img/alien.png';
-    frames['alien'] = img;
+    for (const lista of Object.values(ANIMS)) {
+      for (const key of lista) {
+        const img = new Image();
+        img.src = `img/${key}.png`;
+        frames[key] = img;
+      }
+    }
+  }
+
+  /** Qué está haciendo el hongo, traducido a cuadro. */
+  function _frame(e, ts) {
+    let anim = 'idle';
+    if (e.stunTimer > 0)                 anim = 'hit';
+    else if (e.bossPattern === 'charge') anim = 'attack';   // la embestida
+    else if (Math.abs(e.vx) > 5)         anim = 'walk';
+
+    const lista = ANIMS[anim];
+    return frames[lista[Math.floor(ts / 1000 * FPS[anim]) % lista.length]];
   }
 
   function create(x, y) {
@@ -149,16 +177,18 @@ const Boss = (() => {
     const scale = 1 + (bossPhase - 1) * 0.08;
     ctx.scale(scale, scale);
 
-    // Aura verde alienígena
+    // Nube de esporas. Antes era un aura verde alienígena; ahora acompaña al
+    // hongo y se pone más densa a medida que se enoja.
     const pulse = 0.4 + Math.sin(ts / 220) * 0.18;
+    const densidad = 1 + (bossPhase - 1) * 0.35;
     const aura  = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.9);
-    aura.addColorStop(0, `rgba(132,232,130,${pulse * 0.5})`);
-    aura.addColorStop(0.5, `rgba(74,222,128,${pulse * 0.25})`);
+    aura.addColorStop(0,   `rgba(190,220,120,${pulse * 0.45 * densidad})`);
+    aura.addColorStop(0.5, `rgba(120,170,70,${pulse * 0.22 * densidad})`);
     aura.addColorStop(1, 'transparent');
     ctx.fillStyle = aura;
     ctx.beginPath(); ctx.arc(0, 0, w * 0.9, 0, Math.PI*2); ctx.fill();
 
-    const img = frames['alien'];
+    const img = _frame(e, ts);
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, -w/2, -h/2, w, h);
       if (stunTimer > 0) {
@@ -168,7 +198,7 @@ const Boss = (() => {
       }
     } else {
       // Fallback
-      ctx.fillStyle = bossPhase === 3 ? '#4ade80' : bossPhase === 2 ? '#22c55e' : '#86efac';
+      ctx.fillStyle = bossPhase === 3 ? '#dc2626' : bossPhase === 2 ? '#ef4444' : '#f87171';
       ctx.beginPath(); ctx.ellipse(0, 0, w*0.42, h*0.38, 0, 0, Math.PI*2); ctx.fill();
     }
 
