@@ -42,6 +42,14 @@ const TILE = {
   PEZ_AGUJA: 42,
   TIBURON:   43,
   CARDUMEN:  44,
+  // Lago — objetos y paisaje (los maneja lago.js, no enemies.js)
+  GEISER:    45,
+  BURBUJA:   46,   // emisor de burbujas montables
+  ALMEJA:    47,
+  CORAL:     48,
+  ALGA:      49,
+  RUINA:     50,
+  ESTATUA:   51,
 };
 
 const TILE_SIZE = 48; // px

@@ -102,6 +102,26 @@ const RendererTiles = (() => {
       }
     }
 
+    // ── Nivel 5: los pinchos del lago son coral punzante ─
+    // El peligro tiene que pertenecer al lugar: en el fondo de un lago no
+    // hay púas de metal, hay coral. Es el mismo TILE.SPIKES de siempre, con
+    // la cara que le corresponde al nivel.
+    if (level.lago && tile === TILE.SPIKES && typeof AssetLoader !== 'undefined') {
+      const img = AssetLoader.get(col % 2 ? 'coral_punzante01' : 'coral_punzante0');
+      if (img && img.complete && img.naturalWidth > 0) {
+        // Fila < 6 = coral que cuelga del techo: el mismo sprite dado vuelta
+        if (row < 6) {
+          ctx.translate(x, y + T);
+          ctx.scale(1, -1);
+          ctx.drawImage(img, 0, 0, T, T);
+        } else {
+          ctx.drawImage(img, x, y, T, T);
+        }
+        ctx.restore();
+        return;
+      }
+    }
+
     switch (tile) {
 
       case TILE.GROUND: {

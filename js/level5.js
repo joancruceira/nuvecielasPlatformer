@@ -19,6 +19,18 @@ const Level5 = {
     glowing:   true,
     bossName:  null,
     bossEmoji: null,
+    // Le avisa al renderer que en este nivel los pinchos son coral punzante
+    lago:      true,
+
+    // Corrientes — el agua te mueve a vos. Se declaran en TILES y las pasa a
+    // píxeles lago.js. Van dos y hacen cosas opuestas a propósito:
+    //  · la de la fosa empuja HACIA ATRÁS: es un muro blando, hay que remar.
+    //  · la del tramo final empuja HACIA ADELANTE: es puro regalo de velocidad
+    //    justo cuando el tiburón te viene atrás.
+    corrientes: [
+      { x: 104, y: 4, w: 12, h: 8, vx: -120 },
+      { x: 130, y: 5, w: 16, h: 6, vx:  190 },
+    ],
 
     // Nivel sin boss: el portal se abre al cargar, no al derrotar a nadie.
     // Sin esto el portal quedaba active:false para siempre (los portales sólo
@@ -55,6 +67,17 @@ const Level5 = {
     const aguja    = (x,y=8) =>{ map[y][x] = TILE.PEZ_AGUJA; };  // embiste en línea
     const tiburon  = (x,y=7) =>{ map[y][x] = TILE.TIBURON;   };  // no se mata
     const cardumen = (x,y=6) =>{ map[y][x] = TILE.CARDUMEN;  };  // empuja, no daña
+
+    // Objetos y paisaje del lago (los levanta lago.js y borra el tile).
+    // Todos se anclan por la BASE al piso del tile: van en la fila 12, sobre
+    // el suelo de la 13, sin importar cuánto mida el sprite.
+    const geiser  = (x,y=12)=>{ map[y][x] = TILE.GEISER;  };  // ascensor de burbujas
+    const burbuja = (x,y)   =>{ map[y][x] = TILE.BURBUJA; };  // emisor de montables
+    const almeja  = (x,y=12)=>{ map[y][x] = TILE.ALMEJA;  };  // se abre, se cierra, muerde
+    const coral   = (x,y=12)=>{ map[y][x] = TILE.CORAL;   };
+    const alga    = (x,y=12)=>{ map[y][x] = TILE.ALGA;    };
+    const ruina   = (x,y=12)=>{ map[y][x] = TILE.RUINA;   };
+    const estatua = (x,y=12)=>{ map[y][x] = TILE.ESTATUA; };
 
     // ── Suelo del fondo del lago ───────────────────────
     g(0, 20);
@@ -148,6 +171,41 @@ const Level5 = {
     tiburon(158, 7);
     medusa(166, 9);
     tiburon(172, 6);
+
+    // ── El fondo del lago ───────────────────────────────
+    //
+    //  ACTO 1 · la bajada — agua clara. El primer géiser es la lección:
+    //  subir es gratis, y arriba hay una estrella que sólo se agarra subiendo.
+    alga(4); coral(10); alga(16);
+    geiser(18); st(18, 4);
+    alga(28); coral(33); alga(36);
+    almeja(26); st(26, 11);          // la perla de la almeja: entrar y salir a tiempo
+
+    //  ACTO 2 · el jardín de coral — denso, se explora, muerde
+    alga(46); coral(47); alga(52); coral(54);
+    alga(65); coral(66); coral(74); alga(78);
+    almeja(70); st(70, 11);
+    almeja(84); st(84, 11);
+    coral(86); alga(90);
+    burbuja(76, 10); st(76, 4);      // la primera burbuja para montar, y el premio arriba
+    geiser(88); st(88, 4);
+
+    //  ACTO 3 · la fosa — acá está lo que hay que ver. Sin cartel y sin
+    //  cinemática: una Nuveciela de piedra hundida en el fondo del lago.
+    alga(100); ruina(106); alga(108);
+    estatua(112);
+    ruina(118); alga(120);
+    burbuja(120, 10); st(120, 3);
+    coral(130); alga(133);
+    geiser(132); st(132, 4);
+    burbuja(142, 9); st(142, 3);
+    alga(145); coral(148);
+
+    //  ACTO 4 · el tiburón — agua abierta, casi sin adornos, y un géiser
+    //  a mano para el último tirón hacia el portal.
+    alga(152); coral(155); alga(160);
+    burbuja(162, 10); st(162, 3);
+    coral(165); geiser(168); alga(170);
 
     // ── Checkpoints y Portal ────────────────────────────
     map[12][63]  = TILE.CHECKPOINT;

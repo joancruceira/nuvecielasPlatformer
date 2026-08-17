@@ -172,6 +172,7 @@ const Engine = (() => {
     GiftBox.init();
     if (typeof MagicDoor !== 'undefined') MagicDoor.init();
     if (typeof Cueva     !== 'undefined') Cueva.init();
+    if (typeof Lago      !== 'undefined') Lago.init();
 
     GiftBox.spawnFromMap(map); GiftBox.preload();
     // Nivel 2: puerta mágica (Pablo) — Nivel 3: cueva (SuperNatan)
@@ -180,6 +181,10 @@ const Engine = (() => {
     }
     if (idx === 2 && typeof Cueva !== 'undefined') {
       Cueva.spawnFromMap(map, TS); Cueva.preload();
+    }
+    // Nivel 5: el lago (burbujas, géiseres, corrientes, almejas, paisaje)
+    if (idx === 4 && typeof Lago !== 'undefined') {
+      Lago.spawnFromMap(map, levelData);
     }
     _extractCollectibles();
     _extractSpecials();
@@ -285,6 +290,10 @@ const Engine = (() => {
       Cueva.update(dt);
       Cueva.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
     }
+    // Después de Player.update() a propósito: el lago empuja tocando la
+    // velocidad, y la posición la integra el jugador en el frame siguiente
+    // con su propia colisión.
+    if (currentLevelIdx === 4 && typeof Lago !== 'undefined') Lago.update(dt, ps, map);
     GiftBox.update(dt, ps, () => {
       if (typeof AudioManager !== 'undefined') AudioManager.sfx('giftbox_open');
       UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);
