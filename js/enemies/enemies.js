@@ -44,6 +44,7 @@ const Enemies = (() => {
     enemies = [];
     if (typeof EnemiesLevel3 !== 'undefined') { EnemiesLevel3.reset(); EnemiesLevel3.preload(); }
     if (typeof EnemiesLevel4 !== 'undefined') { EnemiesLevel4.reset(); EnemiesLevel4.preload(); }
+    if (typeof EnemiesLevel5 !== 'undefined') { EnemiesLevel5.reset(); EnemiesLevel5.preload(); }
     preloadAll();
   }
 
@@ -52,6 +53,8 @@ const Enemies = (() => {
       return EnemiesLevel3.getEnemies();
     if (typeof EnemiesLevel4 !== 'undefined' && EnemiesLevel4.getEnemies().length > 0)
       return EnemiesLevel4.getEnemies();
+    if (typeof EnemiesLevel5 !== 'undefined' && EnemiesLevel5.getEnemies().length > 0)
+      return EnemiesLevel5.getEnemies();
     return enemies;
   }
 
@@ -69,6 +72,11 @@ const Enemies = (() => {
     // Nivel 4 — delegar completamente a EnemiesLevel4
     if (levelIdx === 3 && typeof EnemiesLevel4 !== 'undefined') {
       EnemiesLevel4.spawnFromMap(map, TILE_SIZE_E);
+      return;
+    }
+    // Nivel 5 — delegar completamente a EnemiesLevel5
+    if (levelIdx === 4 && typeof EnemiesLevel5 !== 'undefined') {
+      EnemiesLevel5.spawnFromMap(map, TILE_SIZE_E);
       return;
     }
 
@@ -220,6 +228,9 @@ const Enemies = (() => {
     if (typeof EnemiesLevel3 !== 'undefined' && EnemiesLevel3.getEnemies().length > 0) {
       EnemiesLevel3.update(dt, map, ps, onPlayerHit); return;
     }
+    if (typeof EnemiesLevel5 !== 'undefined' && EnemiesLevel5.getEnemies().length > 0) {
+      EnemiesLevel5.update(dt, map, ps, onPlayerHit); return;
+    }
     if (typeof EnemiesLevel4 !== 'undefined' && EnemiesLevel4.getEnemies().length > 0) {
       EnemiesLevel4.update(dt, map, ps, onPlayerHit); return;
     }
@@ -253,6 +264,9 @@ const Enemies = (() => {
   function drawAll(ctx, camX, camY, ts) {
     if (typeof EnemiesLevel3 !== 'undefined' && EnemiesLevel3.getEnemies().length > 0) {
       EnemiesLevel3.drawAll(ctx, camX, camY, ts); return;
+    }
+    if (typeof EnemiesLevel5 !== 'undefined' && EnemiesLevel5.getEnemies().length > 0) {
+      EnemiesLevel5.drawAll(ctx, camX, camY); return;
     }
     if (typeof EnemiesLevel4 !== 'undefined' && EnemiesLevel4.getEnemies().length > 0) {
       EnemiesLevel4.drawAll(ctx, camX, camY); return;
@@ -303,6 +317,9 @@ const Enemies = (() => {
   function stunNearby(cx, cy, radius) {
     if (typeof EnemiesLevel3 !== 'undefined' && EnemiesLevel3.getEnemies().length > 0) {
       EnemiesLevel3.stunNearby(cx,cy,radius); return;
+    }
+    if (typeof EnemiesLevel5 !== 'undefined' && EnemiesLevel5.getEnemies().length > 0) {
+      EnemiesLevel5.stunNearby(cx,cy,radius); return;
     }
     if (typeof EnemiesLevel4 !== 'undefined' && EnemiesLevel4.getEnemies().length > 0) {
       EnemiesLevel4.stunNearby(cx,cy,radius); return;

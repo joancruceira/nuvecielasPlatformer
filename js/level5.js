@@ -42,12 +42,19 @@ const Level5 = {
     const W = 180, H = 16;
     const map = emptyMap(W, H);
     
-    const { ground, platform, spikes, star, flyer } = MapBuilder;
+    const { ground, platform, spikes, star } = MapBuilder;
     const g  = (x,l,y=13)=>ground(map,x,l,y);
     const p  = (x,l,y)=>platform(map,x,l,y);
     const s  = (x,l,y=13)=>spikes(map,x,l,y);
     const st = (x,y)=>star(map,x,y);
-    const f  = (x,y=7)=>flyer(map,x,y); // Voladores actúan como medusas/peces
+
+    // Habitantes del lago. Cada uno enseña algo distinto, y ninguno se reusa
+    // de otro nivel (ver docs/NIVEL_LAGO.md).
+    const cangrejo = (x,y=12)=>{ map[y][x] = TILE.CANGREJO;  };  // camina el fondo
+    const medusa   = (x,y=7) =>{ map[y][x] = TILE.MEDUSA;    };  // sube y baja
+    const aguja    = (x,y=8) =>{ map[y][x] = TILE.PEZ_AGUJA; };  // embiste en línea
+    const tiburon  = (x,y=7) =>{ map[y][x] = TILE.TIBURON;   };  // no se mata
+    const cardumen = (x,y=6) =>{ map[y][x] = TILE.CARDUMEN;  };  // empuja, no daña
 
     // ── Suelo del fondo del lago ───────────────────────
     g(0, 20);
@@ -107,17 +114,40 @@ const Level5 = {
     // Estrellas de salida
     for (let x = 130; x < 170; x += 5) st(x, 11);
 
-    // ── Enemigos (Medusas flotantes y peces de patrulla) ──
-    f(12, 6);  // flyer actúa como pez volador/nadador
-    f(28, 5);
-    f(48, 6);
-    f(70, 7);
-    f(78, 6);
-    f(105, 5);
-    f(115, 6);
-    f(138, 7);
-    f(148, 5);
-    f(158, 8);
+    // ── Habitantes ──────────────────────────────────────
+    //
+    //  ACTO 1 · la bajada (0-45)  — se aprende a nadar, nada castiga todavía
+    cardumen(12, 6);
+    cangrejo(12, 12);
+    cardumen(30, 5);
+    medusa(36, 6);
+    cangrejo(30, 12);
+
+    //  ACTO 2 · el jardín de coral (45-105) — aparece el que no se puede pisar
+    cangrejo(50, 12);
+    aguja(56, 8);
+    medusa(60, 5);
+    cangrejo(68, 11);
+    aguja(74, 7);
+    cangrejo(80, 11);
+    medusa(88, 6);
+    cardumen(95, 5);
+    aguja(100, 9);
+
+    //  ACTO 3 · la fosa (105-150) — oscuro, medusas que iluminan
+    medusa(108, 5);
+    medusa(114, 8);
+    cangrejo(110, 12);
+    medusa(127, 6);
+    aguja(134, 7);
+    medusa(140, 9);
+    cardumen(146, 5);
+
+    //  ACTO 4 · el tiburón (150-180) — agua abierta, no se pelea: se escapa
+    cangrejo(140, 12);
+    tiburon(158, 7);
+    medusa(166, 9);
+    tiburon(172, 6);
 
     // ── Checkpoints y Portal ────────────────────────────
     map[12][63]  = TILE.CHECKPOINT;

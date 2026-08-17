@@ -34,6 +34,12 @@ const TILE = {
   GOTA_VIVIENTE:   34,
   REY_ESCARCHA:    35,
   SUPER_MAGIC_TREE:36, // Súper Árbol Mágico — secreto raro (ajuste de balance)
+  // Nivel 5 — Atravesando el Lago
+  CANGREJO:  40,
+  MEDUSA:    41,
+  PEZ_AGUJA: 42,
+  TIBURON:   43,
+  CARDUMEN:  44,
 };
 
 const TILE_SIZE = 48; // px
