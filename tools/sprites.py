@@ -324,6 +324,28 @@ def pad_to_ratio(img, ratio):
     return lienzo
 
 
+def pad_to_content_fraction(img, fraccion):
+    """
+    Agrega aire arriba y abajo hasta que el bicho ocupe `fraccion` del alto.
+
+    Hace falta para los enemigos cuyo dibujado escala por el alto DE LA IMAGEN
+    (serpiente.js y fantasma.js hacen `dh = h * k; dw = dh * ar`). Ahí el aire
+    del PNG no es relleno inocente: es la calibración del tamaño en pantalla.
+
+    Recortar al contenido esos sprites los agranda. La serpiente del nivel 2
+    tenía 40% de aire y al recortarla pasó a dibujarse 1,7 veces más grande.
+    """
+    contenido = img.getbbox()
+    if not contenido:
+        return img
+    img = img.crop(contenido)
+
+    alto = max(1, round(img.height / fraccion))
+    lienzo = Image.new("RGBA", (img.width, alto), (0, 0, 0, 0))
+    lienzo.alpha_composite(img, (0, (alto - img.height) // 2))
+    return lienzo
+
+
 # ── Hojas de sprites ─────────────────────────────────────────────────────────
 
 def split_sheet(img, cols, rows):

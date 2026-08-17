@@ -17,7 +17,7 @@ const Boss = (() => {
   const ANIMS = {
     idle:   ['hongo_idle0', 'hongo_idle01'],
     walk:   ['hongo_walk0', 'hongo_walk01', 'hongo_walk02', 'hongo_walk03'],
-    attack: ['hongo_attack0', 'hongo_attack01', 'hongo_attack02', 'hongo_attack03'],
+    attack: ['hongo_attack0', 'hongo_attack01', 'hongo_attack02'],
     hit:    ['hongo_hit0'],
   };
   const FPS = { idle: 4, walk: 8, attack: 10, hit: 6 };
@@ -175,7 +175,10 @@ const Boss = (() => {
     ctx.translate(x + w/2, y + h/2 + bob);
 
     const scale = 1 + (bossPhase - 1) * 0.08;
-    ctx.scale(scale, scale);
+    // Los sprites miran a la DERECHA; se espeja cuando camina hacia la izquierda.
+    // Antes no se espejaba nunca: `facing` se calculaba en update y el draw lo
+    // ignoraba, así que el jefe siempre miraba para el mismo lado.
+    ctx.scale(scale * (e.facing === -1 ? -1 : 1), scale);
 
     // Nube de esporas. Antes era un aura verde alienígena; ahora acompaña al
     // hongo y se pone más densa a medida que se enoja.

@@ -66,7 +66,6 @@ const AssetLoader = (() => {
       { key:'hongo_attack0', src:'img/hongo_attack0.png' },
       { key:'hongo_attack01', src:'img/hongo_attack01.png' },
       { key:'hongo_attack02', src:'img/hongo_attack02.png' },
-      { key:'hongo_attack03', src:'img/hongo_attack03.png' },
       { key:'hongo_hit0', src:'img/hongo_hit0.png' },
       // Mecánicas nivel 1
       { key:'caja_cerrada', src:'img/caja_cerrada.png' },
