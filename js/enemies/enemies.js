@@ -28,7 +28,7 @@ const Enemies = (() => {
     [20]: 'oruga',
     [21]: 'arbusto',
     [22]: 'murcielago',
-    [23]: 'cienpies',
+    [23]: 'lechuza',
     [32]: 'caballero',
     [33]: 'gargola',
     [34]: 'gota',
@@ -314,7 +314,7 @@ const Enemies = (() => {
   // ── Hit ───────────────────────────────────────────────
   function hitEnemy(e) {
     if (typeof EnemiesLevel3 !== 'undefined' &&
-        ['oruga','arbusto','murcielago','cienpies'].includes(e.type)) {
+        ['oruga','arbusto','murcielago','lechuza'].includes(e.type)) {
       EnemiesLevel3.hitEnemy(e); return;
     }
     if (typeof EnemiesLevel4 !== 'undefined' &&
@@ -399,7 +399,7 @@ const Enemies = (() => {
 
   function hitByProjectile(e, kind, color) {
     if (typeof EnemiesLevel3 !== 'undefined' &&
-        ['oruga','arbusto','murcielago','cienpies'].includes(e.type)) {
+        ['oruga','arbusto','murcielago','lechuza'].includes(e.type)) {
       return EnemiesLevel3.hitByProjectile(e, kind, color);
     }
     if (typeof EnemiesLevel4 !== 'undefined' &&

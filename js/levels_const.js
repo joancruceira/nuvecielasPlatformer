@@ -27,7 +27,7 @@ const TILE = {
   ORUGA:     20,
   ARBUSTO:   21,
   MURCIELAGO:22,
-  CIENPIES:  23,
+  LECHUZA:   23,   // jefe — reemplaza al ciempiés, que era una oruga grande
   // Nivel 4 — El Castillo de la Ciela
   ICE:             30,
   ICE_SPIKES:      31,
@@ -111,7 +111,7 @@ const MapBuilder = {
   oruga(map,x,y=12)  { map[y][x] = TILE.ORUGA;      },
   arbusto(map,x,y=12){ map[y][x] = TILE.ARBUSTO;    },
   murcielago(map,x,y=7){ map[y][x]=TILE.MURCIELAGO; },
-  cienpies(map,x,y=12){ map[y][x]=TILE.CIENPIES;    },
+  lechuza(map,x,y=12){ map[y][x]=TILE.LECHUZA;     },
   ice(map, x, len, y=13) {
     for (let i=0; i<len; i++) map[y][x+i] = TILE.ICE;
   },

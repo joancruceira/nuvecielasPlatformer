@@ -9,7 +9,7 @@ const EnemiesLevel3 = (() => {
 
   function preload() {
     Oruga.preload(); Arbusto.preload();
-    Murcielago.preload(); Cienpies.preload();
+    Murcielago.preload(); Lechuza.preload();
   }
 
   // ── Spawn ─────────────────────────────────────────────
@@ -36,10 +36,15 @@ const EnemiesLevel3 = (() => {
           _enemies.push(Murcielago.spawn(x, r*TS, pL, pR));
           map[r][c] = TILE.AIR;
         }
-        else if(tile === TILE.CIENPIES) {
+        else if(tile === TILE.LECHUZA) {
           const arenaL = Math.max(0, (c-20)*TS);
           const arenaR = Math.min((cols-1)*TS, (c+20)*TS);
-          _enemies.push(Cienpies.spawn(x, r*TS - (Cienpies.H||128), arenaL, arenaR));
+          // La lechuza vuela y aterriza sola, así que necesita saber dónde está
+          // el piso de verdad. Los demás enemigos nacen en el aire y los baja la
+          // gravedad; a ella hay que decírselo, porque no le aplicamos gravedad.
+          let sueloR = r;
+          while(sueloR < rows && map[sueloR][c] !== TILE.GROUND && map[sueloR][c] !== TILE.BLOCK) sueloR++;
+          _enemies.push(Lechuza.spawn(x, r*TS - (Lechuza.H||140), arenaL, arenaR, sueloR*TS));
           map[r][c] = TILE.AIR;
         }
       }
@@ -65,7 +70,7 @@ const EnemiesLevel3 = (() => {
         e.frozenTimer -= dt;
         if (e.frozenTimer < 0) e.frozenTimer = 0;
         // Aplicar gravedad igualmente para que no floten
-        if (e.type !== 'murcielago') _applyGravity(e, dt, map);
+        if (!_vuela(e)) _applyGravity(e, dt, map);
       } else {
         const handler = _getHandler(e);
         if(handler) handler.update(e, dt, ps);
@@ -75,7 +80,9 @@ const EnemiesLevel3 = (() => {
       if(!e.alive && e.state === 'death') e.state = 'gone';
 
       // Gravedad para terrestres — si no está congelado (donde ya se aplicó arriba)
-      if(e.type !== 'murcielago' && !isFrozen) {
+      // La lechuza maneja su propia altura: vuela, se tira en picada y se
+      // planta en el piso. Si le cayera la gravedad encima le pelearía el eje Y.
+      if(!_vuela(e) && !isFrozen) {
         _applyGravity(e, dt, map);
       }
 
@@ -83,7 +90,7 @@ const EnemiesLevel3 = (() => {
       const isTemporaryInvincible = ps.invincible && !((ps.immuneTimer || 0) > 0);
       if(!e.alive || isTemporaryInvincible || e.state === 'death') continue;
       if(_collidesWithPlayer(e, ps)) {
-        const isBoss      = e.type === 'cienpies';
+        const isBoss      = e.type === 'lechuza';
         const stompThresh = isBoss ? 60 : 30;
         const stomping    = ps.vy >= 0
           && (ps.y + ps.h) < (e.y + stompThresh)
@@ -110,6 +117,8 @@ const EnemiesLevel3 = (() => {
       }
     }
   }
+
+  function _vuela(e) { return e.type === 'murcielago' || e.type === 'lechuza'; }
 
   function _applyGravity(e, dt, map) {
     if(!map) return;
@@ -195,7 +204,7 @@ const EnemiesLevel3 = (() => {
   }
 
   function getEnemies()  { return _enemies; }
-  function getBoss()     { return _enemies.find(e => e.type==='cienpies'); }
+  function getBoss()     { return _enemies.find(e => e.type==='lechuza'); }
   function allDefeated() { return _enemies.every(e => !e.alive); }
 
   // Vaciar el sistema al salir del nivel 3.
@@ -219,7 +228,7 @@ const EnemiesLevel3 = (() => {
       case 'oruga':      return Oruga;
       case 'arbusto':    return Arbusto;
       case 'murcielago': return Murcielago;
-      case 'cienpies':   return Cienpies;
+      case 'lechuza':    return Lechuza;
       default:           return null;
     }
   }

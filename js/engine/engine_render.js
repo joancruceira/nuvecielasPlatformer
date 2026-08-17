@@ -116,6 +116,16 @@ const EngineRender = (() => {
     Renderer.updateAndDrawParticles(fxDt);
     Renderer.drawFloatingTexts(fxDt);
     Renderer.drawFlash(fxDt);
+
+    // ── El apagón de la Lechuza ──────────────────────────
+    // Último de todo, encima de absolutamente todo: cuando la jefa del Sendero
+    // grita, se apaga el camino dorado y sólo quedan un círculo alrededor de la
+    // nena y sus dos ojos. Va acá y no en el jefe porque es un efecto de
+    // pantalla, no de un bicho.
+    if (typeof Lechuza !== 'undefined' && Enemies.getBossEnemy) {
+      const jefe = Enemies.getBossEnemy();
+      if (jefe && jefe.type === 'lechuza') Lechuza.drawOscuridad(ctx, jefe, cam.x, cam.y, ps);
+    }
   }
 
   // ── Checkpoints ──────────────────────────────────────

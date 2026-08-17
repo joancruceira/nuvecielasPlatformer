@@ -118,10 +118,12 @@ const AssetLoader = (() => {
       ...['0','01','02','03'].map(s=>({key:`murcielago_attack${s}`, src:`img/level3/murcielago_attack${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`murcielago_damage${s}`, src:`img/level3/murcielago_damage${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`murcielago_death${s}`,  src:`img/level3/murcielago_death${s}.png`})),
-      ...['0','01','02'].map(s=>({key:`cienpies_walk${s}`,   src:`img/level3/cienpies_walk${s}.png`})),
-      ...['0','01','02'].map(s=>({key:`cienpies_attack${s}`, src:`img/level3/cienpies_attack${s}.png`})),
-      ...['0','01','02'].map(s=>({key:`cienpies_damage${s}`, src:`img/level3/cienpies_damage${s}.png`})),
-      ...['0','01'].map(s=>    ({key:`cienpies_death${s}`,   src:`img/level3/cienpies_death${s}.png`})),
+      ...['0','01'].map(s=>       ({key:`lechuza_posado${s}`, src:`img/level3/lechuza_posado${s}.png`})),
+      ...['0','01','02','03'].map(s=>({key:`lechuza_vuelo${s}`,  src:`img/level3/lechuza_vuelo${s}.png`})),
+      ...['0','01'].map(s=>       ({key:`lechuza_picada${s}`, src:`img/level3/lechuza_picada${s}.png`})),
+      ...['0','01','02'].map(s=>  ({key:`lechuza_grito${s}`,  src:`img/level3/lechuza_grito${s}.png`})),
+      ...['0','01'].map(s=>       ({key:`lechuza_damage${s}`, src:`img/level3/lechuza_damage${s}.png`})),
+      ...['0','01','02'].map(s=>  ({key:`lechuza_death${s}`,  src:`img/level3/lechuza_death${s}.png`})),
     ],
 
     // ── Nivel 3 — Castillo de Ciela ──────────────────

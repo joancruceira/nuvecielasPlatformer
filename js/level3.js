@@ -17,8 +17,8 @@ const Level3 = {
     bgTrees:   false,
     dark:      true,
     senderoNocturno: true,
-    bossName:  'Ciempiés Gigante',
-    bossEmoji: '🐛',
+    bossName:  'Lechuza Guardiana',
+    bossEmoji: '🦉',
     map: null,
   },
 
@@ -26,7 +26,7 @@ const Level3 = {
     const W = 200, H = 16;
     const map = emptyMap(W, H);
     const { ground, platform, spikes, star,
-            oruga, arbusto, murcielago, cienpies } = MapBuilder;
+            oruga, arbusto, murcielago, lechuza } = MapBuilder;
 
     const g  = (x,l)   => ground(map, x, l, 13);
     const p  = (x,l,y) => platform(map, x, l, y);
@@ -38,7 +38,7 @@ const Level3 = {
     const or = (x)     => map[12][x] = TILE.ORUGA;
     const ar = (x)     => map[12][x] = TILE.ARBUSTO;
     const mu = (x,y=7) => map[y][x]  = TILE.MURCIELAGO;
-    const ci = (x)     => map[12][x] = TILE.CIENPIES;
+    const le = (x)     => map[12][x] = TILE.LECHUZA;
 
     // ══ SUELO — continuo con 2 fosos pequeños ══
     // Zona 1: col 0-65 con 1 foso
@@ -113,7 +113,7 @@ const Level3 = {
     mu(150, 6); mu(161, 5);
 
     // Zona 5 — solo boss
-    ci(183);
+    le(183);
 
     // ══ ESPECIALES ══
     // Cueva a mitad del nivel
