@@ -208,8 +208,34 @@ const Enemies = (() => {
     e.facing=e.vx>0?1:-1;
   }
 
+  // El flyer es un mosquito. Fue el unico enemigo que nunca tuvo sprite: se
+  // dibujaba con un ovalo, dos alas bezier y dos puntitos. El aleteo lo hace el
+  // ciclo de cuatro cuadros; el `flutter` de siempre le suma el vaiven.
+  const FLYER_FPS = 14;
+
   function _drawFlyer(ctx, e, camX, camY, ts) {
     const x=e.x-camX, y=e.y-camY, {w,h,facing,stunTimer}=e, flutter=Math.sin(ts/120)*5;
+
+    if (typeof AssetLoader !== 'undefined') {
+      const idx = Math.floor(ts / 1000 * FLYER_FPS) % 4;
+      const img = AssetLoader.get('flyer_fly' + idx);
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = stunTimer > 0 ? 0.55 : 1;
+        ctx.translate(x + w/2, y + h/2 + flutter);
+        if (facing === -1) ctx.scale(-1, 1);
+        ctx.drawImage(img, -w/2, -h/2, w, h);
+        if (stunTimer > 0) {
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = 'rgba(160,160,160,0.55)';
+          ctx.fillRect(-w/2, -h/2, w, h);
+        }
+        ctx.restore();
+        return;
+      }
+    }
+
+    // Sin sprite (o todavia cargando): el dibujo de siempre.
     ctx.save(); ctx.globalAlpha=stunTimer>0?0.55:1;
     if(facing===-1){ctx.translate(x+w,y+flutter);ctx.scale(-1,1);}else ctx.translate(x,y+flutter);
     ctx.fillStyle=stunTimer>0?'#888':'#6b21a8';

@@ -51,6 +51,11 @@ const AssetLoader = (() => {
       { key:'serpiente_walk0',src:'img/serpiente_walk0.png'},
       { key:'serpiente_walk1',src:'img/serpiente_walk1.png'},
       { key:'serpiente_walk2',src:'img/serpiente_walk2.png'},
+      // El flyer (mosquito) — se usa en los niveles 1 y 2
+      { key:'flyer_fly0', src:'img/flyer_fly0.png' },
+      { key:'flyer_fly1', src:'img/flyer_fly1.png' },
+      { key:'flyer_fly2', src:'img/flyer_fly2.png' },
+      { key:'flyer_fly3', src:'img/flyer_fly3.png' },
       // Jefe del bosque: el Hongo Gigante (antes cargaba alien.png)
       { key:'hongo_idle0', src:'img/hongo_idle0.png' },
       { key:'hongo_idle01', src:'img/hongo_idle01.png' },
@@ -71,6 +76,10 @@ const AssetLoader = (() => {
 
     // ── Nivel 1 — Castillo de Nuveciela ──────────────
     1: [
+      { key:'flyer_fly0', src:'img/flyer_fly0.png' },
+      { key:'flyer_fly1', src:'img/flyer_fly1.png' },
+      { key:'flyer_fly2', src:'img/flyer_fly2.png' },
+      { key:'flyer_fly3', src:'img/flyer_fly3.png' },
       { key:'back_castlenc01', src:'img/back_castlenc01.png' },
       { key:'back_castlenc02', src:'img/back_castlenc02.png' },
       { key:'back_castlenc03', src:'img/back_castlenc03.png' },
