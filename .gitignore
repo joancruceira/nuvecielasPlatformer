@@ -11,3 +11,7 @@ Thumbs.db
 # Artefactos del optimizador de assets
 tools/plan.json
 tools/renombrados.json
+
+# Cache de Python (tools/sprites.py)
+__pycache__/
+*.pyc

@@ -18,7 +18,11 @@ USO
   # una carpeta entera (ordena por nombre y numera)
   python tools/sprites.py img/crudo/ --nombre cangrejo_walk --alto 90
 
-  # una hoja con varios cuadros en grilla
+  # una hoja con varios cuadros — RECOMENDADO: detecta los cuadros solo,
+  # aunque esten desparejos o descentrados (que es lo que suele pasar)
+  python tools/sprites.py hoja.png --auto --nombre cangrejo_walk --alto 90
+
+  # una hoja que si respeta una grilla pareja
   python tools/sprites.py hoja.png --grilla 4x1 --nombre cangrejo_walk --alto 90
 
   # ver qué haría, sin escribir nada
@@ -29,6 +33,15 @@ OPCIONES QUE IMPORTAN
               Subila si queda fondo; bajala si se come el sprite.
   --alto N    Altura final en px. Sin esto, no escala.
   --salida    Carpeta destino (default img/level5/).
+  --union N   Solo con --auto: cuanto se engordan las manchas antes de agrupar,
+              en % del ancho (default 0.8). Subila si un bicho se parte en dos;
+              bajala si dos cuadros vecinos quedan pegados.
+  --esperados N  Solo con --auto: avisa si no encontro esa cantidad de cuadros.
+
+CUANDO CHATGPT ENTREGA UNA LAMINA DE PRESENTACION
+  (fondo oscuro, titulos, carteles de tamano y stats por cada bicho)
+  --sin-etiquetas  Descarta el cartel que quedo ARRIBA del sprite.
+  --sin-motas      Descarta lo que quedo AL COSTADO y las burbujas sueltas.
 """
 
 import argparse
@@ -139,6 +152,95 @@ def despeckle_edges(img):
     return img
 
 
+def drop_label_bands(img, keep_ratio=0.18):
+    """
+    Saca los carteles que vienen pegados arriba del sprite.
+
+    Hace falta cuando ChatGPT entrega LÁMINAS DE PRESENTACIÓN en vez de hojas
+    limpias: cada bicho viene con su titulito ("2. CORAL TUBULAR") o su número,
+    y al detectar los cuadros el cartel entra adentro del recorte.
+
+    Cómo: se parte el sprite en franjas horizontales separadas por filas vacías
+    y se descartan las que tienen poca tinta. El bicho es la franja pesada; un
+    renglón de texto es liviano. Se conservan las franjas que llegan al 18% de
+    la principal, para no perder una parte legítima que esté despegada.
+    """
+    alpha = img.getchannel("A")
+    w, h = alpha.size
+    px = alpha.load()
+    rows = [sum(1 for x in range(w) if px[x, y] > 24) for y in range(h)]
+
+    bands = []
+    start = None
+    for y, v in enumerate(rows):
+        if v > 0 and start is None:
+            start = y
+        elif v == 0 and start is not None:
+            bands.append((start, y - 1))
+            start = None
+    if start is not None:
+        bands.append((start, h - 1))
+
+    if len(bands) <= 1:
+        return img
+
+    mass = [sum(rows[a:b + 1]) for a, b in bands]
+    biggest = max(mass)
+    keep = [b for b, m in zip(bands, mass) if m >= biggest * keep_ratio]
+    return img.crop((0, min(b[0] for b in keep), w, max(b[1] for b in keep) + 1))
+
+
+def drop_small_blobs(img, min_ratio=0.03):
+    """
+    Borra las manchitas sueltas que no son parte del bicho.
+
+    Es el complemento de drop_label_bands: sirve cuando el cartel no está
+    ARRIBA sino AL COSTADO ("1.", "3. CORAL ABANICO"), y entonces comparte
+    franja horizontal con el dibujo y no se puede cortar por filas.
+
+    Se queda con la mancha más grande y con cualquier otra que llegue al 3% de
+    su tamaño. Un renglón de texto no llega; una pata o una base de roca sí.
+    Ojo: también se lleva las burbujitas decorativas sueltas.
+    """
+    alpha = img.getchannel("A")
+    w, h = alpha.size
+    px = alpha.load()
+
+    labels = [0] * (w * h)
+    blobs = []
+    for start in range(w * h):
+        if labels[start] or px[start % w, start // w] <= 24:
+            continue
+        tag = len(blobs) + 1
+        stack = [start]
+        labels[start] = tag
+        pixels = []
+        while stack:
+            i = stack.pop()
+            pixels.append(i)
+            x, y = i % w, i // w
+            for nx, ny in ((x+1, y), (x-1, y), (x, y+1), (x, y-1)):
+                if 0 <= nx < w and 0 <= ny < h:
+                    j = ny * w + nx
+                    if not labels[j] and px[nx, ny] > 24:
+                        labels[j] = tag
+                        stack.append(j)
+        blobs.append(pixels)
+
+    if len(blobs) <= 1:
+        return img
+
+    biggest = max(len(b) for b in blobs)
+    salida = img.copy()
+    out = salida.load()
+    for b in blobs:
+        if len(b) < biggest * min_ratio:
+            for i in b:
+                x, y = i % w, i // w
+                out[x, y] = (0, 0, 0, 0)
+    return salida
+
+
 # ── Recorte y escala ─────────────────────────────────────────────────────────
 
 def trim(img, padding=0):
@@ -160,15 +262,118 @@ def scale_to_height(img, height):
     return img.resize((width, height), Image.LANCZOS)
 
 
+def pad_to_ratio(img, ratio):
+    """
+    Agrega transparencia a los costados hasta llegar a la proporción pedida,
+    con el bicho centrado.
+
+    Es la solución de fondo al problema que arrastramos: el motor mete cada
+    cuadro en una caja FIJA, así que si un cuadro es más largo que otro el bicho
+    se deforma al animarse. Rellenando todos hasta la misma proporción, la caja
+    calza perfecto y no se deforma ninguno.
+
+    Lo que queda es que en un cuadro el bicho se vea un poquito más corto —que
+    es la verdad del dibujo— en vez de verse aplastado, que es un error.
+    """
+    objetivo = max(1, round(img.height * ratio))
+    if objetivo <= img.width:
+        return img
+    lienzo = Image.new("RGBA", (objetivo, img.height), (0, 0, 0, 0))
+    lienzo.alpha_composite(img, ((objetivo - img.width) // 2, 0))
+    return lienzo
+
+
 # ── Hojas de sprites ─────────────────────────────────────────────────────────
 
 def split_sheet(img, cols, rows):
-    """ChatGPT a veces entrega los cuadros en grilla dentro de una sola imagen."""
+    """
+    Parte una hoja en celdas iguales. Sólo sirve si ChatGPT respetó la grilla,
+    cosa que no siempre hace: cuando los cuadros vienen desparejos o el bicho no
+    está centrado en su celda, esto los corta al medio. Para eso está --auto.
+    """
     fw, fh = img.width // cols, img.height // rows
     return [
         img.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh))
         for r in range(rows)
         for c in range(cols)
+    ]
+
+
+def find_sprites(img, min_area_ratio=0.004, gap_ratio=0.008):
+    """
+    Encuentra los cuadros solos, sin grilla: busca las manchas de dibujo sobre
+    el fondo ya transparente y devuelve una por cuadro.
+
+    Por qué hace falta: ChatGPT entrega las hojas con separaciones irregulares y
+    los bichos descentrados. Una grilla fija los corta; esto los sigue.
+
+    El truco es la DILATACIÓN. Un pez y su estela de burbujas son manchas
+    separadas, pero son el mismo cuadro. Engordando la máscara antes de agrupar,
+    lo que está cerca se une; lo que está lejos —el cuadro siguiente— no.
+
+    Se trabaja sobre una máscara reducida: 2000×900 son 1,8 millones de píxeles
+    y agrupar eso en Python puro tarda; a un octavo es instantáneo y la caja
+    resultante se reescala igual de bien.
+    """
+    alpha = img.getchannel("A")
+    scale = max(1, img.width // 300)
+    small = alpha.resize((img.width // scale, img.height // scale), Image.BILINEAR)
+    w, h = small.size
+    px = small.load()
+
+    grow = max(1, int(w * gap_ratio))
+    mask = bytearray(w * h)
+    for y in range(h):
+        for x in range(w):
+            if px[x, y] > 24:
+                for dy in range(-grow, grow + 1):
+                    yy = y + dy
+                    if 0 <= yy < h:
+                        row = yy * w
+                        for dx in range(-grow, grow + 1):
+                            xx = x + dx
+                            if 0 <= xx < w:
+                                mask[row + xx] = 1
+
+    # Agrupar las manchas conectadas
+    labels = [0] * (w * h)
+    boxes = []
+    for start in range(w * h):
+        if not mask[start] or labels[start]:
+            continue
+        tag = len(boxes) + 1
+        stack = [start]
+        labels[start] = tag
+        x0 = x1 = start % w
+        y0 = y1 = start // w
+        while stack:
+            i = stack.pop()
+            x, y = i % w, i // w
+            x0, x1 = min(x0, x), max(x1, x)
+            y0, y1 = min(y0, y), max(y1, y)
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if 0 <= nx < w and 0 <= ny < h:
+                    j = ny * w + nx
+                    if mask[j] and not labels[j]:
+                        labels[j] = tag
+                        stack.append(j)
+        boxes.append((x0, y0, x1, y1))
+
+    # Fuera las motas: manchitas sueltas que no son un cuadro
+    min_area = w * h * min_area_ratio
+    boxes = [b for b in boxes if (b[2] - b[0] + 1) * (b[3] - b[1] + 1) >= min_area]
+
+    # Orden de lectura: por filas y, dentro de cada fila, de izquierda a derecha
+    if boxes:
+        alturas = [b[3] - b[1] for b in boxes]
+        tol = max(alturas) * 0.5
+        boxes.sort(key=lambda b: (round(b[1] / tol) if tol else 0, b[0]))
+
+    return [
+        img.crop((b[0] * scale, b[1] * scale,
+                  min(img.width, (b[2] + 1) * scale),
+                  min(img.height, (b[3] + 1) * scale)))
+        for b in boxes
     ]
 
 
@@ -184,19 +389,27 @@ def frame_name(base, index):
 
 # ── Programa ─────────────────────────────────────────────────────────────────
 
-def gather_inputs(path, grid):
+def gather_inputs(path, grid, auto, tol, union=0.8):
     if os.path.isdir(path):
         names = sorted(
             f for f in os.listdir(path)
             if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
         )
-        return [Image.open(os.path.join(path, n)) for n in names]
+        return [Image.open(os.path.join(path, n)) for n in names], False
 
     img = Image.open(path)
+
+    if auto:
+        # El fondo se quita ANTES de buscar: los cuadros se detectan como
+        # manchas de dibujo, y para eso el fondo tiene que ser transparente.
+        limpia = despeckle_edges(remove_background(img, tol))
+        return find_sprites(limpia, gap_ratio=union / 100.0), True
+
     if grid:
         cols, rows = (int(v) for v in grid.lower().split("x"))
-        return split_sheet(img, cols, rows)
-    return [img]
+        return split_sheet(img, cols, rows), False
+
+    return [img], False
 
 
 def main():
@@ -207,15 +420,34 @@ def main():
     ap.add_argument("--alto", type=int, default=0, help="Altura final en px")
     ap.add_argument("--tol", type=int, default=12, help="Tolerancia del fondo (default 12)")
     ap.add_argument("--padding", type=int, default=0, help="Margen al recortar")
-    ap.add_argument("--grilla", help="Partir una hoja, ej: 4x1")
+    ap.add_argument("--grilla", help="Partir una hoja en celdas iguales, ej: 4x1")
+    ap.add_argument("--sin-motas", action="store_true",
+                    help="Borrar manchitas sueltas: carteles al costado, burbujas")
+    ap.add_argument("--sin-etiquetas", action="store_true",
+                    help="Descartar carteles y numeros pegados arriba del sprite "
+                         "(para laminas de presentacion)")
+    ap.add_argument("--auto", action="store_true",
+                    help="Detectar solo los cuadros de la hoja (para hojas desparejas)")
+    ap.add_argument("--union", type=float, default=0.8,
+                    help="Cuanto se engordan las manchas antes de agrupar, en %% del ancho "
+                         "(default 0.8). Subila si un bicho se parte en dos; bajala si dos "
+                         "cuadros vecinos quedan pegados.")
+    ap.add_argument("--esperados", type=int, default=0,
+                    help="Cuantos cuadros deberia encontrar --auto; avisa si no coincide")
     ap.add_argument("--sin-fondo", action="store_true",
                     help="La imagen ya viene sin fondo: sólo recortar y escalar")
     ap.add_argument("--previo", action="store_true", help="No escribe nada, sólo informa")
     args = ap.parse_args()
 
-    frames = gather_inputs(args.entrada, args.grilla)
+    frames, ya_limpias = gather_inputs(args.entrada, args.grilla, args.auto, args.tol, args.union)
     if not frames:
         sys.exit(f"No encontré imágenes en {args.entrada}")
+
+    if args.auto:
+        print(f"  detectados {len(frames)} cuadros")
+        if args.esperados and len(frames) != args.esperados:
+            print(f"  OJO: esperabas {args.esperados}. Probá con otra --tol, "
+                  f"o revisá si dos cuadros quedaron pegados.")
 
     if not args.previo:
         os.makedirs(args.salida, exist_ok=True)
@@ -224,8 +456,13 @@ def main():
         img = frame.convert("RGBA")
         antes = img.size
 
-        if not args.sin_fondo:
+        # Con --auto el fondo ya se quitó antes de recortar los cuadros.
+        if not args.sin_fondo and not ya_limpias:
             img = despeckle_edges(remove_background(img, args.tol))
+        if getattr(args, "sin_etiquetas", False):
+            img = drop_label_bands(img)
+        if getattr(args, "sin_motas", False):
+            img = drop_small_blobs(img)
         img = trim(img, args.padding)
         img = scale_to_height(img, args.alto)
 
