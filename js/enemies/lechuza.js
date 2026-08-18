@@ -17,9 +17,12 @@
 //  altura). Cuando se tira en picada y toca el piso queda plantada, y ése es tu
 //  turno. No hace falta ningún cartel: se descubre en la primera picada.
 //
-//  Sprites: lechuza_posado0-1, lechuza_vuelo0-3, lechuza_picada0-1,
-//           lechuza_grito0-2, lechuza_damage0-1, lechuza_death0-2
-//  Hasta que existan, se dibuja por canvas y la pelea es la misma.
+//  Sprites: img/level3/lechuza_<anim><n>.png. Todos vienen en el MISMO lienzo
+//  de 378x284, con la lechuza normalizada por el tamaño de su cara y apoyada
+//  abajo. Eso importa: las alas en vuelo suben por encima de la cabeza, así que
+//  escalando cada cuadro a una altura fija el bicho se achicaba al volar. Con
+//  el lienzo común, cada pose ocupa dentro lo que le toca y el tamaño no late.
+//  Si falta un cuadro, se dibuja por canvas y la pelea es exactamente la misma.
 // ═══════════════════════════════════════════════════════
 
 const Lechuza = (() => {
@@ -41,8 +44,11 @@ const Lechuza = (() => {
   const PISO_POR_FASE  = [1.40, 1.10, 0.90];
   const PICADAS_POR_FASE = [1, 2, 3];
 
+  //  Los cuadros que efectivamente llegaron. 'aterrizado' tiene los suyos —la
+  //  lechuza encogida, recuperándose— en vez de reusar los de la rama: es la
+  //  ventana en la que le pegás, así que tiene que verse distinta de un vistazo.
   const ANIMS = {
-    posado: 2, vuelo: 4, picada: 2, grito: 3, damage: 2, death: 3,
+    posado: 2, vuelo: 4, picada: 3, aterrizado: 2, grito: 2, damage: 2, death: 3,
   };
 
   // ── Sprites ───────────────────────────────────────────
@@ -283,10 +289,9 @@ const Lechuza = (() => {
     const ancho = Renderer.getSize().W;
     if (sx < -W * 3 || sx > ancho + W * 3) return;
 
-    const anim = ANIMS[e.state] ? e.state
-               : e.state === 'aviso' ? 'vuelo'
-               : e.state === 'aterrizado' ? 'posado'
-               : 'posado';
+    // 'aviso' es el instante de acecho: se queda quieta en el aire, así que
+    // usa los cuadros de vuelo.
+    const anim = ANIMS[e.state] ? e.state : e.state === 'aviso' ? 'vuelo' : 'posado';
     const img = _img(`${anim}${e.frameIdx}`);
 
     ctx.save();
@@ -299,17 +304,16 @@ const Lechuza = (() => {
     if (e.facing === 1 && e.state !== 'grito') ctx.scale(-1, 1);
 
     if (img) {
+      // Todos los cuadros vienen en el mismo lienzo de 378x284, con la lechuza
+      // ya normalizada por el tamaño de su cara y apoyada abajo. Por eso alcanza
+      // un solo factor: dentro del lienzo cada pose ocupa lo que le toca.
       const ar = img.naturalWidth / img.naturalHeight;
-      const dh = e.h * 1.15, dw = dh * ar;
+      const dh = e.h * 1.35, dw = dh * ar;
       ctx.drawImage(img, -dw / 2, -dh, dw, dh);
     } else {
       _dibujarFallback(ctx, e);
     }
     ctx.restore();
-
-    // Los ojos van SIEMPRE, con sprite o sin él: en la oscuridad son lo único
-    // que se ve, así que no pueden depender de que el dibujo haya cargado.
-    _dibujarOjos(ctx, e, sx, sy);
 
     if (e.alive) _dibujarBarra(ctx, e);
   }
@@ -317,7 +321,7 @@ const Lechuza = (() => {
   // Lechuza de canvas — sirve para jugar la pelea completa mientras no estén
   // los sprites. Dibujada desde las garras hacia arriba, como los sprites.
   function _dibujarFallback(ctx, e) {
-    const h = e.h * 1.15, w = h * 0.78;
+    const h = e.h * 1.35, w = h * 0.78;
     const abierta = e.state === 'grito' || e.state === 'picada' || e.state === 'vuelo';
     const alaW = abierta ? w * 0.55 : w * 0.22;
 
@@ -366,27 +370,51 @@ const Lechuza = (() => {
     ctx.restore();
   }
 
-  // Los ojos, en coordenadas de pantalla y sin espejar: son dos faroles.
-  function _ojosEnPantalla(e, sx, sy) {
-    const h = e.h * 1.15;
-    const sep = e.h * 0.20;
-    const cy  = sy + e.h - h * 0.72;
-    return [{ x: sx + e.w / 2 - sep / 2, y: cy }, { x: sx + e.w / 2 + sep / 2, y: cy }];
-  }
+  // ── Los ojos ──────────────────────────────────────────
+  //
+  //  Los sprites ya traen los ojos pintados, así que con luz normal no hace
+  //  falta dibujar nada: agregarles un brillo encima sólo los ensucia. Estos
+  //  son los faroles del APAGÓN, cuando la lechuza es una silueta negra y los
+  //  ojos son lo único que te dice de dónde viene.
+  //
+  //  La cabeza se mueve muchísimo entre poses —volando está abajo y adelante,
+  //  posada está arriba y al medio—, así que la posición sale de esta tabla,
+  //  medida sobre los propios PNG buscando los píxeles amarillos del ojo.
+  //  Están en fracción del lienzo de 378x284, que es común a todos los cuadros.
+  const OJOS = {
+    posado:     [0.519, 0.471],
+    vuelo:      [0.637, 0.703],
+    picada:     [0.720, 0.746],
+    aterrizado: [0.639, 0.540],
+    grito:      [0.481, 0.561],
+    damage:     [0.501, 0.493],
+  };
 
-  function _dibujarOjos(ctx, e, sx, sy) {
-    if (e.state === 'death' || e.state === 'damage') return;
-    const brillo = e.state === 'aviso' || e.state === 'grito' ? 1 : 0.75;
+  function _dibujarOjos(ctx, e, sx, sy, anim) {
+    const punto = OJOS[anim];
+    if (!punto) return;                       // en 'death' los tiene cerrados
+
+    const img = _img(`${anim}${e.frameIdx}`);
+    const ar  = img ? img.naturalWidth / img.naturalHeight : 1.331;
+    const dh  = e.h * 1.35, dw = dh * ar;
+
+    // Espejar el punto igual que se espeja el dibujo
+    const espeja = e.facing === 1 && e.state !== 'grito';
+    const fx = espeja ? 1 - punto[0] : punto[0];
+    const cx = sx + e.w / 2 + (fx - 0.5) * dw;
+    const cy = sy + e.h - dh + punto[1] * dh;
+    const sep = dw * 0.07;
+
     ctx.save();
-    for (const o of _ojosEnPantalla(e, sx, sy)) {
-      const g = ctx.createRadialGradient(o.x, o.y, 1, o.x, o.y, 22);
-      g.addColorStop(0,   `rgba(255,240,150,${brillo})`);
-      g.addColorStop(0.35,`rgba(250,204,21,${brillo * 0.8})`);
-      g.addColorStop(1,   'rgba(250,204,21,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(o.x, o.y, 22, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(255,250,220,${brillo})`;
-      ctx.beginPath(); ctx.arc(o.x, o.y, 5, 0, Math.PI * 2); ctx.fill();
+    const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, dw * 0.16);
+    halo.addColorStop(0,   'rgba(255,240,150,0.85)');
+    halo.addColorStop(0.4, 'rgba(250,204,21,0.45)');
+    halo.addColorStop(1,   'rgba(250,204,21,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cy, dw * 0.16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,250,220,0.95)';
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(cx + s * sep / 2, cy, dw * 0.018, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }
@@ -423,8 +451,9 @@ const Lechuza = (() => {
     ctx.fillRect(0, 0, W_, H_);
     ctx.restore();
 
-    // Y encima, los ojos: en la oscuridad son lo único que te dice de dónde viene.
-    _dibujarOjos(ctx, e, e.x - camX, e.y - camY);
+    // Y encima, los faroles.
+    const anim = ANIMS[e.state] ? e.state : e.state === 'aviso' ? 'vuelo' : 'posado';
+    _dibujarOjos(ctx, e, e.x - camX, e.y - camY, anim);
   }
 
   function _dibujarBarra(ctx, e) {
