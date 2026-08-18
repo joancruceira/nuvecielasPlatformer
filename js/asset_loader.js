@@ -45,12 +45,6 @@ const AssetLoader = (() => {
       { key:'walker_idle1',   src:'img/walker_idle1.png'   },
       { key:'walker_hit',     src:'img/walker_hit.png'     },
       { key:'walker_attack',  src:'img/walker_attack.png'  },
-      { key:'serpiente_idle0',src:'img/serpiente_idle0.png'},
-      { key:'serpiente_idle1',src:'img/serpiente_idle1.png'},
-      { key:'serpiente_attack',src:'img/serpiente_attack.png'},
-      { key:'serpiente_walk0',src:'img/serpiente_walk0.png'},
-      { key:'serpiente_walk1',src:'img/serpiente_walk1.png'},
-      { key:'serpiente_walk2',src:'img/serpiente_walk2.png'},
       // Slime — salta por el bosque
       { key:'slime_idle0', src:'img/slime_idle0.png' },
       { key:'slime_crouch0', src:'img/slime_crouch0.png' },
@@ -94,6 +88,13 @@ const AssetLoader = (() => {
       { key:'back_castlenc03', src:'img/back_castlenc03.png' },
       { key:'candelabro01',    src:'img/candelabro01.png'    },
       // Enemigos nivel 2
+      // La serpiente vive acá, no en el Bosque: estaba declarada en el
+      // manifest del nivel 0, donde no hay ninguna.
+      { key:'serpiente_idle0',src:'img/serpiente_idle0.png'},
+      { key:'serpiente_idle1',src:'img/serpiente_idle1.png'},
+      { key:'serpiente_attack',src:'img/serpiente_attack.png'},
+      { key:'serpiente_walk0',src:'img/serpiente_walk0.png'},
+      { key:'serpiente_walk1',src:'img/serpiente_walk1.png'},
       { key:'fantasma_idle0',  src:'img/fantasma_idle0.png'  },
       { key:'fantasma_idle1',  src:'img/fantasma_idle1.png'  },
       { key:'fantasma_attack', src:'img/fantasma_attack.png' },

@@ -17,6 +17,31 @@ const Fantasma = (() => {
     });
   }
 
+
+  // ── Teñir sin manchar el fondo ────────────────────────
+  //
+  //  'source-atop' tiñe lo que YA está pintado en el canvas, y abajo del bicho
+  //  está el nivel entero: pintando ahí, el tinte salía como un rectángulo de
+  //  color alrededor. Se dibuja en un lienzo aparte —que sí está vacío— y se
+  //  pega el resultado. El lienzo es uno solo y se reusa, así que no cuesta.
+  const _lienzoTinte = document.createElement('canvas');
+  const _ctxTinte    = _lienzoTinte.getContext('2d');
+
+  function _dibujarConTinte(ctx, img, dx, dy, dw, dh, color) {
+    const w = Math.max(1, Math.ceil(dw)), h = Math.max(1, Math.ceil(dh));
+    if (_lienzoTinte.width < w)  _lienzoTinte.width  = w;
+    if (_lienzoTinte.height < h) _lienzoTinte.height = h;
+    _ctxTinte.globalCompositeOperation = 'source-over';
+    _ctxTinte.clearRect(0, 0, _lienzoTinte.width, _lienzoTinte.height);
+    _ctxTinte.drawImage(img, 0, 0, w, h);
+    if (color) {
+      _ctxTinte.globalCompositeOperation = 'source-atop';
+      _ctxTinte.fillStyle = color;
+      _ctxTinte.fillRect(0, 0, w, h);
+    }
+    ctx.drawImage(_lienzoTinte, 0, 0, w, h, dx, dy, dw, dh);
+  }
+
   // ── Crear instancia ──
   function create(x, y) {
     return {
@@ -217,23 +242,17 @@ const Fantasma = (() => {
 
     ctx.save();
     ctx.translate(sx + w/2, sy + h/2 + bob);
-    if (facing === 1) ctx.scale(-1, 1);
+    // Los sprites miran a la DERECHA: se espeja cuando mira a la izquierda.
+    if (facing === -1) ctx.scale(-1, 1);
 
     if (img && img.complete && img.naturalWidth > 0) {
       const ar = img.naturalWidth / img.naturalHeight;
       const dh = h * 1.5 * (1 + (bossPhase - 1) * 0.06); // más pequeño
       const dw = dh * ar;
-      ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
-
-      if (frozen) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(100,180,255,0.55)';
-        ctx.fillRect(-dw/2, -dh/2, dw, dh);
-      } else if (stunTimer > 0) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(255,60,60,0.50)';
-        ctx.fillRect(-dw/2, -dh/2, dw, dh);
-      }
+      const tinte = frozen        ? 'rgba(100,180,255,0.55)'
+                  : stunTimer > 0 ? 'rgba(255,60,60,0.50)'
+                  : null;
+      _dibujarConTinte(ctx, img, -dw/2, -dh/2, dw, dh, tinte);
     } else {
       // Fallback canvas
       ctx.fillStyle = frozen ? '#93c5fd' : '#c4b5fd';

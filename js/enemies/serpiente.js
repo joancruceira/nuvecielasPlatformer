@@ -14,12 +14,40 @@ const Serpiente = (() => {
   const frames = {};
 
   function preload() {
+    // Reptar son DOS cuadros, no tres: la hoja nueva trae dos fases de
+    // ondulación de verdad, y antes los tres 'walk' eran la misma pose erguida
+    // — por eso la serpiente cruzaba el piso quieta, como arrastrada.
     ['serpiente_idle0','serpiente_idle1','serpiente_attack',
-     'serpiente_walk0','serpiente_walk1','serpiente_walk2'].forEach(name => {
+     'serpiente_walk0','serpiente_walk1'].forEach(name => {
       const img = new Image();
       img.src = `img/${name}.png`;
       frames[name] = img;
     });
+  }
+
+
+  // ── Teñir sin manchar el fondo ────────────────────────
+  //
+  //  'source-atop' tiñe lo que YA está pintado en el canvas, y abajo del bicho
+  //  está el nivel entero: pintando ahí, el tinte salía como un rectángulo de
+  //  color alrededor. Se dibuja en un lienzo aparte —que sí está vacío— y se
+  //  pega el resultado. El lienzo es uno solo y se reusa, así que no cuesta.
+  const _lienzoTinte = document.createElement('canvas');
+  const _ctxTinte    = _lienzoTinte.getContext('2d');
+
+  function _dibujarConTinte(ctx, img, dx, dy, dw, dh, color) {
+    const w = Math.max(1, Math.ceil(dw)), h = Math.max(1, Math.ceil(dh));
+    if (_lienzoTinte.width < w)  _lienzoTinte.width  = w;
+    if (_lienzoTinte.height < h) _lienzoTinte.height = h;
+    _ctxTinte.globalCompositeOperation = 'source-over';
+    _ctxTinte.clearRect(0, 0, _lienzoTinte.width, _lienzoTinte.height);
+    _ctxTinte.drawImage(img, 0, 0, w, h);
+    if (color) {
+      _ctxTinte.globalCompositeOperation = 'source-atop';
+      _ctxTinte.fillStyle = color;
+      _ctxTinte.fillRect(0, 0, w, h);
+    }
+    ctx.drawImage(_lienzoTinte, 0, 0, w, h, dx, dy, dw, dh);
   }
 
   function create(x, y) {
@@ -79,7 +107,7 @@ const Serpiente = (() => {
 
     // Animar frames de caminata a ~6fps
     e.walkTick += dt;
-    if (e.walkTick > 0.16) { e.walkTick = 0; e.walkFrame = (e.walkFrame + 1) % 3; }
+    if (e.walkTick > 0.16) { e.walkTick = 0; e.walkFrame = (e.walkFrame + 1) % 2; }
   }
 
   function _decideSpeed(e, dt, ps) {
@@ -200,16 +228,19 @@ const Serpiente = (() => {
     if (frozen)              frameName = 'serpiente_idle0';
     else if (stunTimer > 0)  frameName = 'serpiente_idle1';
     else if (attackTimer > 0) frameName = 'serpiente_attack';
-    else frameName = ['serpiente_walk0','serpiente_walk1','serpiente_walk2'][walkFrame || 0];
+    else frameName = ['serpiente_walk0','serpiente_walk1'][(walkFrame || 0) % 2];
 
     const img = frames[frameName];
     const bob = frozen || stunTimer > 0 ? 0 : Math.sin(ts / 280) * 1.8;
 
     ctx.save();
-    // Centrar sprite en la hitbox
-    ctx.translate(sx + w / 2, sy + h / 2 + bob);
-    // El sprite de la serpiente mira a la izquierda por defecto
-    if (facing === 1) ctx.scale(-1, 1);
+    // APOYADA EN EL PISO, no centrada en la hitbox: los cuadros de reptar son
+    // bajos y anchos y los de erguirse altos y angostos, y centrarlos hacía que
+    // la serpiente flotara al reptar. Todos vienen en el mismo lienzo de
+    // 400x265, así que alcanza con anclarlos abajo.
+    ctx.translate(sx + w / 2, sy + h + bob);
+    // Los sprites miran a la DERECHA: se espeja cuando mira a la izquierda.
+    if (facing === -1) ctx.scale(-1, 1);
 
     ctx.globalAlpha = frozen ? 0.8 : (stunTimer > 0 ? 0.65 : 1.0);
 
@@ -217,24 +248,13 @@ const Serpiente = (() => {
       // Aspect ratio del sprite recortado
       const ar   = img.naturalWidth / img.naturalHeight;
       // Dibujar más grande para que se vea bien — la hitbox w×h es más pequeña que el sprite visual
-      const dh   = h * 2.8;
+      const dh   = h * 1.95;
       const dw   = dh * ar;
-      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-
-      // Tinte
-      if (frozen) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(100,180,255,0.52)';
-        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
-      } else if (stunTimer > 0) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(255,60,60,0.42)';
-        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
-      } else if (e.rageTimer > 0) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(239,68,68,0.35)';
-        ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
-      }
+      const tinte = frozen          ? 'rgba(100,180,255,0.52)'
+                  : stunTimer > 0   ? 'rgba(255,60,60,0.42)'
+                  : e.rageTimer > 0 ? 'rgba(239,68,68,0.35)'
+                  : null;
+      _dibujarConTinte(ctx, img, -dw / 2, -dh, dw, dh, tinte);
     } else {
       // Fallback
       ctx.fillStyle = frozen ? '#60a5fa' : (e.rageTimer > 0 ? '#ef4444' : '#22c55e');
