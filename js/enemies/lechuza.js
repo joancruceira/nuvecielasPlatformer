@@ -27,14 +27,15 @@
 
 const Lechuza = (() => {
 
-  const W = 128, H = 140;
+  const W = 96, H = 120;
   const MAX_HP = 12;
 
   // Alto pero no pegado al borde: el canvas siempre dibuja 15 de las 16 filas
   // del mapa, así que a 320 px del piso queda en la fila 3 y media — fuera de
   // todo alcance y con aire arriba, en vez de metida contra el HUD.
   const ALTURA_VUELO   = 320;   // px sobre el suelo de la arena
-  const VEL_VUELO      = 165;   // seguimiento horizontal
+  const VEL_VUELO      = 300;   // seguimiento horizontal
+  const ENCIMA         = 100;   // qué tan alineada tiene que estar para tirarse
   const VEL_PICADA     = 520;
   const AVISO_DUR      = 0.55;  // el instante de acecho antes de tirarse
   const OSCURIDAD_DUR  = 5.0;   // cuánto dura el apagón
@@ -129,11 +130,14 @@ const Lechuza = (() => {
     switch (e.state) {
 
       case 'posado':
-        // Vuelve a su rama. Si se quedara en el piso donde aterrizó, la ventana
-        // para pegarle sería 'aterrizado' MÁS este estado, casi tres segundos
-        // seguidos, y se perdería el pulso de la pelea.
+        // Sube a la altura de la rama —si se quedara en el piso donde aterrizó,
+        // la ventana para pegarle sería 'aterrizado' MÁS este estado, casi tres
+        // segundos seguidos— pero en HORIZONTAL se acerca a vos en vez de volver
+        // siempre al mismo punto. Volver a la misma percha después de cada
+        // picada era lo que hacía que la pelea se sintiera un bucle fijo.
         e.y += (e.perchaY - e.y) * Math.min(1, dt * 3);
-        e.x += (e.perchaX - e.x) * Math.min(1, dt * 2);
+        e.x += Math.sign(pcx - cx) * Math.min(Math.abs(pcx - cx), 70 * dt);
+        _clampArena(e);
         e.facing = pcx > cx ? 1 : -1;
         _anim(e, dt, ANIMS.posado, 0.55);
         if (e.stateTimer > (e.phase === 1 ? 1.5 : 1.1)) {
@@ -171,8 +175,12 @@ const Lechuza = (() => {
         e.x += Math.sign(dx) * Math.min(Math.abs(dx), VEL_VUELO * (1 + (e.phase - 1) * 0.3) * dt);
         _clampArena(e);
         _anim(e, dt, ANIMS.vuelo, 0.12);
-        if (e.stateTimer > 1.1 && Math.abs(dx) < 260) _entrar(e, 'aviso');
-        else if (e.stateTimer > 2.6)                  _entrar(e, 'aviso');
+        // Se tira cuando logra ponerse ENCIMA, no cuando se le cumple un
+        // cronómetro. Es la diferencia entre parecer que te caza y parecer que
+        // repite un ciclo sin mirarte. El tope de 2,8 s existe sólo para que no
+        // se quede dando vueltas si el jugador corre en círculos.
+        if (e.stateTimer > 0.5 && Math.abs(dx) < ENCIMA) _entrar(e, 'aviso');
+        else if (e.stateTimer > 2.8)                     _entrar(e, 'aviso');
         break;
       }
 
@@ -300,15 +308,19 @@ const Lechuza = (() => {
     // plegado, así que se dibuja RESPETANDO la proporción y apoyada en las
     // garras. Meter todo en la misma caja aplastaría justo la envergadura.
     ctx.translate(sx + e.w / 2, sy + e.h);
-    // El grito es de frente: no se espeja, te mira a vos.
-    if (e.facing === 1 && e.state !== 'grito') ctx.scale(-1, 1);
+    // Los sprites están dibujados mirando a la DERECHA (medido: el disco facial
+    // cae siempre a la derecha del centro del cuerpo). Así que se espeja cuando
+    // mira a la IZQUIERDA. Al revés —como estaba— la lechuza le daba la espalda
+    // al jugador todo el tiempo, y eso sólo se lee como que no te ve.
+    // El grito es de frente: ése no se espeja nunca.
+    if (e.facing === -1 && e.state !== 'grito') ctx.scale(-1, 1);
 
     if (img) {
       // Todos los cuadros vienen en el mismo lienzo de 378x284, con la lechuza
       // ya normalizada por el tamaño de su cara y apoyada abajo. Por eso alcanza
       // un solo factor: dentro del lienzo cada pose ocupa lo que le toca.
       const ar = img.naturalWidth / img.naturalHeight;
-      const dh = e.h * 1.35, dw = dh * ar;
+      const dh = e.h * 1.31, dw = dh * ar;
       ctx.drawImage(img, -dw / 2, -dh, dw, dh);
     } else {
       _dibujarFallback(ctx, e);
@@ -321,7 +333,7 @@ const Lechuza = (() => {
   // Lechuza de canvas — sirve para jugar la pelea completa mientras no estén
   // los sprites. Dibujada desde las garras hacia arriba, como los sprites.
   function _dibujarFallback(ctx, e) {
-    const h = e.h * 1.35, w = h * 0.78;
+    const h = e.h * 1.31, w = h * 0.78;
     const abierta = e.state === 'grito' || e.state === 'picada' || e.state === 'vuelo';
     const alaW = abierta ? w * 0.55 : w * 0.22;
 
@@ -396,10 +408,10 @@ const Lechuza = (() => {
 
     const img = _img(`${anim}${e.frameIdx}`);
     const ar  = img ? img.naturalWidth / img.naturalHeight : 1.331;
-    const dh  = e.h * 1.35, dw = dh * ar;
+    const dh  = e.h * 1.31, dw = dh * ar;
 
     // Espejar el punto igual que se espeja el dibujo
-    const espeja = e.facing === 1 && e.state !== 'grito';
+    const espeja = e.facing === -1 && e.state !== 'grito';
     const fx = espeja ? 1 - punto[0] : punto[0];
     const cx = sx + e.w / 2 + (fx - 0.5) * dw;
     const cy = sy + e.h - dh + punto[1] * dh;
