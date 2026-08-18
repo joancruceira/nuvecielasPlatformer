@@ -30,7 +30,9 @@ const Murcielago = (() => {
         imgs[`${anim}${i}`]=m;
       }
     }
-    load('fly',4); load('attack',4); load('damage',4); load('death',4);
+    // 'attack' son 3: el cuarto archivo que vino no es el murciélago sino un
+    // destello rosa, y usarlo hacía que el bicho desapareciera en plena picada.
+    load('fly',4); load('attack',3); load('damage',4); load('death',4);
   }
 
   // ── Spawn ─────────────────────────────────────────────
@@ -106,7 +108,7 @@ const Murcielago = (() => {
           e.attackCooldown = 2.0;
           e.vx = e.facing * FLY_SPEED;
         }
-        _animCycle(e, dt, 4, 0.10);
+        _animCycle(e, dt, 3, 0.10);
         break;
 
       case 'damage':
@@ -150,7 +152,11 @@ const Murcielago = (() => {
 
     ctx.save();
     ctx.translate(sx + e.w/2, sy + e.h/2);
-    if(e.facing === 1) ctx.scale(-1, 1);
+    // Los sprites están dibujados mirando a la DERECHA — medido sobre los ojos
+    // rojos contra el centro del cuerpo, en los 16 cuadros que tienen cara. Se
+    // espeja cuando mira a la IZQUIERDA. Estaba al revés, así que el murciélago
+    // volaba de espaldas a su propia dirección.
+    if(e.facing === -1) ctx.scale(-1, 1);
 
     if(im) {
       ctx.drawImage(im, -e.w/2, -e.h/2, e.w, e.h);

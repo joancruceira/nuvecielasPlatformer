@@ -115,7 +115,7 @@ const AssetLoader = (() => {
       ...['0','01','02','03'].map(s=>({key:`arbusto_damage${s}`,src:`img/level3/arbusto_damage${s}.png`})),
       ...['0','01','02'].map(s=>    ({key:`arbusto_death${s}`,  src:`img/level3/arbusto_death${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`murcielago_fly${s}`,    src:`img/level3/murcielago_fly${s}.png`})),
-      ...['0','01','02','03'].map(s=>({key:`murcielago_attack${s}`, src:`img/level3/murcielago_attack${s}.png`})),
+      ...['0','01','02'].map(s=>({key:`murcielago_attack${s}`, src:`img/level3/murcielago_attack${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`murcielago_damage${s}`, src:`img/level3/murcielago_damage${s}.png`})),
       ...['0','01','02','03'].map(s=>({key:`murcielago_death${s}`,  src:`img/level3/murcielago_death${s}.png`})),
       ...['0','01'].map(s=>       ({key:`lechuza_posado${s}`,     src:`img/level3/lechuza_posado${s}.png`})),
