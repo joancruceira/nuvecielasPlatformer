@@ -270,13 +270,15 @@ const RendererTiles = (() => {
 
     // ── Nivel 2: usar sprites cuando están disponibles ──
     if (level.castleNC) {
-      if (tile === TILE.GROUND) {
-        const img = _pisoSprite(col);
-        const t2 = _alCarbon(img);
-        if (t2) { ctx.drawImage(t2, x, y, T, T); ctx.restore(); return; }
-      }
-      if (tile === TILE.BLOCK) {
-        const img = _l2img('piso1') || _l2img('piso0');
+      // Las losas propias del castillo, ya dibujadas en la paleta correcta.
+      // Si faltaran, se cae al piso viejo TEÑIDO hacia carbón — que es lo que
+      // sostuvo el nivel mientras estos sprites no existían.
+      if (tile === TILE.GROUND || tile === TILE.BLOCK) {
+        const propia = _al(tile === TILE.BLOCK
+          ? 'piso_ruina3'
+          : 'piso_ruina' + ((col * 3) % 3));
+        if (propia) { ctx.drawImage(propia, x, y, T, T); ctx.restore(); return; }
+        const img = tile === TILE.BLOCK ? (_l2img('piso1') || _l2img('piso0')) : _pisoSprite(col);
         const t2 = _alCarbon(img);
         if (t2) { ctx.drawImage(t2, x, y, T, T); ctx.restore(); return; }
       }

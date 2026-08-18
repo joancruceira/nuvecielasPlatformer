@@ -42,7 +42,7 @@ const Level2 = {
     // El castillo. Los props se anclan por la BASE al piso del tile; los que
     // van en la pared o el techo se centran en el tile donde los pongas.
     const fr  = (x,y)   =>{ map[y][x] = TILE.PISO_FRAGIL; };  // se derrumba
-    const an  = (x,y=10)=>{ map[y][x] = TILE.ANTORCHA;    };  // pared
+    const an  = (x,y=11)=>{ map[y][x] = TILE.ANTORCHA;    };  // pared
     const ca  = (x,y=2) =>{ map[y][x] = TILE.CANDELABRO;  };  // techo
     const es  = (x,y=12)=>{ map[y][x] = TILE.ESCOMBRO;    };
     const re  = (x,y=12)=>{ map[y][x] = TILE.REJILLA;     };  // llamarada

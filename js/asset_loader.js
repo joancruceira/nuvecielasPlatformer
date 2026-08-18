@@ -98,6 +98,14 @@ const AssetLoader = (() => {
       { key:'back_castlenc03', src:'img/back_castlenc03.png' },
       { key:'candelabro01',    src:'img/candelabro01.png'    },
       // Enemigos nivel 2
+      // ── Ambientación del Castillo de Nuveciela (la maneja castillo.js) ──
+      ...[0,1,2,3,4].map(i=>({key:`piso_ruina${i}`,  src:`img/castillo/piso_ruina${i}.png`})),
+      ...[0,1,2,3,4].map(i=>({key:`piso_fragil${i}`, src:`img/castillo/piso_fragil${i}.png`})),
+      ...[0,1,2,3,4].map(i=>({key:`llamarada${i}`,   src:`img/castillo/llamarada${i}.png`})),
+      ...[0,1,2,3,4].map(i=>({key:`antorcha${i}`,    src:`img/castillo/antorcha${i}.png`})),
+      ...[0,1,2,3,4].map(i=>({key:`candelabro${i}`,  src:`img/castillo/candelabro${i}.png`})),
+      ...[0,1,2,3].map(i=>  ({key:`retrato${i}`,     src:`img/castillo/retrato${i}.png`})),
+      ...Array.from({length:18},(_,i)=>({key:`escombro${i}`, src:`img/castillo/escombro${i}.png`})),
       // La serpiente vive acá, no en el Bosque: estaba declarada en el
       // manifest del nivel 0, donde no hay ninguna.
       { key:'serpiente_idle0',src:'img/serpiente_idle0.png'},

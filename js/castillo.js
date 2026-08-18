@@ -62,11 +62,17 @@ const Castillo = (() => {
           map[r][c] = TILE.PLATFORM;
 
         } else if (t === TILE.ANTORCHA) {
-          antorchas.push({ x: c * TS + TS / 2, y: r * TS + TS / 2, fase: c * 0.9 });
+          // Las cinco antorchas que llegaron son MODELOS distintos —una con
+          // estandarte, otra con cadenas, otra con musgo—, no cuadros de una
+          // animación. Se elige una por columna y no se cicla: ciclarlas haría
+          // que el soporte mutara. El parpadeo lo pone la luz, no el dibujo.
+          antorchas.push({ x: c * TS + TS / 2, y: r * TS + TS / 2,
+                           fase: c * 0.9, modelo: (c * 3) % 5 });
           map[r][c] = TILE.AIR;
 
         } else if (t === TILE.CANDELABRO) {
-          arañas.push({ x: c * TS + TS / 2, techo: r * TS, largo: TS * 1.6, fase: c * 0.7 });
+          arañas.push({ x: c * TS + TS / 2, techo: r * TS, largo: TS * 1.6,
+                        fase: c * 0.7, modelo: (c * 7) % 5 });
           map[r][c] = TILE.AIR;
 
         } else if (t === TILE.REJILLA) {
@@ -78,13 +84,13 @@ const Castillo = (() => {
           map[r][c] = TILE.AIR;
 
         } else if (t === TILE.ESCOMBRO) {
-          props.push({ key: 'escombro' + ((c * 3 + r) % 5),
-                       cx: c * TS + TS / 2, base: (r + 1) * TS, alto: TS * 1.7 });
+          props.push({ key: 'escombro' + ((c * 5 + r) % 18),
+                       cx: c * TS + TS / 2, base: (r + 1) * TS, alto: TS * 2.1 });
           map[r][c] = TILE.AIR;
 
         } else if (t === TILE.RETRATO) {
           retratos.push({ key: 'retrato' + ((c * 5) % 4),
-                          cx: c * TS + TS / 2, cy: r * TS + TS / 2, alto: TS * 2.4,
+                          cx: c * TS + TS / 2, cy: r * TS + TS / 2, alto: TS * 3.3,
                           fase: c * 0.6 });
           map[r][c] = TILE.AIR;
         }
@@ -225,9 +231,11 @@ const Castillo = (() => {
       if (sx < -80 || sx > vw + 80) continue;
       if (f.estado === 'cayendo' && f.t > 1.2) continue;   // ya se perdió de vista
 
+      // La hoja trae cinco pasos de deterioro; los que cuentan son entera (0),
+      // agrietada en cruz (1) y con el agujero al rojo (3).
       const cuadro = f.estado === 'entera' ? 'piso_fragil0'
                    : f.estado === 'grieta' ? 'piso_fragil1'
-                   : 'piso_fragil2';
+                   : 'piso_fragil3';
       const img = _img(cuadro);
       ctx.save();
       // Tiembla mientras avisa: el temblor es la mitad del aviso.
@@ -237,6 +245,19 @@ const Castillo = (() => {
       if (f.estado === 'cayendo') ctx.globalAlpha = Math.max(0, 1 - f.t / 1.2);
       if (img) ctx.drawImage(img, sx, sy, TS, TS);
       else     _fragilCanvas(ctx, sx, sy, TS, f.estado);
+
+      // Entera se parece demasiado al piso normal —las dos son losas de piedra
+      // agrietada— y no sirve de nada avisar cuando ya la pisaste. Un latido de
+      // brasa la separa del resto ANTES de tocarla, que es cuando importa.
+      if (f.estado === 'entera') {
+        const latido = 0.35 + Math.sin(reloj * 2.6 + f.col) * 0.30;
+        const g = ctx.createRadialGradient(sx + TS/2, sy + TS/2, 2, sx + TS/2, sy + TS/2, TS * 0.62);
+        g.addColorStop(0,   `rgba(249,115,22,${0.30 * latido})`);
+        g.addColorStop(0.6, `rgba(220,38,38,${0.16 * latido})`);
+        g.addColorStop(1,   'rgba(220,38,38,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(sx - 4, sy - 4, TS + 8, TS + 8);
+      }
       ctx.restore();
     }
 
@@ -244,36 +265,34 @@ const Castillo = (() => {
     for (const j of rejillas) {
       const sx = j.x - camX;
       if (sx < -120 || sx > vw + 120) continue;
-      const rej = _img(j.avisa || j.alto > 0.05 ? 'llamarada1' : 'llamarada0');
-      if (rej) ctx.drawImage(rej, sx, j.base - camY - TS * 0.5, TS, TS * 0.5);
-      else {
-        ctx.save();
-        ctx.fillStyle = j.avisa ? '#f97316' : '#3f3f46';
-        ctx.fillRect(sx + 6, j.base - camY - 10, TS - 12, 10);
-        ctx.restore();
+      // Los cinco cuadros que llegaron traen la REJA INCLUIDA y alineada a la
+      // misma base: apagada, llamita, columna entera, media, y apagada al rojo.
+      // Por eso va un solo dibujo y no reja + fuego por separado.
+      const idx = j.alto > 0.80 ? 2 : j.alto > 0.45 ? 3 : j.alto > 0.12 ? 1
+                : j.avisa ? 4 : 0;
+      const img = _img('llamarada' + idx);
+      if (img) {
+        const ar = img.naturalWidth / img.naturalHeight;
+        const dh = TS * 2.6, dw = dh * ar;
+        ctx.drawImage(img, sx + TS / 2 - dw / 2, j.base - camY - dh, dw, dh);
+        continue;
       }
+      ctx.save();
+      ctx.fillStyle = j.avisa ? '#f97316' : '#3f3f46';
+      ctx.fillRect(sx + 6, j.base - camY - 10, TS - 12, 10);
+      ctx.restore();
       if (j.alto <= 0.03) continue;
-
-      const altoPx = j.alto * TS * 3.2;
-      const idx = j.alto > 0.85 ? 4 : j.alto > 0.6 ? 3 : j.alto > 0.35 ? 2 : 1;
-      const fuego = _img('llamarada' + (idx + 1));
-      if (fuego) {
-        const ar = fuego.naturalWidth / fuego.naturalHeight;
-        const dh = altoPx, dw = dh * ar;
-        ctx.drawImage(fuego, sx + TS / 2 - dw / 2, j.base - camY - dh, dw, dh);
-      } else {
-        _fuegoCanvas(ctx, sx + TS / 2, j.base - camY, TS * 0.7, altoPx);
-      }
+      _fuegoCanvas(ctx, sx + TS / 2, j.base - camY, TS * 0.7, j.alto * TS * 3.2);
     }
 
     // ── Antorchas y candelabros: el fuego y su charco de luz ──
     for (const a of antorchas) {
       const sx = a.x - camX, sy = a.y - camY;
       if (sx < -120 || sx > vw + 120) continue;
-      const img = _img('antorcha' + (Math.floor(reloj * 10 + a.fase * 4) % 4));
+      const img = _img('antorcha' + a.modelo);
       if (img) {
         const ar = img.naturalWidth / img.naturalHeight;
-        const dh = TS * 2.3, dw = dh * ar;
+        const dh = TS * 2.6, dw = dh * ar;
         ctx.drawImage(img, sx - dw / 2, sy - dh / 2, dw, dh);
       } else {
         _antorchaCanvas(ctx, sx, sy, a.fase);
@@ -288,15 +307,16 @@ const Castillo = (() => {
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(vaiven);
-      // La cadena
-      ctx.strokeStyle = 'rgba(120,113,108,0.85)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, a.largo); ctx.stroke();
-      const img = _img('candelabro' + (Math.floor(reloj * 8 + a.fase * 3) % 3));
+      const img = _img('candelabro' + a.modelo);
       if (img) {
+        // El sprite YA trae la cadena arriba, así que se cuelga desde el techo
+        // hacia abajo y no hace falta dibujar ninguna.
         const ar = img.naturalWidth / img.naturalHeight;
-        const dh = TS * 1.1, dw = dh * ar;
-        ctx.drawImage(img, -dw / 2, a.largo, dw, dh);
+        const dh = TS * 3.0, dw = dh * ar;
+        ctx.drawImage(img, -dw / 2, 0, dw, dh);
       } else {
+        ctx.strokeStyle = 'rgba(120,113,108,0.85)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, a.largo); ctx.stroke();
         _candelabroCanvas(ctx, 0, a.largo, TS * 1.5);
       }
       ctx.restore();
