@@ -56,6 +56,13 @@ const TILE = {
   PLANTA:      62,   // helechos, pastos, tronco caído
   FLOR:        63,   // se abre y se cierra
   ARBOL_MANOS: 64,   // el gancho: huellas de manos en la corteza
+  // Castillo de Nuveciela — objetos y paisaje (los maneja castillo.js)
+  PISO_FRAGIL: 70,   // se agrieta al pisarla y se cae
+  ANTORCHA:    71,
+  CANDELABRO:  72,
+  ESCOMBRO:    73,
+  REJILLA:     74,   // escupe una llamarada con ritmo fijo
+  RETRATO:     75,   // el gancho: las cuatro hermanas en la pared
 };
 
 const TILE_SIZE = 48; // px

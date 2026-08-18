@@ -174,6 +174,7 @@ const Engine = (() => {
     if (typeof Cueva     !== 'undefined') Cueva.init();
     if (typeof Lago      !== 'undefined') Lago.init();
     if (typeof Bosque    !== 'undefined') Bosque.init();
+    if (typeof Castillo  !== 'undefined') Castillo.init();
 
     GiftBox.spawnFromMap(map); GiftBox.preload();
     // Nivel 2: puerta mágica (Pablo) — Nivel 3: cueva (SuperNatan)
@@ -190,6 +191,10 @@ const Engine = (() => {
     // Nivel 1: el bosque (hongos trampolín, flores, luciérnagas, paisaje)
     if (idx === 0 && typeof Bosque !== 'undefined') {
       Bosque.spawnFromMap(map, levelData);
+    }
+    // Nivel 2: el castillo (piso frágil, antorchas, llamaradas, retratos)
+    if (idx === 1 && typeof Castillo !== 'undefined') {
+      Castillo.spawnFromMap(map, levelData);
     }
     _extractCollectibles();
     _extractSpecials();
@@ -299,7 +304,8 @@ const Engine = (() => {
     // velocidad, y la posición la integra el jugador en el frame siguiente
     // con su propia colisión.
     if (currentLevelIdx === 4 && typeof Lago   !== 'undefined') Lago.update(dt, ps, map);
-    if (currentLevelIdx === 0 && typeof Bosque !== 'undefined') Bosque.update(dt, ps, map);
+    if (currentLevelIdx === 0 && typeof Bosque   !== 'undefined') Bosque.update(dt, ps, map);
+    if (currentLevelIdx === 1 && typeof Castillo !== 'undefined') Castillo.update(dt, ps, map);
     GiftBox.update(dt, ps, () => {
       if (typeof AudioManager !== 'undefined') AudioManager.sfx('giftbox_open');
       UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);

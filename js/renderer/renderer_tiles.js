@@ -168,6 +168,68 @@ const RendererTiles = (() => {
     }
   }
 
+
+  // ── Teñido del castillo ──────────────────────────────
+  //
+  //  Los sprites de piedra del nivel 2 están dibujados en LILA AZULADO y el
+  //  fondo es una ruina en llamas, carbón y carmesí. No es que falten sprites:
+  //  están en otra paleta, y la capa jugable parecía pegada de otro juego.
+  //
+  //  Se tiñen UNA sola vez, al primer uso, en un lienzo aparte que se guarda.
+  //  Teñir por frame costaría carísimo y encima 'source-atop' sobre el canvas
+  //  principal mancharía el fondo, que es el bug que ya arreglamos en la
+  //  serpiente y el fantasma.
+  //  La clave es la RUTA de la imagen, no la columna: distintas columnas piden
+  //  distintos sprites de piso, y cachear por columna devolvía el teñido del
+  //  sprite equivocado.
+  const _tenidos = {};
+  function _alCarbon(img) {
+    if (!img) return null;
+    const clave = img.src;
+    if (_tenidos[clave]) return _tenidos[clave];
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0);
+    // Primero al gris: mata el lila sin tocar el dibujo.
+    x.globalCompositeOperation = 'saturation';
+    x.fillStyle = 'hsl(0,0%,50%)';
+    x.fillRect(0, 0, c.width, c.height);
+    // Después oscurecer y llevar a piedra fría casi negra.
+    x.globalCompositeOperation = 'multiply';
+    x.fillStyle = '#6b625c';
+    x.fillRect(0, 0, c.width, c.height);
+    // Y una pizca de brasa en las luces, para que la piedra respire fuego.
+    x.globalCompositeOperation = 'overlay';
+    x.fillStyle = 'rgba(120,53,15,0.55)';
+    x.fillRect(0, 0, c.width, c.height);
+    // Recortar todo a la silueta original: sin esto los rellenos pintan el
+    // rectángulo entero, incluido lo transparente.
+    x.globalCompositeOperation = 'destination-in';
+    x.drawImage(img, 0, 0);
+    _tenidos[clave] = c;
+    return c;
+  }
+
+  // Plataformas del castillo: piedra con el borde gastado, no una barrita.
+  function _repisa(ctx, x, y, T, col) {
+    const alto = T * 0.40;
+    const g = ctx.createLinearGradient(0, y, 0, y + alto);
+    g.addColorStop(0, '#5c554e');
+    g.addColorStop(1, '#26221e');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, T, alto);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(x, y, T, 3);
+    // Junta entre bloques y alguna brasa en la grieta
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(x + T - 2, y, 2, alto);
+    if (col % 4 === 1) {
+      ctx.fillStyle = 'rgba(249,115,22,0.55)';
+      ctx.fillRect(x + 5, y + alto - 4, T - 12, 2);
+    }
+  }
+
   function getTilePalette(level) {
     return {
       groundTop:  level.groundCol,
@@ -210,11 +272,17 @@ const RendererTiles = (() => {
     if (level.castleNC) {
       if (tile === TILE.GROUND) {
         const img = _pisoSprite(col);
-        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+        const t2 = _alCarbon(img);
+        if (t2) { ctx.drawImage(t2, x, y, T, T); ctx.restore(); return; }
       }
       if (tile === TILE.BLOCK) {
         const img = _l2img('piso1') || _l2img('piso0');
-        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+        const t2 = _alCarbon(img);
+        if (t2) { ctx.drawImage(t2, x, y, T, T); ctx.restore(); return; }
+      }
+      if (tile === TILE.PLATFORM) {
+        _repisa(ctx, x, y, T, col);
+        ctx.restore(); return;
       }
       if (tile === TILE.SPIKES) {
         // Fila < 6 = pinchos de techo (apuntan hacia abajo)
