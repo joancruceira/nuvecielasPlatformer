@@ -251,14 +251,29 @@ const RendererTiles = (() => {
     // se dibuja por código — que ya es muchísimo mejor que un rectángulo.
     if (level.bosqueMagico) {
       if (tile === TILE.GROUND || tile === TILE.BLOCK) {
-        const clave = tile === TILE.BLOCK ? 'suelo2' : (col % 5 === 0 ? 'suelo1' : 'suelo0');
+        // Seis celdas de superficie y tres de tierra, elegidas por COLUMNA:
+        // el mismo tile cae siempre igual. Con azar por frame el suelo hierve.
+        const clave = tile === TILE.BLOCK
+          ? 'tierra' + ((col * 3 + row) % 3)
+          : 'suelo'  + ((col * 7) % 6);
         const img = _al(clave);
-        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+        if (img) {
+          // La tierra se espeja en columnas alternas. Repetida tal cual, la
+          // misma textura cada 48 px dibuja una grilla en el suelo; espejada
+          // se lee como tierra y no como baldosas.
+          if (tile === TILE.BLOCK && col % 2) {
+            ctx.translate(x + T, y); ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, T, T);
+          } else {
+            ctx.drawImage(img, x, y, T, T);
+          }
+          ctx.restore(); return;
+        }
         _sueloBosque(ctx, x, y, T, col, tile === TILE.GROUND);
         ctx.restore(); return;
       }
       if (tile === TILE.SPIKES) {
-        const img = _al(col % 2 ? 'zarza1' : 'zarza0');
+        const img = _al('zarza' + ((col * 5) % 3));
         if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
         _zarzas(ctx, x, y, T, col);
         ctx.restore(); return;

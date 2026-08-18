@@ -52,9 +52,12 @@ const Bosque = (() => {
     const filas = map.length, cols = map[0].length;
 
     const medidas = {
-      [TILE.HONGO_DECO]:  { keys: ['hongo_deco0','hongo_deco1','hongo_deco2'],       alto: 1.5 },
-      [TILE.PLANTA]:      { keys: ['planta0','planta1','planta2','planta3'],          alto: 1.7 },
-      [TILE.ARBOL_MANOS]: { keys: ['arbol_manos'],                                    alto: 8.0 },
+      // Llegaron 12 hongos y 10 plantas, muchos más de los que había pedido.
+      // Con esa variedad, un bosque de 180 tiles no repite nunca lo mismo.
+      [TILE.HONGO_DECO]:  { keys: Array.from({length:12},(_,i)=>'hongo_deco'+i), alto: 1.5 },
+      [TILE.PLANTA]:      { keys: Array.from({length:10},(_,i)=>'planta'+i),     alto: 1.7 },
+      // El árbol grande es el gancho; los otros tres son variantes más finas.
+      [TILE.ARBOL_MANOS]: { keys: ['arbol0','arbol1','arbol2','arbol3'],         alto: 8.0 },
     };
 
     for (let r = 0; r < filas; r++) {
@@ -67,7 +70,7 @@ const Bosque = (() => {
             key:  m.keys[(c * 3 + r) % m.keys.length],   // variedad sin azar
             cx:   c * TS + TS / 2,
             base: (r + 1) * TS,
-            alto: m.alto * TS,
+            alto: (t === TILE.ARBOL_MANOS && (c * 3 + r) % 4 !== 0 ? m.alto * 0.72 : m.alto) * TS,
             mece: t !== TILE.ARBOL_MANOS,   // el árbol no se mece: pesa
             fase: (c * 0.7 + r * 1.3) % (Math.PI * 2),
             brilla: t === TILE.HONGO_DECO,
@@ -283,7 +286,12 @@ const Bosque = (() => {
     for (const f of flores) {
       const sx = f.cx - camX;
       if (sx < -160 || sx > vw + 160) continue;
-      const img = _img(f.abierta ? 'flor1' : 'flor0');
+      // Seis cuadros de apertura de verdad: capullo → se abre → abierta del
+      // todo → se cierra. El ciclo dura 3,4 s y el cuadro sale de la fase, así
+      // que se VE venir el cierre en vez de aparecer cerrada de golpe.
+      const k = f.fase / 3.4;
+      const idx = k < 0.10 ? 1 : k < 0.22 ? 2 : k < 0.52 ? 3 : k < 0.62 ? 2 : k < 0.72 ? 1 : 0;
+      const img = _img('flor' + idx);
       if (img) {
         const ar = img.naturalWidth / img.naturalHeight;
         const dh = f.h, dw = dh * ar;
@@ -303,14 +311,22 @@ const Bosque = (() => {
     for (const h of hongos) {
       const sx = h.x - camX;
       if (sx < -180 || sx > vw + 180) continue;
-      const img = _img(h.aplaste > 0.35 ? 'hongo_salto1' : 'hongo_salto0');
-      const alto = h.h * (1 - h.aplaste * 0.45);
+      // La hoja trae cinco cuadros pero sólo tres son el aplastón: entero (0),
+      // sombrero chato (3) y disco (4). Los otros dos son poses de reposo
+      // alternativas. El orden lo dio la detección, no el orden del dibujo.
+      const cuadro = h.aplaste > 0.66 ? 'hongo_salto4'
+                   : h.aplaste > 0.28 ? 'hongo_salto3'
+                   : 'hongo_salto0';
+      const img = _img(cuadro);
       if (img) {
+        // Proporción propia y apoyado abajo: el disco aplastado es mucho más
+        // ancho y bajo que el entero, y meterlos en la misma caja borraría el
+        // aplastón, que es justamente lo que avisa que el hongo es blando.
         const ar = img.naturalWidth / img.naturalHeight;
-        const dh = alto * 1.35, dw = dh * ar;
+        const dh = h.h * 1.55, dw = dh * ar;
         ctx.drawImage(img, sx + h.w / 2 - dw / 2, h.base - camY - dh, dw, dh);
       } else {
-        _hongoCanvas(ctx, sx, h.base - camY, h.w, alto, h.aplaste);
+        _hongoCanvas(ctx, sx, h.base - camY, h.w, h.h * (1 - h.aplaste * 0.45), h.aplaste);
       }
     }
 
@@ -327,6 +343,18 @@ const Bosque = (() => {
       g.addColorStop(1,   'rgba(134,239,172,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(sx, sy, l.r * 5, 0, Math.PI * 2); ctx.fill();
+
+      // El bicho encima del resplandor. El aleteo va rápido y desfasado por
+      // luciérnaga: si baten todas juntas parecen una sola cosa.
+      const bicho = _img('luciernaga' + (Math.floor(reloj * 14 + l.fase * 3) % 6));
+      if (bicho) {
+        const dh = 15, dw = dh * (bicho.naturalWidth / bicho.naturalHeight);
+        ctx.save();
+        ctx.globalAlpha = 0.55 + pulso * 0.45;
+        if (l.vx > 0) { ctx.translate(sx, sy); ctx.scale(-1, 1); ctx.translate(-sx, -sy); }
+        ctx.drawImage(bicho, sx - dw / 2, sy - dh / 2, dw, dh);
+        ctx.restore();
+      }
     }
     ctx.restore();
 

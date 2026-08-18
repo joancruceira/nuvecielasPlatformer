@@ -45,6 +45,16 @@ const AssetLoader = (() => {
       { key:'walker_idle1',   src:'img/walker_idle1.png'   },
       { key:'walker_hit',     src:'img/walker_hit.png'     },
       { key:'walker_attack',  src:'img/walker_attack.png'  },
+      // ── Ambientación del Bosque Mágico (la maneja bosque.js) ──
+      ...[0,1,2,3,4,5].map(i=>({key:`suelo${i}`,       src:`img/bosque/suelo${i}.png`})),
+      ...[0,1,2].map(i=>      ({key:`tierra${i}`,      src:`img/bosque/tierra${i}.png`})),
+      ...[0,1,2].map(i=>      ({key:`zarza${i}`,       src:`img/bosque/zarza${i}.png`})),
+      ...[0,1,2,3,4].map(i=>  ({key:`hongo_salto${i}`, src:`img/bosque/hongo_salto${i}.png`})),
+      ...[0,1,2,3,4,5].map(i=>({key:`flor${i}`,        src:`img/bosque/flor${i}.png`})),
+      ...[0,1,2,3,4,5].map(i=>({key:`luciernaga${i}`,  src:`img/bosque/luciernaga${i}.png`})),
+      ...Array.from({length:12},(_,i)=>({key:`hongo_deco${i}`, src:`img/bosque/hongo_deco${i}.png`})),
+      ...Array.from({length:10},(_,i)=>({key:`planta${i}`,     src:`img/bosque/planta${i}.png`})),
+      ...[0,1,2,3].map(i=>    ({key:`arbol${i}`,       src:`img/bosque/arbol${i}.png`})),
       // Slime — salta por el bosque
       { key:'slime_idle0', src:'img/slime_idle0.png' },
       { key:'slime_crouch0', src:'img/slime_crouch0.png' },
