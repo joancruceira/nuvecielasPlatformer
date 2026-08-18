@@ -46,6 +46,128 @@ const RendererTiles = (() => {
     return _l2img('pinches_techo_corto');
   }
 
+
+  // ── Dibujos del Bosque Mágico ────────────────────────
+  function _al(key) {
+    if (typeof AssetLoader === 'undefined') return null;
+    const i = AssetLoader.get(key);
+    return (i && i.complete && i.naturalWidth > 0) ? i : null;
+  }
+
+  // Tierra del bosque. La de arriba lleva pasto, musgo y de vez en cuando un
+  // hongo celeste asomando, que es lo que tiene el fondo del nivel.
+  function _sueloBosque(ctx, x, y, T, col, esSuperficie) {
+    const g = ctx.createLinearGradient(0, y, 0, y + T);
+    g.addColorStop(0, esSuperficie ? '#3f2a17' : '#33210f');
+    g.addColorStop(1, '#241608');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, T, T);
+
+    // Grumos de tierra — fijos por columna, no aleatorios: si cambian cada
+    // frame el suelo hierve.
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    for (let i = 0; i < 3; i++) {
+      const px = x + ((col * 17 + i * 29) % (T - 8)) + 4;
+      const py = y + ((col * 11 + i * 23) % (T - 10)) + 6;
+      ctx.fillRect(px, py, 5, 4);
+    }
+
+    if (!esSuperficie) return;
+
+    // Manto de musgo
+    const gm = ctx.createLinearGradient(0, y, 0, y + T * 0.34);
+    gm.addColorStop(0, '#4e8f3a');
+    gm.addColorStop(1, '#2c5e24');
+    ctx.fillStyle = gm;
+    ctx.fillRect(x, y, T, T * 0.30);
+    ctx.fillStyle = 'rgba(163,230,53,0.30)';
+    ctx.fillRect(x, y, T, 3);
+
+    // Pastitos que asoman
+    ctx.strokeStyle = '#4e8f3a'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const px = x + ((col * 13 + i * 19) % (T - 6)) + 3;
+      const alto = 5 + ((col + i) % 4) * 2;
+      ctx.beginPath();
+      ctx.moveTo(px, y + 1);
+      ctx.lineTo(px + ((col + i) % 3) - 1, y - alto);
+      ctx.stroke();
+    }
+
+    // Cada tantos tiles, un hongo chiquito que brilla
+    if (col % 7 === 3) {
+      const hx = x + T * 0.62;
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillRect(hx - 2, y - 7, 4, 7);
+      const gh = ctx.createRadialGradient(hx, y - 9, 1, hx, y - 9, 11);
+      gh.addColorStop(0, 'rgba(103,232,249,0.95)');
+      gh.addColorStop(1, 'rgba(103,232,249,0)');
+      ctx.fillStyle = gh;
+      ctx.beginPath(); ctx.ellipse(hx, y - 9, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Zarzas en vez de triángulos rojos: el peligro tiene que pertenecer al lugar.
+  function _zarzas(ctx, x, y, T, col) {
+    ctx.save();
+    // Maraña de tallos
+    ctx.strokeStyle = '#3b2415'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const bx = x + (i + 0.5) * (T / 4);
+      ctx.beginPath();
+      ctx.moveTo(bx - 6, y + T);
+      ctx.quadraticCurveTo(bx, y + T * 0.45, bx + ((col + i) % 3) * 3 - 3, y + 4);
+      ctx.stroke();
+    }
+    // Espinas
+    ctx.fillStyle = '#e2e8f0';
+    for (let i = 0; i < 6; i++) {
+      const sx2 = x + ((col * 7 + i * 13) % (T - 8)) + 4;
+      const sy2 = y + 6 + ((col + i * 5) % (T - 16));
+      const dir = (i % 2) ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(sx2, sy2);
+      ctx.lineTo(sx2 + dir * 6, sy2 - 3);
+      ctx.lineTo(sx2, sy2 - 7);
+      ctx.closePath(); ctx.fill();
+    }
+    // Hojitas violetas
+    ctx.fillStyle = 'rgba(147,51,234,0.75)';
+    for (let i = 0; i < 2; i++) {
+      const lx = x + ((col * 5 + i * 21) % (T - 10)) + 5;
+      ctx.beginPath();
+      ctx.ellipse(lx, y + 10 + i * 14, 5, 3, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Plataformas: ramas con corteza y musgo arriba, no barritas amarillas.
+  function _rama(ctx, x, y, T, col) {
+    const alto = T * 0.42;
+    const g = ctx.createLinearGradient(0, y, 0, y + alto);
+    g.addColorStop(0, '#6b4423');
+    g.addColorStop(1, '#3d2614');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.roundRect(x, y, T, alto, 5);
+    ctx.fill();
+    // Musgo arriba
+    ctx.fillStyle = '#4e8f3a';
+    ctx.beginPath();
+    ctx.roundRect(x, y, T, alto * 0.34, 4);
+    ctx.fill();
+    // Vetas de la corteza
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 2; i++) {
+      const ly = y + alto * (0.55 + i * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(x + 3, ly);
+      ctx.lineTo(x + T - 3, ly + ((col + i) % 3) - 1);
+      ctx.stroke();
+    }
+  }
+
   function getTilePalette(level) {
     return {
       groundTop:  level.groundCol,
@@ -119,6 +241,31 @@ const RendererTiles = (() => {
         }
         ctx.restore();
         return;
+      }
+    }
+
+    // ── Nivel 1: el Bosque Mágico ────────────────────────
+    // El fondo del nivel es un bosque encantado y lo que se pisaba era una
+    // franja verde sobre ladrillos marrones. Acá el suelo, las plataformas y
+    // los pinchos pasan a pertenecer al bosque. Si hay sprite se usa; si no,
+    // se dibuja por código — que ya es muchísimo mejor que un rectángulo.
+    if (level.bosqueMagico) {
+      if (tile === TILE.GROUND || tile === TILE.BLOCK) {
+        const clave = tile === TILE.BLOCK ? 'suelo2' : (col % 5 === 0 ? 'suelo1' : 'suelo0');
+        const img = _al(clave);
+        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+        _sueloBosque(ctx, x, y, T, col, tile === TILE.GROUND);
+        ctx.restore(); return;
+      }
+      if (tile === TILE.SPIKES) {
+        const img = _al(col % 2 ? 'zarza1' : 'zarza0');
+        if (img) { ctx.drawImage(img, x, y, T, T); ctx.restore(); return; }
+        _zarzas(ctx, x, y, T, col);
+        ctx.restore(); return;
+      }
+      if (tile === TILE.PLATFORM) {
+        _rama(ctx, x, y, T, col);
+        ctx.restore(); return;
       }
     }
 

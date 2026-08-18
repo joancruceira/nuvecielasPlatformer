@@ -36,6 +36,15 @@ const Level1 = {
     const f = (x,y=7)=>flyer(map,x,y);
     const sl = (x,y=12)=>{ map[y][x] = TILE.SLIME; };   // salta, no camina
 
+    // Objetos y paisaje del bosque (los levanta bosque.js y borra el tile).
+    // Se anclan por la BASE al piso del tile: van en la fila 12 y quedan
+    // parados sobre el suelo de la 13, mida lo que mida el sprite.
+    const hs  = (x,y=12)=>{ map[y][x] = TILE.HONGO_SALTO; };  // trampolín
+    const hd  = (x,y=12)=>{ map[y][x] = TILE.HONGO_DECO;  };
+    const pl  = (x,y=12)=>{ map[y][x] = TILE.PLANTA;      };
+    const fl  = (x,y=12)=>{ map[y][x] = TILE.FLOR;        };
+    const arb = (x,y=12)=>{ map[y][x] = TILE.ARBOL_MANOS; };
+
     // ── Suelo base ───────────────────────────────────
     g(0,30); g(32,18); g(52,12);
     g(66,8); g(76,20); g(98,16);
@@ -71,6 +80,38 @@ const Level1 = {
     w(20); w(37); w(55); w(70); w(85);
     w(100); w(115); w(135); w(155); w(165);
     f(45,7); f(72,6); f(105,8); f(145,7);
+
+    // ── El bosque ────────────────────────────────────
+    //
+    //  HONGOS TRAMPOLÍN. Van donde te dan algo: llegar a una estrella alta,
+    //  cruzar un foso, subir a una plataforma que si no obliga a doble salto.
+    //  El primero está temprano y a la vista, con una estrella justo arriba:
+    //  la lección se enseña sola en los primeros veinte segundos.
+    hs(12);  st(12, 7);
+    hs(28);
+    hs(58);  st(58, 7);
+    hs(78);
+    hs(104); st(104, 6);
+    hs(122);
+    hs(148); st(148, 7);
+    hs(168);
+
+    //  FLORES. Se abren y se cierran, con una estrella adentro.
+    fl(42);  st(42, 11);
+    fl(94);  st(94, 11);
+    fl(160); st(160, 10);
+
+    //  EL ÁRBOL DE LAS MANOS. En el tramo tranquilo justo después del primer
+    //  checkpoint, donde no hay nada que esquivar y se puede mirar.
+    arb(106);
+
+    //  PLANTAS Y HONGOS QUE BRILLAN. El fondo está lleno; el suelo no tenía uno.
+    pl(4);   hd(8);   pl(17);  hd(25);  pl(33);
+    hd(40);  pl(48);  hd(53);  pl(61);  hd(67);
+    pl(72);  hd(79);  pl(84);  hd(92);  pl(99);
+    hd(108); pl(113); hd(119); pl(130); hd(133);
+    pl(139); hd(144); pl(152); hd(158); pl(163);
+    hd(170); pl(176);
 
     // ── Especiales ───────────────────────────────────
     map[6][88]  = TILE.MAGIC_TREE;

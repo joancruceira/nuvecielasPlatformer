@@ -172,7 +172,7 @@ const LevelMap = (() => {
           <div class="map-detail-inner">
             <span class="map-detail-emoji" id="mapDetailEmoji">🌿</span>
             <div class="map-detail-info">
-              <div class="map-detail-name" id="mapDetailName">Pradera Encantada</div>
+              <div class="map-detail-name" id="mapDetailName">Bosque Mágico</div>
               <div class="map-detail-boss" id="mapDetailBoss">🍄 Hongo Gigante</div>
               <div class="map-detail-stars" id="mapDetailStars"></div>
             </div>

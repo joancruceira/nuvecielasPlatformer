@@ -59,7 +59,8 @@ const EngineRender = (() => {
     const ctx = Renderer.getCtx();
 
     // ── Lago: paisaje del fondo (detrás de todo lo vivo) ─
-    if (typeof Lago !== 'undefined') Lago.drawFondo(ctx, cam.x, cam.y);
+    if (typeof Lago   !== 'undefined') Lago.drawFondo(ctx, cam.x, cam.y);
+    if (typeof Bosque !== 'undefined') Bosque.drawFondo(ctx, cam.x, cam.y);
 
     // ── Coleccionables (estrellas) ───────────────────────
     // Culling: en el nivel 4 hay ~55 estrellas y a lo sumo 4 son visibles.
@@ -103,7 +104,8 @@ const EngineRender = (() => {
 
     // ── Lago: lo que te envuelve va DELANTE del jugador ──
     // Así se ve que estás dentro de la burbuja, no detrás.
-    if (typeof Lago !== 'undefined') Lago.draw(ctx, cam.x, cam.y);
+    if (typeof Lago   !== 'undefined') Lago.draw(ctx, cam.x, cam.y);
+    if (typeof Bosque !== 'undefined') Bosque.draw(ctx, cam.x, cam.y);
 
     // ── Proyectiles y fireballs ───────────────────────────
     Renderer.drawFireballs(Player.getFireballs(), cam.x, cam.y, timestamp);

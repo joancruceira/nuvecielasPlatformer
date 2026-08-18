@@ -50,6 +50,12 @@ const TILE = {
   ALGA:      49,
   RUINA:     50,
   ESTATUA:   51,
+  // Bosque Mágico — objetos y paisaje (los maneja bosque.js, no enemies.js)
+  HONGO_SALTO: 60,   // trampolín
+  HONGO_DECO:  61,
+  PLANTA:      62,   // helechos, pastos, tronco caído
+  FLOR:        63,   // se abre y se cierra
+  ARBOL_MANOS: 64,   // el gancho: huellas de manos en la corteza
 };
 
 const TILE_SIZE = 48; // px
