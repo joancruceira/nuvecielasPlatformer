@@ -8,7 +8,19 @@ const S = {
 
   // ── Constantes de mapa ────────────────────────────────
   TS:         48,
-  MAP_W:      200,
+  MAP_W:      298,
+
+  //  Las columnas del tramo final. Estaban como números sueltos repartidos en
+  //  submision_entities.js, y al alargar el mapa había que cazarlas una por una.
+  //  Acá viven una sola vez.
+  COLS: {
+    PEDESTAL: 289,   // plat(PEDESTAL,4,8) — la tarima de la jaula
+    PABLO:    290,
+    GEMA:     294,
+    BOSS:     286,
+    BOSS_IZQ: 280,
+    BOSS_DER: 293,
+  },
   MAP_H:      14,
   GROUND_ROW: 10,   // fila 10 = y 480px = suelo principal
 
@@ -76,20 +88,26 @@ const S = {
     { type:'perrero',speed:92,  hp:1, pts:150, label:'🦺 Perrero', range:300, h:68 },
   ],
 
+  //  Recolocados al alargar el mapa de 200 a 298 columnas. El parque, la
+  //  peatonal y el túnel son zonas nuevas y traen los suyos.
   ENEMY_SPAWNS: [
-    [10,0],[20,1],[34,0],
-    [50,1],[63,0],[75,1],[84,0],
-    [94,0],[108,1],[120,0],
-    [164,0],[170,1],[178,0],[184,1],
-    [192,0],[196,1],
+    [10,0],[20,1],[34,0],                    // costanera
+    [52,1],[64,0],[74,1],                    // parque
+    [85,0],[98,1],[110,0],[119,1],           // urbana
+    [132,0],[143,1],[154,0],                 // peatonal
+    [162,0],[176,1],[188,0],                 // deteriorado
+    [204,1],[213,0],[222,1],                 // túnel
+    [262,0],[268,1],[276,0],[282,1],         // corralón
+    [290,0],[294,1],                         // rescate
   ],
 
   // ── Gatitos coleccionables ────────────────────────────
   kitties: [],
   // Los rescatados, en orden. Caminan atrás del jugador como patitos.
   fila: [],
-  // Sin cols sobre el río (129-159)
-  KITTY_COLS: [8,18,26,52,66,80,95,110,122,165,172,180,193,196],
+  // Sin cols sobre el río (228-257): ahí no hay dónde pararse.
+  KITTY_COLS: [8,18,26,  55,68,76,  87,101,115,  134,148,
+               163,178,190,  208,219,  263,270,278,  291,294],
 
   // ── Pablo (jaula/libre) ───────────────────────────────
   pablo: {

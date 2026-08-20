@@ -37,7 +37,9 @@ const SubRender = (() => {
   // ── RENDER PRINCIPAL ─────────────────────────────────
   function drawFrame(ctx, W, H) {
     drawBg(ctx, W, H);
+    drawTunel(ctx, W);        // la pared va detrás del colectivo y del piso
     drawBus(ctx, W);
+    drawPropsNuevos(ctx, W);  // vida de calle: queda detrás de las mellis
     drawTilemap(ctx, W, H);
     drawProps(ctx, W);
     drawKitties(ctx);
@@ -47,6 +49,7 @@ const SubRender = (() => {
     drawBoss(ctx);
     drawHearts(ctx);
     drawPlayer(ctx);
+    drawOscuridadTunel(ctx, W, H);
     drawHUD(ctx, W, H);
   }
 
@@ -176,24 +179,59 @@ const SubRender = (() => {
       // ── Parallax BG — clipeado al cielo ──────────────
       ctx.save();
       ctx.beginPath(); ctx.rect(0,0,W,skyH); ctx.clip();
-      const layers=[
-        {key:'cielo_lejano', px:0.03, alpha:0.48},
-        {key:'bg_rosario2',  px:0.09, alpha:0.62},
-        {key:'fondo_rosario',px:0.18, alpha:0.76},
+      //  Cada zona tiene su fondo, y se cruzan según en qué columna estás.
+      //  Antes eran tres capas fijas para las 298 columnas: la costanera, el
+      //  parque, la peatonal, el río y el corralón se veían todos igual.
+      //
+      //  Los fondos nuevos YA traen su hora del día pintada (el parque al
+      //  atardecer, la peatonal de noche, el corralón a oscuras), así que donde
+      //  manda uno de ellos el velo de código se afloja: si no, se oscurecía dos
+      //  veces y el corralón quedaba negro.
+      const col = S.cam.x / S.TS;
+      const ZONAS = [
+        { hasta:  44, fondo:null,           cruce:10 },  // costanera: las 3 capas
+        { hasta:  79, fondo:'bg_parque',    cruce:8  },
+        { hasta: 124, fondo:null,           cruce:10 },  // urbana
+        { hasta: 159, fondo:'bg_peatonal',  cruce:8  },
+        { hasta: 227, fondo:null,           cruce:10 },  // deteriorado + túnel
+        { hasta: 257, fondo:null,           cruce:10 },  // río
+        { hasta: 999, fondo:'bg_corralon',  cruce:8  },
       ];
-      for(const l of layers){
-        const im=img(l.key); if(!im) continue;
+      let zi = 0;
+      while (zi < ZONAS.length-1 && col > ZONAS[zi].hasta) zi++;
+      const z = ZONAS[zi], zAnt = ZONAS[Math.max(0,zi-1)];
+      const desde = zi===0 ? 0 : ZONAS[zi-1].hasta;
+      const mezcla = Math.min(1, (col - desde) / z.cruce);
+
+      function capa(key, px, alpha){
+        const im=img(key); if(!im) return;
         const ar=im.naturalWidth/im.naturalHeight;
         const dh=skyH, dw=Math.max(W+600, dh*ar);
-        const off=Math.min(S.cam.x*l.px, Math.max(0, dw-W));
-        ctx.globalAlpha=l.alpha;
+        const off=((S.cam.x*px) % dw + dw) % dw;
+        ctx.globalAlpha=alpha;
         ctx.drawImage(im,-off,0,dw,dh);
+        ctx.drawImage(im,-off+dw,0,dw,dh);
       }
+      function ciudad(alpha){
+        capa('cielo_lejano', 0.03, 0.48*alpha);
+        capa('bg_rosario2',  0.09, 0.62*alpha);
+        capa('fondo_rosario',0.18, 0.76*alpha);
+      }
+
+      const propio = z.fondo, propioAnt = zAnt.fondo;
+      // se va el anterior
+      if (mezcla < 1) {
+        if (propioAnt) capa(propioAnt, 0.12, 1-mezcla); else ciudad(1-mezcla);
+      }
+      // entra el de esta zona
+      if (propio) capa(propio, 0.12, mezcla); else ciudad(mezcla);
+      hora.propio = !!propio;
       // El velo va acá adentro, todavía clipeado al cielo: oscurece las capas
       // de Rosario sin tocar el suelo ni a los personajes.
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = hora.propio ? 0.30 : 1;
       ctx.fillStyle = hora.velo;
       ctx.fillRect(0, 0, W, skyH);
+      ctx.globalAlpha = 1;
       ctx.restore();
 
       // ── El corralón (zona 5): faroles de sodio ────────
@@ -408,6 +446,98 @@ const SubRender = (() => {
   // ═══════════════════════════════════════════════════
   //  CAPA 4 — PROPS decorativos
   // ═══════════════════════════════════════════════════
+  // ── La pared del túnel (zona 3b) ──────────────────────
+  //
+  //  Va DETRÁS de todo lo demás y sólo entre las columnas del túnel: cierra el
+  //  tramo sin necesidad de un techo de tiles, que obligaría a rehacer el mapa.
+  //  Las cinco celdas tilean, así que se repiten con variación fija por columna.
+  function drawTunel(ctx, W) {
+    const { TS } = S;
+    const INI = 198, FIN = 227;
+    const x0 = INI*TS - S.cam.x, x1 = (FIN+1)*TS - S.cam.x;
+    if (x1 < 0 || x0 > W) return;
+    const gy = S.GROUND_ROW * TS;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(Math.max(0,x0), 0, Math.min(W,x1)-Math.max(0,x0), gy); ctx.clip();
+    for (let c = INI; c <= FIN; c++) {
+      const sx = c*TS - S.cam.x;
+      if (sx < -TS || sx > W) continue;
+      const cual = 'tunel' + ((c*3) % 5);
+      for (let y = gy - TS; y > -TS; y -= TS) {
+        if (!drawImg(ctx, cual, sx, y, TS, TS)) {
+          ctx.fillStyle = '#3a1c18'; ctx.fillRect(sx, y, TS, TS);
+        }
+      }
+    }
+    // Boca de entrada y de salida: un degradé a negro en los bordes para que
+    // el túnel se "trague" al jugador en vez de empezar de golpe.
+    for (const [bx, dir] of [[x0, 1], [x1, -1]]) {
+      const g = ctx.createLinearGradient(bx, 0, bx + dir*150, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0.85)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(Math.min(bx, bx+dir*150), 0, 150, gy);
+    }
+    ctx.restore();
+  }
+
+  // El tunel a oscuras: se ve lo que tenes cerca y nada mas. Sin inventar
+  // magia — es la linterna del celu, que cualquiera lleva encima.
+  function drawOscuridadTunel(ctx, W, H) {
+    const { TS } = S;
+    const INI = 198, FIN = 227;
+    const x0 = INI*TS - S.cam.x, x1 = (FIN+1)*TS - S.cam.x;
+    if (x1 < 0 || x0 > W) return;
+    const px = S.ps.x - S.cam.x + S.ps.w/2, py = S.ps.y + S.ps.h/2;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(Math.max(0,x0), 0, Math.min(W,x1)-Math.max(0,x0), H); ctx.clip();
+    const g = ctx.createRadialGradient(px, py, 60, px, py, 300);
+    g.addColorStop(0,    'rgba(0,0,0,0)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.45)');
+    g.addColorStop(1,    'rgba(0,0,0,0.80)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // ── Los props de la segunda ronda ─────────────────────
+  //
+  //  Cada zona tiene los suyos y se colocan por COLUMNA, no al azar: así caen
+  //  siempre en el mismo lugar y el nivel se puede aprender de memoria, que es
+  //  lo que hace un chico.
+  const PROPS_ZONA = [
+    // [desde, hasta, prefijo, cuántos, alto en px, cada cuántas columnas, desfase]
+    [  4,  42, 'gente',     5, 136, 13, 4 ],
+    [ 46,  78, 'parque',    5, 170, 7,  2 ],
+    [ 82, 122, 'obstaculo', 4, 110, 11, 5 ],
+    [ 82, 122, 'gente',     5, 136, 15, 9 ],
+    [126, 156, 'peatonal',  4, 200, 8,  3 ],
+    [126, 156, 'gente',     5, 136, 17, 7 ],
+    [161, 196, 'obstaculo', 4, 110, 9,  2 ],
+    [199, 226, 'obstaculo', 4, 110, 12, 6 ],
+    [259, 286, 'corralon',  4, 190, 7,  1 ],
+  ];
+
+  function drawPropsNuevos(ctx, W) {
+    const { TS, MAP_H, GROUND_ROW } = S;
+    for (const [d, h, pre, n, alto, cada, off] of PROPS_ZONA) {
+      let k = 0;
+      for (let c = d; c <= h; c++) {
+        if ((c - off) % cada !== 0) continue;
+        const variante = (k + off) % n; k++;
+        const sx = c*TS - S.cam.x;
+        if (sx < -400 || sx > W + 400) continue;
+        let gy = GROUND_ROW*TS;
+        for (let r = 0; r < MAP_H; r++) {
+          if (S.subMap[r][c] === 1 || S.subMap[r][c] === 5) { gy = r*TS; break; }
+        }
+        const im = img(pre + variante);
+        if (!im) continue;
+        const ar = im.naturalWidth / im.naturalHeight;
+        const dh = alto, dw = dh * ar;
+        ctx.drawImage(im, sx + TS/2 - dw/2, gy - dh, dw, dh);
+      }
+    }
+  }
+
   function drawProps(ctx, W) {
     if(!S.subMap) return;
     const { TS, MAP_W, MAP_H, GROUND_ROW } = S;
@@ -424,7 +554,7 @@ const SubRender = (() => {
       }
 
       // ── Zona cálida: costanera (0-89) y rescate (190-199) ──
-      const inWarm=(c>=0&&c<90)||(c>=190&&c<MAP_W);
+      const inWarm = c < 125;   // costanera, parque y urbana: el resto es noche o techo
       if(inWarm && S.subMap[GROUND_ROW]?.[c]===1){
 
         // FAROLA — cada 12 cols, 42×134px

@@ -277,9 +277,9 @@ const SubEntities = (() => {
       p.freeFrameIdx  = (p.freeFrameIdx+1) % 7;
     }
 
-    // Camina entre los bordes del pedestal plat(191,4,8) → cols 191-194
-    const platLeft  = 191 * TS + 4;
-    const platRight = 195 * TS - p.w - 4;
+    // Camina entre los bordes del pedestal (ver S.COLS.PEDESTAL en el const)
+    const platLeft  = S.COLS.PEDESTAL * TS + 4;
+    const platRight = (S.COLS.PEDESTAL + 4) * TS - p.w - 4;
     if(!p.freeVx) p.freeVx = 40;
 
     p.x += p.freeVx * dt;
@@ -462,14 +462,14 @@ const SubEntities = (() => {
     p.freeVx       = 40;
     p.freeFacing   = 1;
     p.pickupTimer  = 0;
-    // Centrado en el pedestal plat(191,4,8)
-    p.x = 192 * TS;
+    // Centrado en el pedestal
+    p.x = S.COLS.PABLO * TS;
     p.y = 8 * TS - 72;
 
     // Gema — aparece cuando pablo es rescatado
     S.gem.collected = false;
     S.gem.glowPhase = 0;
-    S.gem.x = 196 * TS;
+    S.gem.x = S.COLS.GEMA * TS;
     S.gem.y = GROUND_ROW * TS - 36;
 
     // Boss — al lado de la jaula, patrulla corta que la defiende
@@ -477,8 +477,8 @@ const SubEntities = (() => {
     b.hp         = 8;
     b.alive      = true;
     b.activated  = false;
-    // Parado justo a la izquierda de la jaula (pablo en col 192, boss en 188)
-    b.x          = 188 * TS;
+    // Parado justo a la izquierda de la jaula
+    b.x          = S.COLS.BOSS * TS;
     b.y          = GROUND_ROW * TS - 96;
     b.vx         = 0;
     b.state      = 'patrol';
@@ -488,10 +488,9 @@ const SubEntities = (() => {
     b.frameIdx   = 0;
     b.frameTick  = 0;
     // Patrulla ajustada: se queda cerca de la jaula
-    // izquierda: col 182 (no abandona la zona dark)
-    // derecha:   col 195 (borde de la jaula)
-    b.patrolLeft  = 182 * TS;
-    b.patrolRight = 195 * TS;
+    // No abandona el corralón por la izquierda ni pasa la jaula por la derecha
+    b.patrolLeft  = S.COLS.BOSS_IZQ * TS;
+    b.patrolRight = S.COLS.BOSS_DER * TS;
 
     spawnEnemies();
     spawnKitties();
