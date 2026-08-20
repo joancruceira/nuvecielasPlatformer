@@ -131,8 +131,10 @@ const CHARACTERS = {
   estrellaria: {
     label:   'Estrellaria',
     ability: '← ← Estrellas de colores',
-    desc:    'Dispara estrellas de todos los colores, y muy seguido.',
-    color:   '#f472b6',
+    desc:    'La que encuentra lo que nadie ve. Dispara estrellas, y muy seguido.',
+    // Su color sale de la ficha del hub (src/data/characters.ts), no de acá:
+    // es el mismo personaje en las dos apps y no puede tener dos colores.
+    color:   '#F7A8C4',
     img:     'img/estrellaria.png',
 
     speed:        290,

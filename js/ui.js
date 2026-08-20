@@ -18,7 +18,7 @@ const UI = (() => {
     ciela:     { emoji: '💧', ability: '← ← Hielo ❄️ congela' },
     lunaria:   { emoji: '✨', ability: '← ← Rayo de luz ☀️' },
     nuve:      { emoji: '🔥', ability: '↑↑ Volar + ← ← Bolas 🎨' },
-    estrellaria:{ emoji: '⭐', ability: '← ← Estrellas de colores ✨' },
+    estrellaria:{ emoji: '🌟', ability: '← ← Estrellas de colores ✨' },
   };
 
   let selectedChar = null;
