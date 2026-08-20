@@ -407,8 +407,11 @@ body {
   flex: 1 1 auto;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  /* NADA de image-rendering: pixelated. El canvas se dibuja a 1920 y se
+     muestra a 1280: es una REDUCCIÓN, y en reducción 'pixelated' tira uno de
+     cada tres píxeles en vez de promediarlos. Con los sprites viejos, chatos,
+     no se notaba; con los nuevos, detallados, ensuciaba todo — sobre todo la
+     serpiente. El suavizado del navegador es lo correcto acá. */
 }
 
 /* ═══ HUD — GLASSMORPHISM ═══ */

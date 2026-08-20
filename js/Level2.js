@@ -86,11 +86,18 @@ const Level2 = {
     //  PISO QUE SE DERRUMBA. Arranca fácil y a la vista: un tramo corto sobre
     //  suelo firme, donde equivocarse no cuesta nada y se aprende la regla. Los
     //  de después ya están sobre fosos, que es cuando la regla importa.
-    fr(36,12); fr(37,12); fr(38,12);              // el que enseña, sobre piso
-    fr(63,12); fr(64,12);                         // sobre el foso de 65-67
-    fr(80,12); fr(81,12); fr(82,12);
-    fr(112,12); fr(113,12);
-    fr(131,12); fr(132,12);
+    //  Van en la FILA 13, que es el piso. Estaban en la 12 —un tile más
+    //  arriba— así que no eran piso que se derrumba sino plataformas flotando
+    //  a 48 px del suelo, y en los tramos con tierra abajo no hacían nada.
+    //
+    //  El primer grupo enseña sobre suelo firme: al caerse quedás en un pozo
+    //  de un tile y salís caminando. Los otros tres son PUENTES sobre fosos
+    //  que antes había que saltar: cruzarlos es más fácil que el salto, pero
+    //  sólo si no te parás.
+    fr(36,13); fr(37,13); fr(38,13);              // el que enseña, sobre tierra
+    fr(47,13); fr(48,13); fr(49,13);              // puente sobre el foso 47-49
+    fr(80,13); fr(81,13); fr(82,13);              // puente sobre el foso 80-82
+    fr(114,13); fr(115,13); fr(116,13);           // puente sobre el foso 114-116
 
     //  LLAMARADAS. Suben y bajan con ritmo fijo y avisan poniéndose al rojo
     //  antes de escupir. Van en tramos anchos, nunca en un salto justo.
@@ -98,9 +105,9 @@ const Level2 = {
 
     //  ANTORCHAS Y CANDELABROS — la luz, que es de lo que está hecho el fondo.
     an(6);   an(22);  an(40);  an(58);  an(76);
-    an(94);  an(112); an(130); an(148); an(166);
+    an(91);  an(112); an(130); an(148); an(166);
     ca(14);  ca(34);  ca(54);  ca(78);  ca(96);
-    ca(122); ca(142); ca(162);
+    ca(106); ca(142); ca(162);
 
     //  ESCOMBROS: el fondo está lleno de ruina y el suelo estaba pelado.
     es(4);   es(16);  es(31);  es(43);  es(53);
@@ -114,6 +121,10 @@ const Level2 = {
     // ── Especiales ────────────────────────────────────
     map[4][92]  = TILE.MAGIC_TREE;
     map[11][104]= TILE.MAGIC_DOOR;
+    // Dos checkpoints, no uno. El nivel mide 185 tiles y caerse manda al
+    // último checkpoint: con uno solo en la 101, equivocarse en la 47 te
+    // devolvía al arranque del nivel.
+    map[12][52] = TILE.CHECKPOINT;
     map[12][101]= TILE.CHECKPOINT;
     map[12][179]= TILE.BOSS;
     map[12][182]= TILE.PORTAL;

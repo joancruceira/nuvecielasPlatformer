@@ -63,7 +63,10 @@ const RendererEntities = (() => {
       }
       ctx.restore();
     } else {
-      ctx.fillStyle = '#a78bfa';
+      // Respaldo mientras no existe el sprite del personaje. Usa SU color, no
+      // un violeta fijo: si no, un personaje nuevo aparece con la cara de otro.
+      const ficha = (typeof CHARACTERS !== 'undefined' && CHARACTERS[charId]) || null;
+      ctx.fillStyle = ficha ? ficha.color : '#a78bfa';
       ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.font = `bold ${w*0.4}px Fredoka`;
@@ -127,6 +130,28 @@ const RendererEntities = (() => {
         ctx.strokeStyle='#fde68a'; ctx.lineWidth=3*mult;
         ctx.beginPath(); ctx.moveTo(sx-p.vx*0.04,sy); ctx.lineTo(sx,sy); ctx.stroke();
         ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(sx,sy,r*0.55,0,Math.PI*2); ctx.fill();
+
+      } else if (p.kind === 'star') {
+        // Estrella de cinco puntas que gira. El color lo trae el proyectil:
+        // Estrellaria rota una paleta entera, así que cada tiro sale distinto.
+        const giro = ts / 260 + p.x * 0.01;
+        const g = ctx.createRadialGradient(sx,sy,0,sx,sy,r*2.6);
+        g.addColorStop(0,   'rgba(255,255,255,0.95)');
+        g.addColorStop(0.35, p.color + 'cc');
+        g.addColorStop(1,   p.color + '00');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,r*2.6,0,Math.PI*2); ctx.fill();
+        ctx.translate(sx, sy); ctx.rotate(giro);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const rad = i % 2 ? r * 0.46 : r * 1.15;
+          const a   = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.30, 0, Math.PI*2); ctx.fill();
 
       } else {
         const pulse = 0.6 + Math.sin(ts/60) * 0.4;

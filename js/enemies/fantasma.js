@@ -47,8 +47,11 @@ const Fantasma = (() => {
     return {
       type:        'fantasma',
       x, y,
-      w:            72,
-      h:            80,
+      // Era 72x80 y se dibujaba a 1,5 veces: el jefe medía apenas vez y media
+      // la nena y se confundía con los fantasmas chicos del nivel, que son el
+      // mismo bicho blanco. Un jefe tiene que leerse como jefe desde lejos.
+      w:            96,
+      h:            108,
       vx:          0,
       vy:          0,
       facing:      -1,
@@ -247,7 +250,7 @@ const Fantasma = (() => {
 
     if (img && img.complete && img.naturalWidth > 0) {
       const ar = img.naturalWidth / img.naturalHeight;
-      const dh = h * 1.5 * (1 + (bossPhase - 1) * 0.06); // más pequeño
+      const dh = h * 1.9 * (1 + (bossPhase - 1) * 0.06);
       const dw = dh * ar;
       const tinte = frozen        ? 'rgba(100,180,255,0.55)'
                   : stunTimer > 0 ? 'rgba(255,60,60,0.50)'

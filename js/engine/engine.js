@@ -305,7 +305,10 @@ const Engine = (() => {
     // con su propia colisión.
     if (currentLevelIdx === 4 && typeof Lago   !== 'undefined') Lago.update(dt, ps, map);
     if (currentLevelIdx === 0 && typeof Bosque   !== 'undefined') Bosque.update(dt, ps, map);
-    if (currentLevelIdx === 1 && typeof Castillo !== 'undefined') Castillo.update(dt, ps, map);
+    if (currentLevelIdx === 1 && typeof Castillo !== 'undefined') {
+      Castillo.update(dt, ps, map);
+      Castillo.checkProjectileHits(Player.getProjectiles(), Player.getFireballs());
+    }
     GiftBox.update(dt, ps, () => {
       if (typeof AudioManager !== 'undefined') AudioManager.sfx('giftbox_open');
       UI.showAbilityBadge('🐱 ¡Salió el gatito!', 3000);

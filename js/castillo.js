@@ -80,6 +80,8 @@ const Castillo = (() => {
             x: c * TS, base: (r + 1) * TS, w: TS,
             fase: (c * 1.3) % 3.6,   // no escupen todas juntas
             alto: 0,
+            apagada: false,   // un disparo la apaga para siempre
+            hielo: 0,         // el hielo de Ciela además la deja congelada
           });
           map[r][c] = TILE.AIR;
 
@@ -151,6 +153,9 @@ const Castillo = (() => {
 
   function _rejillas(dt, ps) {
     for (const j of rejillas) {
+      if (j.hielo > 0) j.hielo -= dt;
+      // Apagada de un disparo: deja de ser peligro y de contar el tiempo.
+      if (j.apagada) { j.alto = 0; j.avisa = false; continue; }
       j.fase = (j.fase + dt) % 3.6;
       // 2,4 s apagada · 0,4 s la rejilla al rojo (el aviso) · 0,8 s de fuego
       const k = j.fase;
@@ -164,6 +169,42 @@ const Castillo = (() => {
         const toca = ps.x + ps.w > j.x + 6 && ps.x < j.x + j.w - 6 &&
                      ps.y + ps.h > j.base - altoPx && ps.y < j.base;
         if (toca) Player.takeDamage(j.x + j.w / 2);
+      }
+    }
+  }
+
+  // ── Apagar el mechero de un tiro ───────────────────────
+  //
+  //  El mechero era el único peligro del juego contra el que no se podía hacer
+  //  NADA: sólo esperar el ritmo. Ahora un disparo lo apaga y queda apagado.
+  //  Es el premio por tener un arma, y le da a la nena algo que hacer con ella
+  //  además de matar bichos.
+  //
+  //  El hielo de Ciela lo congela además de apagarlo — mismo resultado, otra
+  //  cara: lo deja escarchado en vez de humeante. Es puro mimo, pero es el tipo
+  //  de detalle por el que un chico elige un personaje.
+  function checkProjectileHits(projectiles, fireballs) {
+    if (!activo) return;
+    const todos = [...(projectiles || []), ...(fireballs || [])];
+    for (const j of rejillas) {
+      if (j.apagada) continue;
+      for (const p of todos) {
+        if (!p.active) continue;
+        // La caja del mechero: la reja y un poco de aire encima.
+        if (p.x < j.x || p.x > j.x + j.w) continue;
+        if (p.y < j.base - TS * 1.2 || p.y > j.base) continue;
+        p.active = false;
+        j.apagada = true;
+        j.hielo = (p.kind === 'ice') ? 999 : 0;
+        if (typeof Renderer !== 'undefined') {
+          Renderer.spawnParticles(j.x + j.w / 2, j.base - TS * 0.4,
+                                  j.hielo ? '#7dd3fc' : '#a8a29e', 16);
+          Renderer.spawnText(j.x + j.w / 2, j.base - TS * 1.4,
+                             j.hielo ? '❄️ ¡Congelado!' : '💨 ¡Apagado!',
+                             j.hielo ? '#7dd3fc' : '#e7e5e4');
+        }
+        if (typeof AudioManager !== 'undefined') AudioManager.sfx('death_enemy');
+        break;
       }
     }
   }
@@ -268,13 +309,22 @@ const Castillo = (() => {
       // Los cinco cuadros que llegaron traen la REJA INCLUIDA y alineada a la
       // misma base: apagada, llamita, columna entera, media, y apagada al rojo.
       // Por eso va un solo dibujo y no reja + fuego por separado.
-      const idx = j.alto > 0.80 ? 2 : j.alto > 0.45 ? 3 : j.alto > 0.12 ? 1
+      const idx = j.apagada ? 0
+                : j.alto > 0.80 ? 2 : j.alto > 0.45 ? 3 : j.alto > 0.12 ? 1
                 : j.avisa ? 4 : 0;
       const img = _img('llamarada' + idx);
       if (img) {
         const ar = img.naturalWidth / img.naturalHeight;
         const dh = TS * 2.6, dw = dh * ar;
-        ctx.drawImage(img, sx + TS / 2 - dw / 2, j.base - camY - dh, dw, dh);
+        if (j.apagada) {
+          // Apagada se ve muerta: gris si la reventaste, escarchada si la
+          // congelaste. Sin esto quedaba igual que una que todavía no escupió,
+          // y no se entendía que ya no volvía.
+          _conTinte(ctx, img, sx + TS / 2 - dw / 2, j.base - camY - dh, dw, dh,
+                    j.hielo > 0 ? 'rgba(125,211,252,0.75)' : 'rgba(40,38,36,0.78)');
+        } else {
+          ctx.drawImage(img, sx + TS / 2 - dw / 2, j.base - camY - dh, dw, dh);
+        }
         continue;
       }
       ctx.save();
@@ -350,6 +400,23 @@ const Castillo = (() => {
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+  }
+
+  // Teñir en un lienzo aparte: pintar con 'source-atop' sobre el canvas
+  // principal mancharía el nivel entero, no el sprite.
+  const _lienzo = document.createElement('canvas');
+  const _lctx   = _lienzo.getContext('2d');
+  function _conTinte(ctx, img, dx, dy, dw, dh, color) {
+    const w = Math.max(1, Math.ceil(dw)), h = Math.max(1, Math.ceil(dh));
+    if (_lienzo.width  < w) _lienzo.width  = w;
+    if (_lienzo.height < h) _lienzo.height = h;
+    _lctx.globalCompositeOperation = 'source-over';
+    _lctx.clearRect(0, 0, _lienzo.width, _lienzo.height);
+    _lctx.drawImage(img, 0, 0, w, h);
+    _lctx.globalCompositeOperation = 'source-atop';
+    _lctx.fillStyle = color;
+    _lctx.fillRect(0, 0, w, h);
+    ctx.drawImage(_lienzo, 0, 0, w, h, dx, dy, dw, dh);
   }
 
   // ── Formas de canvas, para jugar antes de que existan los sprites ──
@@ -480,6 +547,6 @@ const Castillo = (() => {
              escombros: props.length, retratos: retratos.length };
   }
 
-  return { init, spawnFromMap, update, drawFondo, draw, estado };
+  return { init, spawnFromMap, update, checkProjectileHits, drawFondo, draw, estado };
 
 })();

@@ -128,6 +128,39 @@ const CHARACTERS = {
     colorPalette: ['#f97316','#a78bfa','#38bdf8','#4ade80','#f9c846','#f472b6'],
   },
 
+  estrellaria: {
+    label:   'Estrellaria',
+    ability: '← ← Estrellas de colores',
+    desc:    'Dispara estrellas de todos los colores, y muy seguido.',
+    color:   '#f472b6',
+    img:     'img/estrellaria.png',
+
+    speed:        290,
+    jumpForce:   -610,
+    dblJumpForce:-520,
+    gravity:     1340,
+    slideSpeed:   400,
+
+    // ── Proyectil: estrellas multicolor ───────────────
+    //  Su identidad es el DISPARO, no el movimiento: es la que tira más rápido
+    //  del juego. Las otras cuatro se eligen por cómo se mueven (doble salto,
+    //  deslizarse, flotar, volar); ésta se elige por cómo ataca.
+    //
+    //  El color sale de colorPalette igual que las bolas de Nuve: player.js ya
+    //  rota el índice solo cuando `color` viene en null.
+    projectileDef: {
+      kind:     'star',
+      vxMult:   560,
+      vy:       -18,
+      r:        11,
+      life:     1.6,
+      color:    null,
+      cooldown: 0.32,        // el más corto del juego
+      particleCount: 10,
+    },
+    colorPalette: ['#f472b6','#fbbf24','#38bdf8','#4ade80','#a78bfa','#fb7185','#67e8f9'],
+  },
+
   // ════════════════════════════════════════════════════
   //  PERSONAJES FUTUROS — agregar acá
   // ════════════════════════════════════════════════════

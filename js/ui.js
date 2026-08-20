@@ -12,12 +12,13 @@ const UI = (() => {
   let elAbilityBadge, elCheckpointFlash;
   let abilityBadgeTimer = null;
 
-  const CHAR_IDS = ['nuveciela', 'ciela', 'lunaria', 'nuve'];
+  const CHAR_IDS = ['nuveciela', 'ciela', 'lunaria', 'nuve', 'estrellaria'];
   const CHARS = {
     nuveciela: { emoji: '🌈', ability: '← ← Bola de fuego 🔥' },
     ciela:     { emoji: '💧', ability: '← ← Hielo ❄️ congela' },
     lunaria:   { emoji: '✨', ability: '← ← Rayo de luz ☀️' },
     nuve:      { emoji: '🔥', ability: '↑↑ Volar + ← ← Bolas 🎨' },
+    estrellaria:{ emoji: '⭐', ability: '← ← Estrellas de colores ✨' },
   };
 
   let selectedChar = null;
