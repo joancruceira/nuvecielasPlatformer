@@ -125,6 +125,7 @@ const SubEntities = (() => {
   // ── GATITOS COLECCIONABLES ────────────────────────────
   function spawnKitties() {
     S.kitties = [];
+    S.fila = [];   // la fila de rescatados arranca vacía en cada intento
     const { MAP_H, TS, KITTY_COLS } = S;
 
     for(const col of KITTY_COLS){
@@ -162,10 +163,59 @@ const SubEntities = (() => {
       const ox = (ps.x+ps.w)>k.x && ps.x<(k.x+k.w);
       const oy = (ps.y+ps.h)>k.y && ps.y<(k.y+k.h);
       if(ox && oy){
+        // Ya no desaparece: se suma a la FILA y te sigue. Antes juntar un gatito
+        // sólo sumaba puntos y el gatito se esfumaba — justo en el nivel que
+        // trata de rescatarlos.
         k.collected = true; ps.score += 50;
+        k.orden = S.fila.length;
+        S.fila.push(k);
         Renderer.spawnParticles && Renderer.spawnParticles(k.x-cam.x, k.y-cam.y, '#ffd93d', 12);
         Renderer.spawnText && Renderer.spawnText(k.x-cam.x, k.y-cam.y-20, '+50 🐱', '#ffd93d');
       }
+    }
+    _actualizarFila(dt);
+  }
+
+  // ── LA FILA DE GATITOS ────────────────────────────────
+  //
+  //  Los rescatados caminan atrás tuyo como patitos. Cada uno persigue al de
+  //  adelante, no al jugador: así la fila se curva sola en vez de amontonarse,
+  //  y al frenar se acordeona en lugar de superponerse.
+  //
+  //  Sirve para dos cosas además de ser lindo: lo que juntaste SE VE todo el
+  //  tiempo sin mirar un número, y el final deja de ser "matá al jefe" para ser
+  //  "llegaste con todos".
+  function _actualizarFila(dt) {
+    const ps = S.ps;
+    const SEPARACION = 34;
+
+    for (let i = 0; i < S.fila.length; i++) {
+      const g = S.fila[i];
+      const delante = i === 0
+        ? { x: ps.x + ps.w / 2, y: ps.y + ps.h }
+        : { x: S.fila[i-1].x + S.fila[i-1].w / 2, y: S.fila[i-1].y + S.fila[i-1].h };
+
+      const dx = delante.x - (g.x + g.w / 2);
+      const dist = Math.abs(dx);
+
+      // Sólo camina si quedó lejos: si no, tiembla en el lugar.
+      if (dist > SEPARACION) {
+        const paso = Math.min(dist - SEPARACION, 260 * dt);
+        g.x += Math.sign(dx) * paso;
+        g.walkDir = Math.sign(dx);
+        g.frameTick += dt;
+        if (g.frameTick > 0.10) { g.frameTick = 0; g.frameIdx = (g.frameIdx + 1) % 4; }
+      }
+
+      // Y se apoya en el piso que tenga debajo, para no flotar en los pozos.
+      const col = Math.floor((g.x + g.w / 2) / S.TS);
+      let fila = -1;
+      for (let r = 0; r < S.MAP_H; r++) {
+        const tt = S.subMap[r] && S.subMap[r][col];
+        if (tt === 1 || tt === 5 || tt === 3) { fila = r; break; }
+      }
+      const destinoY = fila >= 0 ? fila * S.TS - g.h : delante.y - g.h;
+      g.y += (destinoY - g.y) * Math.min(1, dt * 9);
     }
   }
 

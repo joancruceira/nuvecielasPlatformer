@@ -53,6 +53,60 @@ const SubRender = (() => {
   // ═══════════════════════════════════════════════════
   //  CAPA 1 — FONDO (cielo, void, parallax)
   // ═══════════════════════════════════════════════════
+
+  // ── LA HORA DEL DÍA ───────────────────────────────────
+  //
+  //  El cielo era un degradé FIJO de atardecer con el sol clavado al 75 % de la
+  //  pantalla: no se movía con la cámara ni cambiaba en 200 tiles. La costanera,
+  //  la ciudad, el río y el corralón se veían con la misma luz.
+  //
+  //  Ahora la luz corre con el avance, que es la forma más barata de que un
+  //  nivel largo se sienta un viaje:
+  //
+  //     costanera  →  ciudad   →   río      →  corralón  →  rescate
+  //     sol de tarde  atardece    tormenta      noche       primeras luces
+  //
+  //  Todo por código: no hace falta un solo sprite nuevo.
+  const HORAS = [
+    // avance, cielo (de arriba abajo), sol: [x, alto, color, tamaño]
+    //  `velo` es la clave: los fondos de Rosario están pintados a pleno sol
+    //  dorado y se dibujan ENCIMA del cielo, así que por más que oscurezcas el
+    //  degradé el atardecer no llega nunca. El velo se pinta sobre las capas y
+    //  es lo que de verdad hace anochecer.
+    { p:0.00, cielo:['#4aa3d8','#8fc9e8','#ffd89b','#ffc078'], sol:[0.78,0.30,'#fff3b0',30], estrellas:0,    velo:['10,8,40',0.00] },
+    { p:0.30, cielo:['#2a5a9e','#7a6fb0','#f0904a','#fbbf6e'], sol:[0.72,0.48,'#ffe066',26], estrellas:0,    velo:['40,16,50',0.16] },
+    { p:0.52, cielo:['#1a0a3d','#3d1a6e','#c25218','#f4813a'], sol:[0.66,0.66,'#ff9a3c',22], estrellas:0.25, velo:['30,12,52',0.34] },
+    { p:0.68, cielo:['#0a0620','#191036','#2a1a4a','#3a2a55'], sol:[0.58,0.92,'#6b5a80',14], estrellas:0.85, velo:['12,8,34',0.60] },
+    { p:0.84, cielo:['#05040f','#0c0a20','#141030','#1c1838'], sol:[0.50,1.20,'#3a3050', 8], estrellas:1.00, velo:['6,5,20',0.78] },
+    { p:1.00, cielo:['#0a0a1f','#16123a','#2a2050','#4a3a60'], sol:[0.44,1.10,'#5a4a70',10], estrellas:0.80, velo:['8,6,26',0.70] },
+  ];
+
+  function _mez(a, b, k) {
+    const h = s => [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)];
+    const A = h(a), B = h(b);
+    return `rgb(${Math.round(A[0]+(B[0]-A[0])*k)},${Math.round(A[1]+(B[1]-A[1])*k)},${Math.round(A[2]+(B[2]-A[2])*k)})`;
+  }
+
+  function _hora() {
+    // El avance sale de la CÁMARA, no del jugador: así el cielo no salta si el
+    // jugador retrocede un paso.
+    const p = Math.max(0, Math.min(1, S.cam.x / ((S.MAP_W - 12) * S.TS)));
+    let i = 0;
+    while (i < HORAS.length - 2 && p > HORAS[i + 1].p) i++;
+    const a = HORAS[i], b = HORAS[i + 1];
+    const k = (p - a.p) / (b.p - a.p || 1);
+    return {
+      cielo: a.cielo.map((c, j) => _mez(c, b.cielo[j], k)),
+      solX:  a.sol[0] + (b.sol[0] - a.sol[0]) * k,
+      solY:  a.sol[1] + (b.sol[1] - a.sol[1]) * k,
+      solCol:_mez(a.sol[2], b.sol[2], k),
+      solR:  a.sol[3] + (b.sol[3] - a.sol[3]) * k,
+      estrellas: a.estrellas + (b.estrellas - a.estrellas) * k,
+      velo: `rgba(${k < 0.5 ? a.velo[0] : b.velo[0]},${(a.velo[1] + (b.velo[1]-a.velo[1])*k).toFixed(3)})`,
+      avance: p,
+    };
+  }
+
   function drawBg(ctx, W, H) {
     const groundY = S.GROUND_ROW * S.TS;  // y=480, cam.y siempre 0
 
@@ -85,29 +139,36 @@ const SubRender = (() => {
       const skyH = Math.min(groundY, H);
       if(skyH <= 0) return;
 
+      const hora = _hora();
       const sky = ctx.createLinearGradient(0,0,0,skyH);
-      sky.addColorStop(0,    '#1a0a3d');
-      sky.addColorStop(0.28, '#3d1a6e');
-      sky.addColorStop(0.55, '#c25218');
-      sky.addColorStop(0.78, '#f4813a');
-      sky.addColorStop(1,    '#fbbf6e');
+      sky.addColorStop(0,    hora.cielo[0]);
+      sky.addColorStop(0.34, hora.cielo[1]);
+      sky.addColorStop(0.70, hora.cielo[2]);
+      sky.addColorStop(1,    hora.cielo[3]);
       ctx.fillStyle = sky; ctx.fillRect(0, 0, W, skyH);
 
-      // Sol
-      const sunX=W*0.75, sunY=skyH*0.58;
-      const sg=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,110);
-      sg.addColorStop(0,'rgba(255,235,80,0.92)');
-      sg.addColorStop(0.2,'rgba(255,165,40,0.55)');
-      sg.addColorStop(0.6,'rgba(255,100,20,0.15)');
-      sg.addColorStop(1,'transparent');
-      ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sunX,sunY,110,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#ffe066';ctx.beginPath();ctx.arc(sunX,sunY,24,0,Math.PI*2);ctx.fill();
+      // El sol baja y se corre con el avance. Cuando solY pasa de 1 ya está
+      // abajo del horizonte y sólo queda el resplandor.
+      const sunX = W*hora.solX, sunY = skyH*hora.solY;
+      const halo = 110 * (1 - hora.avance*0.45);
+      const sg=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,halo);
+      sg.addColorStop(0,   hora.solCol);
+      sg.addColorStop(0.22,'rgba(255,165,40,0.45)');
+      sg.addColorStop(0.6, 'rgba(255,100,20,0.12)');
+      sg.addColorStop(1,   'transparent');
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - Math.max(0, hora.solY-1)*3);
+      ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sunX,sunY,halo,0,Math.PI*2);ctx.fill();
+      if(hora.solY < 1.02){
+        ctx.fillStyle=hora.solCol;
+        ctx.beginPath();ctx.arc(sunX,sunY,hora.solR,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
 
       // Estrellas parpadeantes
       const stars=[[0.08,0.08],[0.20,0.04],[0.32,0.12],[0.47,0.06],[0.61,0.09],[0.80,0.12],[0.91,0.05]];
       for(const [sx,sy] of stars){
         const py=sy*skyH; if(py>skyH) continue;
-        ctx.globalAlpha=0.22+Math.sin(S.gameTime*3+sx*12)*0.38;
+        ctx.globalAlpha=(0.22+Math.sin(S.gameTime*3+sx*12)*0.38) * _hora().estrellas;
         ctx.fillStyle='#fff'; ctx.fillRect(sx*W-1,py-1,2,2);
       }
       ctx.globalAlpha=1;
@@ -128,9 +189,41 @@ const SubRender = (() => {
         ctx.globalAlpha=l.alpha;
         ctx.drawImage(im,-off,0,dw,dh);
       }
+      // El velo va acá adentro, todavía clipeado al cielo: oscurece las capas
+      // de Rosario sin tocar el suelo ni a los personajes.
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = hora.velo;
+      ctx.fillRect(0, 0, W, skyH);
       ctx.restore();
 
-      // ── Tormenta (zona 4-5) ───────────────────────────
+      // ── El corralón (zona 5): faroles de sodio ────────
+    //
+    //  La zona del jefe no puede ser un vacío violeta: es un depósito municipal
+    //  de noche, y de noche lo que hay son faroles naranjas cada tantos metros.
+    //  Son charcos de luz por código, sin sprite, y además cumplen una función
+    //  de juego: marcan el ancho de la arena.
+    {
+      const y0 = S.GROUND_ROW * S.TS;
+      for (let col = 162; col <= 188; col += 9) {
+        const lx = col * S.TS - S.cam.x;
+        if (lx < -260 || lx > W + 260) continue;
+        const parp = 0.86 + Math.sin(S.gameTime * 7 + col) * 0.07
+                          + Math.sin(S.gameTime * 19 + col) * 0.04;
+        const g = ctx.createRadialGradient(lx, y0 - 150, 4, lx, y0 - 150, 230);
+        g.addColorStop(0,    `rgba(255,176,80,${0.30 * parp})`);
+        g.addColorStop(0.45, `rgba(255,140,40,${0.12 * parp})`);
+        g.addColorStop(1,    'rgba(255,140,40,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(lx, y0 - 150, 230, 0, Math.PI * 2); ctx.fill();
+        // el poste y la lámpara
+        ctx.fillStyle = 'rgba(30,28,26,0.9)';
+        ctx.fillRect(lx - 3, y0 - 210, 6, 210);
+        ctx.fillStyle = `rgba(255,196,110,${parp})`;
+        ctx.beginPath(); ctx.ellipse(lx, y0 - 212, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // ── Tormenta (zona 4-5) ───────────────────────────
       const z4sx=130*S.TS-S.cam.x, z5ex=190*S.TS-S.cam.x;
       if(z5ex>0 && z4sx<W){
         const x0=Math.max(0,z4sx), x1=Math.min(W,z5ex);
@@ -195,6 +288,34 @@ const SubRender = (() => {
   // ═══════════════════════════════════════════════════
   //  CAPA 3 — TILEMAP
   // ═══════════════════════════════════════════════════
+
+  // ── El corralón: de morado mágico a cemento ───────────
+  //
+  //  Los tiles 'dark' están pintados en violeta (rgb 52,28,54): es lo único del
+  //  subnivel que no podría existir en Rosario. Se tiñen UNA vez a cemento
+  //  sucio y quedan guardados — teñir por frame sería carísimo, y hacerlo con
+  //  'source-atop' sobre el canvas principal mancharía la pantalla entera.
+  const _cemento = {};
+  function _aCemento(key) {
+    if (_cemento[key] !== undefined) return _cemento[key];
+    const im = S.imgs[key];
+    if (!(im && im.complete && im.naturalWidth > 0)) return null;
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const x = c.getContext('2d');
+    x.drawImage(im, 0, 0);
+    x.globalCompositeOperation = 'saturation';   // mata el violeta
+    x.fillStyle = 'hsl(0,0%,50%)';
+    x.fillRect(0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'multiply';     // cemento sucio, no negro
+    x.fillStyle = '#8a8580';
+    x.fillRect(0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'destination-in';
+    x.drawImage(im, 0, 0);
+    _cemento[key] = c;
+    return c;
+  }
+
   function drawTilemap(ctx, W, H) {
     if(!S.subMap) return;
     const { TS, MAP_W, MAP_H, PAL } = S;
@@ -262,23 +383,23 @@ const SubRender = (() => {
 
         // ── Tile 5: suelo dark TOP ────────────────────
         else if(t===5){
-          if(!drawImg(ctx,'tile_dark_top',sx,sy,TS,TS)){
-            ctx.fillStyle='#382058'; ctx.fillRect(sx,sy,TS,TS);
-            if(c%6===0){
-              ctx.fillStyle=PAL.DARK_GLOW; ctx.globalAlpha=0.3;
-              ctx.beginPath();ctx.arc(sx+24,sy+24,7,0,Math.PI*2);ctx.fill();
-              ctx.globalAlpha=1;
-            }
+          const cem = _aCemento('tile_dark_top');
+          if(cem) ctx.drawImage(cem, sx, sy, TS, TS);
+          else {
+            ctx.fillStyle='#4a4640'; ctx.fillRect(sx,sy,TS,TS);
           }
-          ctx.fillStyle=PAL.DARK_GLOW; ctx.fillRect(sx,sy,TS,4);
-          ctx.fillStyle='rgba(200,140,255,0.45)'; ctx.fillRect(sx,sy,TS,2);
+          // La franja de arriba era violeta fosforescente; ahora es el reflejo
+          // del farol de sodio sobre el cemento mojado.
+          ctx.fillStyle=PAL.DARK_GLOW; ctx.globalAlpha=0.55;
+          ctx.fillRect(sx,sy,TS,3); ctx.globalAlpha=1;
+          ctx.fillStyle='rgba(255,210,150,0.35)'; ctx.fillRect(sx,sy,TS,1);
         }
 
         // ── Tile 6: relleno dark ──────────────────────
         else if(t===6){
-          if(!drawImg(ctx,'tile_dark_mid',sx,sy,TS,TS)){
-            ctx.fillStyle='#201030'; ctx.fillRect(sx,sy,TS,TS);
-          }
+          const cem = _aCemento('tile_dark_mid');
+          if(cem) ctx.drawImage(cem, sx, sy, TS, TS);
+          else { ctx.fillStyle='#2e2b28'; ctx.fillRect(sx,sy,TS,TS); }
         }
       }
     }
@@ -396,6 +517,17 @@ const SubRender = (() => {
   // ═══════════════════════════════════════════════════
   function drawKitties(ctx) {
     const cam=S.cam;
+
+    // La fila de rescatados, primero: van detrás del jugador.
+    for(const g of S.fila){
+      const sx=g.x-cam.x, sy=g.y;
+      if(sx<-60||sx>2000) continue;
+      if(!drawImg(ctx,`gatito_walk${g.frameIdx}`,sx,sy,g.w,g.h)){
+        ctx.fillStyle='#f97316';
+        ctx.beginPath();ctx.ellipse(sx+16,sy+14,12,9,0,0,Math.PI*2);ctx.fill();
+      }
+    }
+
     for(const k of S.kitties){
       if(k.collected) continue;
       const sx=k.x-cam.x, sy=k.y;

@@ -24,7 +24,10 @@ const S = {
     WATER_TOP:   '#7a4e1a',
     WATER_MID:   '#5a3610',
     WATER_ANIM:  '#c8902a',
-    DARK_GLOW:   '#a060f0',
+    // Era violeta mágico y era LO ÚNICO del subnivel que no podía existir en
+    // Rosario — justo en el tramo donde el nivel se pone serio. Ahora es la
+    // franja de un corralón municipal iluminado por faroles de sodio.
+    DARK_GLOW:   '#ff9a3c',
   },
 
   // ── Personajes ────────────────────────────────────────
@@ -83,6 +86,8 @@ const S = {
 
   // ── Gatitos coleccionables ────────────────────────────
   kitties: [],
+  // Los rescatados, en orden. Caminan atrás del jugador como patitos.
+  fila: [],
   // Sin cols sobre el río (129-159)
   KITTY_COLS: [8,18,26,52,66,80,95,110,122,165,172,180,193,196],
 
