@@ -103,29 +103,83 @@ const EngineInput = (() => {
     let _jumpBufferUsed = false;
     const JUMP_BUFFER_MS = 140;
 
-    function bindBtn(id, onDown, onUp) {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      btn.addEventListener('pointerdown', ev => {
-        ev.preventDefault();
-        btn.setPointerCapture(ev.pointerId);
-        btn.classList.add('pressed');
-        onDown();
-      }, { passive: false });
-      btn.addEventListener('pointerup', ev => {
-        ev.preventDefault();
-        btn.classList.remove('pressed');
-        onUp();
-      }, { passive: false });
-      btn.addEventListener('pointercancel', () => {
-        btn.classList.remove('pressed');
-        onUp();
-      });
-    }
+    // ── Cruceta como ZONA, no como botones sueltos ────────
+    //
+    // Antes cada botón hacía setPointerCapture(pointerId): una vez que
+    // apoyabas el dedo, TODOS los eventos iban a ese botón hasta levantarlo.
+    // Si deslizabas el pulgar de ◀ a ▶ sin levantarlo —que es lo que hace
+    // cualquiera, y más un chico— el botón de destino nunca recibía
+    // pointerdown y el personaje se quedaba clavado.
+    //
+    // Ahora la captura la toma la ZONA y en cada pointermove se resuelve qué
+    // botón está debajo del dedo. El Map por pointerId mantiene intacto el
+    // multitáctil: podés estar yendo a la derecha con un pulgar y saltando
+    // con el otro.
+    function _setupCruceta() {
+      const zona = document.querySelector('.mc-left');
+      if (!zona) return;
 
-    bindBtn('mcLeft',  () => _input.left  = true,  () => _input.left  = false);
-    bindBtn('mcRight', () => _input.right = true,  () => _input.right = false);
-    bindBtn('mcDown',  () => _input.down  = true,  () => _input.down  = false);
+      const BOTONES = [
+        { id: 'mcLeft',  campo: 'left'  },
+        { id: 'mcRight', campo: 'right' },
+        { id: 'mcDown',  campo: 'down'  },
+      ].map(b => ({ ...b, el: document.getElementById(b.id) })).filter(b => b.el);
+
+      const activos = new Map();   // pointerId → botón
+
+      // Radio generoso: el dedo tapa el botón, no lo ve.
+      function bajoElDedo(x, y) {
+        let mejor = null, mejorD = Infinity;
+        for (const b of BOTONES) {
+          const r = b.el.getBoundingClientRect();
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          const d = Math.hypot(x - cx, y - cy);
+          if (d < r.width * 0.95 && d < mejorD) { mejor = b; mejorD = d; }
+        }
+        return mejor;
+      }
+
+      function aplicar(b, activo) {
+        if (!b) return;
+        b.el.classList.toggle('pressed', activo);
+        _input[b.campo] = activo;
+      }
+
+      // Si dos dedos comparten un botón, no lo apagues hasta que se vayan los dos
+      function sigueTocado(b) {
+        for (const otro of activos.values()) if (otro === b) return true;
+        return false;
+      }
+
+      zona.addEventListener('pointerdown', ev => {
+        ev.preventDefault();
+        try { zona.setPointerCapture(ev.pointerId); } catch (e) {}
+        const b = bajoElDedo(ev.clientX, ev.clientY);
+        activos.set(ev.pointerId, b);
+        aplicar(b, true);
+      }, { passive: false });
+
+      zona.addEventListener('pointermove', ev => {
+        if (!activos.has(ev.pointerId)) return;
+        const antes = activos.get(ev.pointerId);
+        const ahora = bajoElDedo(ev.clientX, ev.clientY);
+        if (antes === ahora) return;
+        activos.set(ev.pointerId, ahora);
+        if (antes && !sigueTocado(antes)) aplicar(antes, false);
+        aplicar(ahora, true);
+      }, { passive: false });
+
+      function soltar(ev) {
+        if (!activos.has(ev.pointerId)) return;
+        const b = activos.get(ev.pointerId);
+        activos.delete(ev.pointerId);
+        if (b && !sigueTocado(b)) aplicar(b, false);
+      }
+      zona.addEventListener('pointerup',     soltar, { passive: false });
+      zona.addEventListener('pointercancel', soltar);
+      zona.addEventListener('lostpointercapture', soltar);
+    }
+    _setupCruceta();
 
     // ── Botón salto ───────────────────────────────────────
     // Cada pointerdown = un salto. Simple y confiable.

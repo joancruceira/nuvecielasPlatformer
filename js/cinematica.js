@@ -47,8 +47,126 @@ const Cinematica = (() => {
       ],
     },
 
-    // ── CINEMÁTICA 1: La invasión ─────────────────────────
-    // (placeholder para la segunda imagen cuando esté lista)
+    // ── NIVEL 2 · El Castillo de Nuveciela ───────────────
+    cin_nivel2: {
+      titulo: 'El castillo embrujado',
+      escenas: [
+        {
+          imagen: 'img/back_castlenc01.png',
+          texto: [
+            'La sombra no se quedó quieta.',
+            'Ahora embrujó el Castillo de Nuveciela, junto con sus secuaces.',
+            'Hechizó a las serpientes, y llenó los salones de fantasmas.',
+          ],
+        },
+        {
+          imagen: 'img/back_castlenc03.png',
+          texto: [
+            'Adentro ya nadie se acuerda de cómo era el castillo antes.',
+            '🎯 Misión: rompé la maldición y vencé al Fantasma Malvado.',
+          ],
+        },
+      ],
+    },
+
+    // ── NIVEL 3 · El Sendero Nocturno ────────────────────
+    cin_nivel3: {
+      titulo: 'La noche que no terminaba',
+      escenas: [
+        {
+          imagen: 'img/sendero0.png',
+          texto: [
+            'La sombra hizo otra travesura.',
+            'Hechizó el sendero para que la noche fuera eterna.',
+            'Y a las orugas, a los murciélagos y a los arbustos los puso en tu contra.',
+          ],
+        },
+        {
+          imagen: 'img/sendero1.png',
+          texto: [
+            'Hasta la Lechuza Guardiana, que cuidaba el camino, cayó bajo el hechizo.',
+            'No es mala. Está embrujada, como todos los demás.',
+          ],
+        },
+        {
+          imagen: 'img/sendero2.png',
+          texto: [
+            '🎯 Misión: devolvele el día al sendero y liberá a la Lechuza Guardiana.',
+          ],
+        },
+      ],
+    },
+
+    // ── NIVEL 4 · El Castillo de la Ciela ────────────────
+    cin_nivel4: {
+      titulo: 'El castillo congelado',
+      escenas: [
+        {
+          imagen: 'img/level4/fondo_level4.jpg',
+          texto: [
+            'Esta vez la sombra hizo una travesura terrible.',
+            'Congeló entero el Castillo de la Ciela.',
+            'Las armaduras y las gárgolas despertaron hechizadas.',
+          ],
+        },
+        {
+          imagen: 'img/level4/fondo_level4.jpg',
+          texto: [
+            'Y en la última sala, detrás del Rey de Escarcha,',
+            'dejó a tus tres amigas encerradas en una jaula de hielo.',
+            '🎯 Misión: descongelá el castillo, vencé al Rey de Escarcha y liberalas.',
+          ],
+        },
+      ],
+    },
+
+    // ── NIVEL 5 · Atravesando el Lago ────────────────────
+    // Sin imagen: el lago no tiene fondo propio, así que la escena se pinta
+    // con su misma paleta (ver `gradiente` en _loadScene).
+    cin_nivel5: {
+      titulo: 'El lago',
+      escenas: [
+        {
+          gradiente: ['#082f49', '#0284c7'],
+          texto: [
+            'A la sombra ya casi no le quedaban travesuras.',
+            'Así que se escondió del otro lado del lago, en lo más hondo.',
+            'Y hechizó a todo lo que vive en el agua para que nadie pudiera cruzar.',
+          ],
+        },
+        {
+          gradiente: ['#041f33', '#0e7490'],
+          texto: [
+            'Abajo hay algo más: una Nuveciela de piedra, hundida hace muchísimo.',
+            'Al tiburón no lo vas a poder vencer. A ese hay que escaparle.',
+            '🎯 Misión: cruzá el lago y llegá hasta la sombra.',
+          ],
+        },
+      ],
+    },
+
+    // ── SUBMISIÓN · El rescate de Pablo ──────────────────
+    cin_sub: {
+      titulo: '¡Misión urgente!',
+      escenas: [
+        {
+          imagen: 'img/submision/cielo_lejano.png',
+          texto: [
+            '¡Llegó un mensaje urgente desde la Tierra!',
+            'La sombra se coló por un portal y se llevó a Pablo, el gato.',
+            'Lo tienen encerrado en una jaula, en Rosario.',
+          ],
+        },
+        {
+          imagen: 'img/submision/fondo_rosario.png',
+          texto: [
+            'Nina y Jazmín salen a buscarlo por la costanera.',
+            'Ellas no tienen poderes mágicos: tiran corazones.',
+            '🎯 Misión: rescatá a Pablo y traelo de vuelta a Manolandia.',
+          ],
+        },
+      ],
+    },
 
   };
 
@@ -100,20 +218,43 @@ const Cinematica = (() => {
     _textIndex = 0;
     const scene = _scenes[idx];
 
-    const img = document.getElementById('cinImage');
-    img.style.opacity = '0';
-    img.src = scene.imagen;
-    img.onload = () => {
-      img.style.transition = 'opacity 0.8s ease';
-      img.style.opacity = '1';
-    };
-    // Si ya estaba cargada
-    if (img.complete && img.naturalWidth > 0) {
-      img.style.opacity = '1';
+    const cont = document.querySelector('.cin-container');
+    const img  = document.getElementById('cinImage');
+
+    // Escenas sin imagen: se pintan con la paleta del nivel. Sirve para el
+    // lago, que no tiene fondo propio, y como red para cualquier cinemática
+    // cuyo arte todavía no exista: se ve digna igual y después se reemplaza
+    // `gradiente` por `imagen` sin tocar nada más.
+    if (!scene.imagen && scene.gradiente) {
+      img.style.display = 'none';
+      if (cont) cont.style.background =
+        `linear-gradient(160deg, ${scene.gradiente[0]}, ${scene.gradiente[1]})`;
+    } else {
+      if (cont) cont.style.background = '';
+      img.style.display = '';
+      img.style.opacity = '0';
+      img.src = scene.imagen;
+      img.onload = () => {
+        img.style.transition = 'opacity 0.8s ease';
+        img.style.opacity = '1';
+      };
+      // Si ya estaba cargada (la precargamos al arrancar la cinemática)
+      if (img.complete && img.naturalWidth > 0) img.style.opacity = '1';
     }
 
     _updateProgress();
     _typeText();
+  }
+
+  // Precarga de todas las imágenes de la cinemática antes de mostrarla.
+  // Sin esto, cada cambio de escena mostraba un parpadeo en negro mientras
+  // el navegador iba a buscar la imagen.
+  function _precargar(escenas) {
+    for (const e of escenas) {
+      if (!e.imagen) continue;
+      const i = new Image();
+      i.src = e.imagen;
+    }
   }
 
   function _typeText() {
@@ -218,6 +359,7 @@ const Cinematica = (() => {
 
     _buildDOM();
     _scenes = data.escenas;
+    _precargar(_scenes);
     _currentScene = 0;
     _textIndex = 0;
 
