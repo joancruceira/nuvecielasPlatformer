@@ -127,44 +127,10 @@ const EnemiesLevel3 = (() => {
 
   function _vuela(e) { return e.type === 'murcielago' || e.type === 'lechuza'; }
 
+  // Delega en EnemyCommon. Antes esto eran ~30 lineas identicas a las de
+  // los otros sistemas salvo tres numeros, que ahora van como opciones.
   function _applyGravity(e, dt, map) {
-    if(!map) return;
-    const TS   = 48;
-    const rows = map.length, cols = map[0].length;
-
-    // Acumular gravedad y mover
-    if(!e.onGround) {
-      e.vy = Math.min((e.vy||0) + 900*dt, 900);
-      e.y += e.vy * dt;
-    }
-    e.onGround = false;
-
-    const c0 = Math.max(0,      Math.floor((e.x + 4)      / TS));
-    const c1 = Math.min(cols-1, Math.floor((e.x + e.w - 4) / TS));
-
-    // Revisar las dos filas que pueden tener suelo (la del pie y la siguiente)
-    for(let rCheck = Math.floor((e.y + e.h - 1) / TS);
-            rCheck <= Math.floor((e.y + e.h + e.vy * dt + 4) / TS) && rCheck < rows;
-            rCheck++) {
-      if(rCheck < 0) continue;
-      for(let c = c0; c <= c1; c++) {
-        const t = map[rCheck]?.[c];
-        if(t === TILE.GROUND || t === TILE.BLOCK) {
-          if(e.vy >= 0) {
-            e.y = rCheck * TS - e.h;
-            e.vy = 0;
-            e.onGround = true;
-          }
-          break;
-        }
-      }
-      if(e.onGround) break;
-    }
-
-    // Caída al vacío → eliminar
-    if(e.y > rows * TS + 100) {
-      e.alive = false; e.state = 'gone';
-    }
+    EnemyCommon.aplicarGravedad(e, dt, map, { gravedad: 900, margenVacio: 100 });
   }
 
   function _collidesWithPlayer(e, ps) {

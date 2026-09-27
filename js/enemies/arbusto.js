@@ -198,8 +198,7 @@ const Arbusto = (() => {
   }
 
   function _drawHpBar(ctx, sx, sy, e) {
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(sx,sy-8,e.w,5);
-    ctx.fillStyle='#84cc16'; ctx.fillRect(sx,sy-8,e.w*(e.hp/e.maxHp),5);
+    EnemyCommon.dibujarBarraVida(ctx, sx, sy, e, '#84cc16');
   }
 
   // Expone sparks para que enemies.js chequee colisión con jugador

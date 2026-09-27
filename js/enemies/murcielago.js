@@ -180,8 +180,7 @@ const Murcielago = (() => {
   }
 
   function _drawHpBar(ctx, sx, sy, e) {
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(sx,sy-8,e.w,5);
-    ctx.fillStyle='#818cf8'; ctx.fillRect(sx,sy-8,e.w*(e.hp/e.maxHp),5);
+    EnemyCommon.dibujarBarraVida(ctx, sx, sy, e, '#818cf8');
   }
 
   return { preload, spawn, update, hit, draw, isBoss };
