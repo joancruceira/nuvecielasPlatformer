@@ -116,6 +116,32 @@ const EnemyCommon = (() => {
     return false;
   }
 
+
+  // ── Apoyo en el suelo, sin integrar la gravedad ──────
+  //
+  // Distinta de aplicarGravedad(): esta NO mueve al enemigo ni acumula vy.
+  // La usan los que ya integran su propia gravedad y solo quieren resolver
+  // el apoyo (walker y serpiente tenian esta misma funcion, identica).
+  //
+  // Mira UNA sola fila, la del pie. Alcanza para enemigos lentos; los
+  // rapidos necesitan aplicarGravedad(), que barre el recorrido del frame.
+  function apoyarEnPiso(e, map, opts = {}) {
+    if (!map || e.vy < 0) return;
+    const rows = map.length, cols = map[0].length;
+    const r  = Math.floor((e.y + e.h) / TS);
+    if (r < 0 || r >= rows) return;
+    const cL = Math.max(0,      Math.floor((e.x + 4)       / TS));
+    const cR = Math.min(cols-1, Math.floor((e.x + e.w - 4) / TS));
+    for (let c = cL; c <= cR; c++) {
+      if (esPiso(map[r]?.[c], opts)) {
+        e.y = r * TS - e.h;
+        e.vy = 0;
+        e.onGround = true;
+        return;
+      }
+    }
+  }
+
   // ── Patrulla entre dos límites, con rebote ───────────
   function patrullar(e, dt) {
     e.x += e.vx * dt;
@@ -163,7 +189,7 @@ const EnemyCommon = (() => {
     return sx > -(e.w || 0) - margen && sx < anchoCanvas + margen;
   }
 
-  return { TS, RADIO_ACTIVO, activo, ruido, fase, aplicarGravedad, esPiso,
+  return { TS, RADIO_ACTIVO, activo, ruido, fase, aplicarGravedad, apoyarEnPiso, esPiso,
            patrullar, evitarBorde, animar, imagenLista,
            dibujarBarraVida, visible };
 

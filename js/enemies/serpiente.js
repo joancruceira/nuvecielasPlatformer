@@ -148,18 +148,10 @@ const Serpiente = (() => {
     _resolveFloor(e, map, rows, cols);
   }
 
+  // Delega en EnemyCommon: walker y serpiente tenian esta funcion
+  // identica, caracter por caracter.
   function _resolveFloor(e, map, rows, cols) {
-    if (e.vy < 0) return;
-    const rFloor = Math.floor((e.y + e.h) / TS);
-    const cL     = Math.max(0,        Math.floor((e.x + 4)        / TS));
-    const cR     = Math.min(cols - 1, Math.floor((e.x + e.w - 4) / TS));
-    if (rFloor < 0 || rFloor >= rows) return;
-    for (let c = cL; c <= cR; c++) {
-      const t = map[rFloor]?.[c];
-      if (t === TILE.GROUND || t === TILE.BLOCK || t === TILE.PLATFORM) {
-        e.y = rFloor * TS - e.h; e.vy = 0; e.onGround = true; return;
-      }
-    }
+    EnemyCommon.apoyarEnPiso(e, map, { plataformas: true });
   }
 
   function _resolveWalls(e, map, rows, cols) {
