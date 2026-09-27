@@ -41,7 +41,7 @@ const Murcielago = (() => {
       type:      'murcielago',
       x, y, w: W, h: H,
       baseY:     y,           // Y base para el sine wave
-      sinePhase: Math.random() * Math.PI * 2,
+      sinePhase: EnemyCommon.fase(x, y),
       vx: -FLY_SPEED, facing: -1,
       hp: 2, maxHp: 2,
       alive: true,

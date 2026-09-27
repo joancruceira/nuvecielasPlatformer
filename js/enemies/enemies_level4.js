@@ -945,8 +945,8 @@ const EnemiesLevel4 = (() => {
         id: null,                                 // se resuelve en _resolveCageChars
         cx:    centerX + (i - (n - 1) / 2) * gap, // centro horizontal (mundo)
         feetY: groundTopY,                        // pies sobre el piso
-        shiver: Math.random() * Math.PI * 2,      // fase de tembleque distinta c/u
-        hop:    Math.random() * Math.PI * 2,
+        shiver: EnemyCommon.fase(centerX + i * 37),   // fase de tembleque distinta c/u
+        hop:    EnemyCommon.fase(centerX + i * 91),
       });
     }
 

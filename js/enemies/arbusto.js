@@ -43,7 +43,7 @@ const Arbusto = (() => {
       alive: true,
       state: 'idle',
       frameIdx: 0, frameTick: 0, stateTimer: 0,
-      shootTimer: Math.random() * SHOOT_INTERVAL,
+      shootTimer: EnemyCommon.ruido(x * 2.3 + y) * SHOOT_INTERVAL,
       sparks: [],   // chispas activas
       onGround: true,
       vy: 0,

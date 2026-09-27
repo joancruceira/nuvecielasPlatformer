@@ -116,14 +116,14 @@ const Enemies = (() => {
     const startY = r * TILE_SIZE_E - 36 + TILE_SIZE_E;
     return { type:'flyer', x:c*TILE_SIZE_E, y:startY, w:44, h:36, vx:110, vy:0,
       facing:1, hp:1, maxHp:1, stunTimer:0, attackTimer:0, frozenTimer:0,
-      alive:true, startY, flyPhase:Math.random()*Math.PI*2 };
+      alive:true, startY, flyPhase:EnemyCommon.fase(c*TILE_SIZE_E, r*TILE_SIZE_E) };
   }
 
   function _createSmallGhost(col, row) {
     return { type:'ghost', x:col*TILE_SIZE_E, y:row*TILE_SIZE_E, w:34, h:40,
-      vx:(Math.random()>0.5?1:-1)*65, vy:0, facing:-1, hp:1, maxHp:1,
+      vx:(EnemyCommon.ruido(col*3.1+row*7.7)>0.5?1:-1)*65, vy:0, facing:-1, hp:1, maxHp:1,
       stunTimer:0, frozenTimer:0, attackTimer:0, alive:true,
-      floatPhase:Math.random()*Math.PI*2, opacity:0.75, alphaDir:1, isShy:false };
+      floatPhase:EnemyCommon.fase(col*TILE_SIZE_E, row*TILE_SIZE_E), opacity:0.75, alphaDir:1, isShy:false };
   }
 
   function _updateSmallGhost(e, dt, map, ps) {

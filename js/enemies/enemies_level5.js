@@ -114,8 +114,8 @@ const EnemiesLevel5 = (() => {
       vx: 0, vy: 0, facing: 1,
       hp: 999, maxHp: 999, alive: true,       // no se puede matar: se esquiva
       state: 'float', stateTimer: 0, frozenTimer: 0,
-      baseY: y, fase: Math.random() * Math.PI * 2,
-      rango: 70 + Math.random() * 50,
+      baseY: y, fase: EnemyCommon.fase(x, y),
+      rango: 70 + EnemyCommon.ruido(x * 1.7 + y) * 50,
     };
   }
 
@@ -145,9 +145,9 @@ const EnemiesLevel5 = (() => {
     const peces = [];
     for (let i = 0; i < 7; i++) {
       peces.push({
-        dx: (Math.random() - 0.5) * 120,
-        dy: (Math.random() - 0.5) * 70,
-        fase: Math.random() * Math.PI * 2,
+        dx: (EnemyCommon.ruido(x + i * 11.3) - 0.5) * 120,
+        dy: (EnemyCommon.ruido(y + i * 23.7) - 0.5) * 70,
+        fase: EnemyCommon.fase(x + i * 5.1, y),
       });
     }
     return {

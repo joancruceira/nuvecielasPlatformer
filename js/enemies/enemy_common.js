@@ -35,6 +35,28 @@ const EnemyCommon = (() => {
     return Math.abs((e.x + (e.w || 0) / 2) - (ps.x + (ps.w || 0) / 2)) < RADIO_ACTIVO;
   }
 
+
+  // ── Ruido determinístico ─────────────────────────────
+  //
+  // Varios enemigos sorteaban su fase de oscilación con Math.random() en
+  // el momento de nacer. Eso hace que el nivel sea DISTINTO en cada carga:
+  // imposible de balancear, y al comparar una corrida contra otra aparecen
+  // diferencias que parecen bugs y no lo son (nos pasó justo al verificar
+  // el refactor de la gravedad).
+  //
+  // Con la posición de spawn como semilla cada enemigo sigue teniendo su
+  // propia fase —no oscilan todos al unísono, que era el objetivo— pero
+  // siempre la misma.
+  function ruido(semilla) {
+    const s = Math.sin(semilla * 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  /** Fase 0..2π estable, derivada de dónde nace el enemigo. */
+  function fase(x, y = 0) {
+    return ruido(x * 0.7 + y * 1.3) * Math.PI * 2;
+  }
+
   // ── Gravedad + apoyo en el suelo ─────────────────────
   //
   // Reemplaza a las copias de enemies_level3 y enemies_level4, que eran la
@@ -141,7 +163,7 @@ const EnemyCommon = (() => {
     return sx > -(e.w || 0) - margen && sx < anchoCanvas + margen;
   }
 
-  return { TS, RADIO_ACTIVO, activo, aplicarGravedad, esPiso,
+  return { TS, RADIO_ACTIVO, activo, ruido, fase, aplicarGravedad, esPiso,
            patrullar, evitarBorde, animar, imagenLista,
            dibujarBarraVida, visible };
 

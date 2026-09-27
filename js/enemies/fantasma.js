@@ -68,7 +68,7 @@ const Fantasma = (() => {
       bossPhase:        1,
       bossPattern:      'chase',
       bossPatternTimer: 0,
-      floatPhase:       Math.random() * Math.PI * 2,
+      floatPhase:       EnemyCommon.fase(x, y),
 
       // Visual
       opacity:   0.85,

@@ -36,7 +36,7 @@ const Slime = (() => {
       onGround: false,
       estado: 'reposo',      // reposo → agacha → aire → aterriza
       tiempo: 0,
-      esperaSalto: 0.9 + Math.random() * 0.8,
+      esperaSalto: 0.9 + EnemyCommon.ruido(x * 1.9 + y) * 0.8,
     };
   }
 
