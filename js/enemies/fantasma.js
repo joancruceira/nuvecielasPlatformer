@@ -139,7 +139,7 @@ const Fantasma = (() => {
       const opts = e.bossPhase >= 2
         ? ['chase', 'charge', 'circle']
         : ['chase', 'circle'];
-      e.bossPattern = opts[Math.floor(Math.random() * opts.length)];
+      e.bossPattern = opts[Math.floor(EnemyCommon.azar(e) * opts.length)];
     }
 
     const d = dist < 1 ? 1 : dist;

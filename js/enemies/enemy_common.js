@@ -117,6 +117,27 @@ const EnemyCommon = (() => {
   }
 
 
+
+  /**
+   * Azar por enemigo, reproducible.
+   *
+   * Para las decisiones que se toman DURANTE la partida: cada cuanto salta
+   * el slime, que patron elige el jefe, cuando se posa la gargola. Antes
+   * eran Math.random() sueltos, y alcanzaba con eso para que el nivel
+   * dejara de ser reproducible pasados unos segundos.
+   *
+   * Cada enemigo lleva su propia secuencia, sembrada con donde nacio: dos
+   * slimes vecinos siguen saltando distinto entre si —la variedad no se
+   * pierde— pero la partida entera se puede repetir igual.
+   */
+  function azar(e) {
+    if (e._azarBase === undefined) {
+      e._azarBase = (e.x || 0) * 3.7 + (e.y || 0) * 5.3;
+      e._azarPaso = 0;
+    }
+    return ruido(e._azarBase + (++e._azarPaso) * 1.618);
+  }
+
   // ── Apoyo en el suelo, sin integrar la gravedad ──────
   //
   // Distinta de aplicarGravedad(): esta NO mueve al enemigo ni acumula vy.
@@ -189,7 +210,7 @@ const EnemyCommon = (() => {
     return sx > -(e.w || 0) - margen && sx < anchoCanvas + margen;
   }
 
-  return { TS, RADIO_ACTIVO, activo, ruido, fase, aplicarGravedad, apoyarEnPiso, esPiso,
+  return { TS, RADIO_ACTIVO, activo, ruido, fase, azar, aplicarGravedad, apoyarEnPiso, esPiso,
            patrullar, evitarBorde, animar, imagenLista,
            dibujarBarraVida, visible };
 

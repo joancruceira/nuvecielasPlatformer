@@ -79,7 +79,7 @@ const Oruga = (() => {
           e.facing = dx > 0 ? 1 : -1;
           isChasing = true;
           // Salta si el jugador está arriba
-          if (ps.y < e.y - 40 && e.onGround && Math.random() < 0.035) {
+          if (ps.y < e.y - 40 && e.onGround && EnemyCommon.azar(e) < 0.035) {
             e.vy = -380;
             e.onGround = false;
           }

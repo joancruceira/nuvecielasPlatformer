@@ -474,7 +474,7 @@ const EnemiesLevel4 = (() => {
       e.perchTimer -= dt;
       if (e.perchTimer <= 0) {
         e.state = 'active';
-        e.hoverTimer = 3.0 + Math.random() * 1.5;
+        e.hoverTimer = 3.0 + EnemyCommon.azar(e) * 1.5;
         if (typeof Renderer !== 'undefined') {
           Renderer.spawnParticles(e.x + e.w/2, e.y + e.h/2, '#bae6fd', 6);
         }
@@ -685,7 +685,7 @@ const EnemiesLevel4 = (() => {
 
     e.attackTimer -= dt;
     if (e.attackTimer <= 0) {
-      const rand = Math.random();
+      const rand = EnemyCommon.azar(e);
       if (rand < 0.35) {
         // Ola helada
         e.state = 'attack_wave';
@@ -718,7 +718,7 @@ const EnemiesLevel4 = (() => {
         }
         // Invocar 4 carámbanos cayendo de arriba en la arena
         for (let j = 0; j < 4; j++) {
-          const spawnX = e.arenaLeft + 60 + Math.random() * (e.arenaRight - e.arenaLeft - 120);
+          const spawnX = e.arenaLeft + 60 + EnemyCommon.azar(e) * (e.arenaRight - e.arenaLeft - 120);
           e.icicles.push({ x: spawnX, y: e.y - 180, vy: 120 });
         }
       }

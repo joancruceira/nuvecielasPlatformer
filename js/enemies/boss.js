@@ -95,7 +95,7 @@ const Boss = (() => {
       const opts = e.bossPhase >= 2
         ? ['patrol','chase','charge','escupir']
         : ['patrol','chase'];
-      e.bossPattern = opts[Math.floor(Math.random() * opts.length)];
+      e.bossPattern = opts[Math.floor(EnemyCommon.azar(e) * opts.length)];
     }
 
     if (e.bossPattern === 'patrol')      e.vx = e.facing * speed;

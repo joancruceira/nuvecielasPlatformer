@@ -85,7 +85,7 @@ const Slime = (() => {
         e.estado = 'aire';
         e.tiempo = 0;
         e.onGround = false;
-        e.esperaSalto = 0.9 + Math.random() * 0.8;
+        e.esperaSalto = 0.9 + EnemyCommon.azar(e) * 0.8;
         if (typeof AudioManager !== 'undefined') AudioManager.sfx('jump');
       }
     }
