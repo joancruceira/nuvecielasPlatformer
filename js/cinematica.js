@@ -82,12 +82,13 @@ const Cinematica = (() => {
     el.addEventListener('click', (e) => {
       if (!e.target.closest('button')) _next();
     });
-    // Teclado
-    document.addEventListener('keydown', _onKey);
   }
 
   function _onKey(e) {
-    if (!_el || !_el.classList.contains('active')) return;
+    // Antes esto exigia la clase .active, que play() NUNCA pone porque
+    // gestiona el display a mano: el teclado no funciono nunca en ninguna
+    // cinematica. Ahora pregunta si esta realmente visible.
+    if (!_el || _el.style.display === 'none' || !_el.style.display) return;
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') _next();
     if (e.key === 'Escape') _skipCinematic();
   }
@@ -225,6 +226,13 @@ const Cinematica = (() => {
     // el nivel ANTES de terminar su fundido de 520 ms, durante ese rato el
     // aviso aparecía encima de la cinemática.
     document.body.classList.add('cinematica-activa');
+
+    // El teclado se registra en CADA play() y se suelta en _end(). Antes se
+    // registraba una sola vez dentro de _buildDOM() —que corta temprano si el
+    // DOM ya existe— y _end() lo quitaba: de la segunda cinematica en adelante
+    // no habria teclas aunque el guard estuviera bien.
+    document.removeEventListener('keydown', _onKey);
+    document.addEventListener('keydown', _onKey);
 
     const el = document.getElementById('screenCinematica');
     // Gestión manual — no depende de .active
