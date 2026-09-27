@@ -1,0 +1,20 @@
+{
+  "name": "Nuvecielas — Bosque Mágico",
+  "short_name": "NuveBosque",
+  "description": "Plataformas mágico de Manolandia. Elegí tu Nuveciela y devolvele la alegría al bosque.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#1a0a3d",
+  "theme_color": "#1a4a2e",
+  "lang": "es-AR",
+  "categories": ["games"],
+  "icons": [
+    { "src": "img/pwa/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/pwa/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/pwa/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
