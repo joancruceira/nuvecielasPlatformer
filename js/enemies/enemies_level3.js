@@ -64,6 +64,13 @@ const EnemiesLevel3 = (() => {
         continue;
       }
 
+      // Lejos del jugador: no simular. Igual se le aplica gravedad, para
+      // que no queden flotando en el aire cuando te acerques.
+      if (typeof EnemyCull !== 'undefined' && !EnemyCull.activo(e, ps)) {
+        if (e.type !== 'murcielago') _applyGravity(e, dt, map);
+        continue;
+      }
+
       // Detección de congelamiento
       const isFrozen = (e.frozenTimer || 0) > 0;
       if (isFrozen) {

@@ -167,6 +167,13 @@ const EnemiesLevel5 = (() => {
       const e = _enemies[i];
 
       if (!e.alive && e.state !== 'death') { _enemies.splice(i, 1); continue; }
+
+      // Lejos del jugador: no simular. Igual se le aplica gravedad, para
+      // que no queden flotando en el aire cuando te acerques.
+      if (typeof EnemyCull !== 'undefined' && !EnemyCull.activo(e, ps)) {
+        /* el lago no tiene gravedad: todos flotan */
+        continue;
+      }
       if (e.frozenTimer > 0) e.frozenTimer -= dt;
 
       e.stateTimer += dt;

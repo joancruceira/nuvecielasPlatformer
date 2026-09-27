@@ -211,6 +211,13 @@ const EnemiesLevel4 = (() => {
         continue;
       }
 
+      // Lejos del jugador: no simular. Igual se le aplica gravedad, para
+      // que no queden flotando en el aire cuando te acerques.
+      if (typeof EnemyCull !== 'undefined' && !EnemyCull.activo(e, ps)) {
+        if (e.type === 'caballero' || e.type === 'gota') _applyGravity(e, dt, map);
+        continue;
+      }
+
       // Procesar congelamiento general
       if (e.frozenTimer > 0) {
         e.frozenTimer -= dt;
